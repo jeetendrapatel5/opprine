@@ -7,16 +7,72 @@ datasource db {
 }
 
 model User {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  password  String
+  plan      Plan      @default(FREE)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  projects  Project[]
+}
+
+model Project {
+  id          String    @id @default(cuid())
+  name        String
+  description String?  
+  status      Status    @default(ACTIVE)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  client      Client?
+  updates     Update[]
+  files       File[]
+}
+
+model File {
   id        String   @id @default(cuid())
   name      String
-  email     String   @unique
-  password  String
-  plan      Plan     @default(FREE)
+  url       String
+  note      String?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+}
+
+model Client {
+  id         String   @id @default(cuid())
+  name       String
+  email      String
+  magicToken String   @unique @default(cuid())
+  createdAt  DateTime @default(now())
+  projectId  String   @unique
+  project    Project  @relation(fields: [projectId], references: [id])
+}
+
+model Update {
+  id        String      @id @default(cuid())
+  text      String
+  status    UpdateStatus @default(IN_PROGRESS)
+  createdAt DateTime    @default(now())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
 }
 
 enum Plan {
   FREE
   PRO
+}
+
+enum Status {
+  ACTIVE
+  COMPLETED
+  ON_HOLD
+}
+
+enum UpdateStatus {
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
 }
