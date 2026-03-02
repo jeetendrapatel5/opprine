@@ -13,6 +13,8 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 })
 
+type LoginFormData = z.infer<typeof loginSchema>
+
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -25,7 +27,7 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema)
   })
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
     setLoginError('')
 
