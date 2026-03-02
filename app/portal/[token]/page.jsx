@@ -34,6 +34,11 @@ export default async function PortalPage({ params }) {
             orderBy: {
               createdAt: 'desc'
             }
+          },
+          files: {
+            orderBy: {
+              createdAt: 'desc'
+            }
           }
         }
       }
@@ -79,6 +84,37 @@ export default async function PortalPage({ params }) {
             <UpdateFeed updates={project.updates} />
           )}
         </div>
+
+        {project.files.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-base font-semibold text-gray-900 mb-4">
+              📎 Project Files
+            </h2>
+            <div className="flex flex-col gap-2">
+              {project.files.map((file) => (
+                <div
+                  key={file.id}
+                  className="bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{file.name}</p>
+                    <p className="text-xs text-gray-400">
+                      {(file.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+
+                  <a href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 font-medium"
+                  >
+                    Download ↗
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

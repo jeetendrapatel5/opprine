@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-, "app/(auth)/signup/page.jsx", "lib/prisma.js", "app/dashboard/layout.jsx"  ],
+, "app/(auth)/signup/page.jsx", "lib/prisma.js", "app/dashboard/layout.jsx", "app/api/updates/route.js"  ],
   "exclude": ["node_modules"]
 }
