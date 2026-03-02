@@ -1,5 +1,8 @@
+// app/(auth)/signin/page.tsx
+
 'use client'
 
+import { Suspense } from 'react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -15,15 +18,17 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>
 
-export default function LoginPage() {
-  const router = useRouter()
+// ── Inner component — uses useSearchParams ──────────────
+// Must be separate so Suspense can wrap it
+function SigninForm() {
+  const router       = useRouter()
   const searchParams = useSearchParams()
   const [loginError, setLoginError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading]   = useState(false)
 
   const successMessage = searchParams.get('message')
 
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema)
   })
 
@@ -32,7 +37,7 @@ export default function LoginPage() {
     setLoginError('')
 
     const result = await signIn('credentials', {
-      email: data.email,
+      email:    data.email,
       password: data.password,
       redirect: false,
     })
@@ -52,12 +57,11 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-md p-8">
 
-        <div className="mb-8 flex flex-col items-center text-center">
+        <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
           <p className="text-gray-500 mt-1 text-sm">Sign in to your account</p>
         </div>
 
-        {/* Success message from signup redirect */}
         {successMessage && (
           <div className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-4 py-3 mb-6 text-sm">
             {successMessage}
@@ -80,7 +84,7 @@ export default function LoginPage() {
               {...register('email')}
               type="email"
               placeholder="you@example.com"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {errors.email && (
               <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>
@@ -95,7 +99,7 @@ export default function LoginPage() {
               {...register('password')}
               type="password"
               placeholder="Your password"
-              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             {errors.password && (
               <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>
@@ -121,5 +125,17 @@ export default function LoginPage() {
 
       </div>
     </div>
+  )
+}
+
+export default function SigninPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-400 text-sm">Loading...</p>
+      </div>
+    }>
+      <SigninForm />
+    </Suspense>
   )
 }
