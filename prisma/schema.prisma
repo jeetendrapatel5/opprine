@@ -29,6 +29,7 @@ model Project {
   client      Client?
   updates     Update[]
   files       File[]
+  milestones  Milestone[]
 }
 
 model File {
@@ -61,6 +62,18 @@ model Update {
   project   Project  @relation(fields: [projectId], references: [id])
 }
 
+model Milestone {
+  id          String          @id @default(cuid())
+  title       String
+  order       Int             
+  status      MilestoneStatus @default(PENDING)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  projectId   String
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
 enum Plan {
   FREE
   PRO
@@ -76,4 +89,10 @@ enum UpdateStatus {
   IN_PROGRESS
   IN_REVIEW
   DONE
+}
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
 }

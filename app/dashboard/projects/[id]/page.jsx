@@ -7,6 +7,7 @@ import prisma from '@/lib/prisma'
 import Link from 'next/link'
 import ProjectHeader from '@/components/project/ProjectHeader'
 import ProjectTabs from '@/components/project/ProjectTabs'
+import MilestoneManager from '@/components/dashboard/MilestoneManager'
 
 export default async function ProjectPage({ params }) {
   // Always await params in Next.js 15+
@@ -19,18 +20,21 @@ export default async function ProjectPage({ params }) {
   // This is critical — without userId check, any logged-in
   // freelancer could view another freelancer's project just
   // by guessing the ID
-  const project = await prisma.project.findUnique({
+  const project = await prisma.project.findFirst({
     where: {
       id: id,
-      userId: session.user.id  // security check
+      userId: session.user.id // Correctly ensures ownership
     },
     include: {
       client: true,
       updates: {
-        orderBy: { createdAt: 'desc' }  // newest first
+        orderBy: { createdAt: "desc" }
       },
       files: {
-        orderBy: { createdAt: 'desc' }  // newest first
+        orderBy: { createdAt: "desc" }
+      },
+      milestones: {
+        orderBy: { order: "asc" }
       }
     }
   })
@@ -56,6 +60,13 @@ export default async function ProjectPage({ params }) {
 
       {/* Project header — name, status, client, portal link */}
       <ProjectHeader project={project} portalLink={portalLink} />
+
+      <div className="lg:col-span-1 my-5">
+        <MilestoneManager
+          projectId={project.id}
+          initialMilestones={project.milestones}
+        />
+      </div>
 
       {/* Tabs — Updates and Files */}
       <div className="mt-6">
