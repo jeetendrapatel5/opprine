@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import axios from 'axios';
-import { Plus, GripVertical, CheckCircle2, CircleDashed, ArrowRightCircle, Loader2 } from 'lucide-react';
+import { Plus, GripVertical, CheckCircle2, CircleDashed, ArrowRightCircle, Loader2, Trash2 } from 'lucide-react';
 
 export default function MilestoneManager({ projectId, initialMilestones }) {
     const [milestones, setMilestones] = useState(initialMilestones || []);
     const [newTitle, setNewTitle] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [updatingId, setUpdatingId] = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
 
     const getNextStatus = (current) => {
         if (current === 'PENDING') return 'IN_PROGRESS';
@@ -79,6 +80,21 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
         }
     };
 
+    const handleDelete = async (milestoneId) => {
+        if (!confirm("Are you sure you want to delete this milestone?")) return;
+
+        setDeletingId(milestoneId);
+        try {
+            await axios.delete(`/api/milestones/${milestoneId}`);
+            // Remove from UI immediately
+            setMilestones(prev => prev.filter(m => m.id !== milestoneId));
+        } catch (error) {
+            alert("Failed to delete milestone.");
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
     const StatusIcon = ({ status }) => {
         if (status === 'COMPLETED') return <CheckCircle2 className="w-5 h-5 text-blue-600" />;
         if (status === 'IN_PROGRESS') return <ArrowRightCircle className="w-5 h-5 text-orange-500" />;
@@ -101,6 +117,18 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
                         <span className={`text-sm flex-1 ${milestone.status === 'COMPLETED' ? 'line-through text-gray-500' : 'text-gray-900 font-medium'}`}>
                             {milestone.title}
                         </span>
+
+                        <button
+                            onClick={() => handleDelete(milestone.id)}
+                            disabled={deletingId === milestone.id}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-all"
+                        >
+                            {deletingId === milestone.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <Trash2 className="w-4 h-4" />
+                            )}
+                        </button>
 
                         {/* Also make the badge clickable for better UX */}
                         <button
