@@ -25,8 +25,7 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
             const response = await axios.patch(`/api/milestones/${milestoneId}`, {
                 status: nextStatus
             });
-
-            // Update local state
+ 
             setMilestones(prev =>
                 prev.map(m => m.id === milestoneId ? { ...m, status: response.data.status } : m)
             );

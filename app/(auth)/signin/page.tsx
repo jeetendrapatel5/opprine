@@ -3,7 +3,8 @@
 'use client'
 
 import { Suspense } from 'react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSession } from "next-auth/react";
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -21,23 +22,31 @@ type LoginFormData = z.infer<typeof loginSchema>
 // ── Inner component — uses useSearchParams ──────────────
 // Must be separate so Suspense can wrap it
 function SigninForm() {
-  const router       = useRouter()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [loginError, setLoginError] = useState('')
-  const [isLoading, setIsLoading]   = useState(false)
-
+  const [isLoading, setIsLoading] = useState(false)
+  const { data: session, status } = useSession();
   const successMessage = searchParams.get('message')
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema)
   })
 
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace("/dashboard");
+    }
+  }, [status, router]);
+
+  if (status === "loading" || status === "authenticated") return null;
+
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true)
     setLoginError('')
 
     const result = await signIn('credentials', {
-      email:    data.email,
+      email: data.email,
       password: data.password,
       redirect: false,
     })

@@ -8,6 +8,7 @@ import Link from 'next/link'
 import ProjectHeader from '@/components/project/ProjectHeader'
 import ProjectTabs from '@/components/project/ProjectTabs'
 import MilestoneManager from '@/components/dashboard/MilestoneManager'
+import ClientReviewCard from '@/components/dashboard/ClientReviewCard'
 
 export default async function ProjectPage({ params }) {
   // Always await params in Next.js 15+
@@ -66,6 +67,13 @@ export default async function ProjectPage({ params }) {
           projectId={project.id}
           initialMilestones={project.milestones}
         />
+      </div>
+
+      <div className="my-5">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3 px-1">
+          Client Review
+        </h2>
+        <ClientReviewCard project={project} />
       </div>
 
       {/* Tabs — Updates and Files */}

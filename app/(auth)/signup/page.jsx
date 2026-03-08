@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { useSession } from "next-auth/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
@@ -26,8 +27,17 @@ export default function Signup() {
     const router = useRouter();
     const [serverError, setServerError] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const { data: session, status } = useSession();
 
     const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(signupSchema) });
+   
+    useEffect(() => {
+        if (status === "authenticated") {
+            router.replace("/dashboard");
+        }
+    }, [status, session, router]);
+
+    if (status === "loading" || status === "authenticated") return null;
 
     const onSubmit = async (data) => {
         setIsLoading(true);

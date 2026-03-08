@@ -4,6 +4,7 @@ import PortalHeader from '@/components/portal/PortalHeader'
 import UpdateFeed from '@/components/portal/UpdateFeed'
 import ProjectMilestones from '@/components/portal/ProjectMilestones'
 import FileDeliverables from '@/components/portal/FileDeliverables' // Create this below
+import ProjectSignOff from '../../../components/portal/ProjectSignOff'
 
 export default async function PortalPage({ params }) {
   const { token } = await params
@@ -27,17 +28,17 @@ export default async function PortalPage({ params }) {
   return (
     <div className="min-h-screen bg-[#F8FAFC]"> {/* Slate-50 background for premium feel */}
       <div className="max-w-6xl mx-auto px-4 py-10">
-        
+
         {/* 1. HEADER: The Context */}
-        <PortalHeader 
-          project={project} 
-          clientName={client.name} 
-          freelancerName={project.user.name} 
+        <PortalHeader
+          project={project}
+          clientName={client.name}
+          freelancerName={project.user.name}
         />
 
         {/* 2. THE MAIN GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-          
+
           {/* LEFT: PROGRESS & FEED */}
           <div className="lg:col-span-2 space-y-8">
             <section>
@@ -63,6 +64,8 @@ export default async function PortalPage({ params }) {
               </h2>
               <FileDeliverables files={project.files} />
             </section>
+            <ProjectSignOff projectId={project.id} freelancerName={project.user.name} existingRating={project.clientRating}       
+              existingTestimonial={project.testimonial} />
 
             {/* Support Card */}
             <div className="bg-blue-600 rounded-2xl p-6 text-white shadow-lg shadow-blue-200">
@@ -70,7 +73,7 @@ export default async function PortalPage({ params }) {
               <p className="text-blue-100 text-sm mb-4">
                 Have questions about the latest deliverables? Reach out to {project.user.name}.
               </p>
-              <a 
+              <a
                 href={`mailto:${project.user.email}`}
                 className="block text-center bg-white text-blue-600 py-2 rounded-xl font-bold text-sm hover:bg-blue-50 transition-colors"
               >

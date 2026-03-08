@@ -30,6 +30,11 @@ model Project {
   updates     Update[]
   files       File[]
   milestones  Milestone[]
+  isPublic      Boolean   @default(false)
+  publicSlug    String?   @unique 
+  clientRating  Int?    
+  testimonial   String?   @db.Text
+  inquiries     Inquiry[]
 }
 
 model File {
@@ -72,6 +77,16 @@ model Milestone {
   
   projectId   String
   project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Inquiry {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  name        String
+  email       String
+  message     String
+  createdAt   DateTime @default(now())
 }
 
 enum Plan {
