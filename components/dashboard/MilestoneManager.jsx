@@ -2,18 +2,19 @@
 
 import { useState } from 'react';
 import axios from 'axios';
-import { Plus, GripVertical, CheckCircle2, CircleDashed, ArrowRightCircle, Loader2, Trash2 } from 'lucide-react';
+import { Plus, GripVertical, CheckCircle2, CircleDashed, ArrowRightCircle, Loader2, Trash2, Eye } from 'lucide-react';
 
 export default function MilestoneManager({ projectId, initialMilestones }) {
     const [milestones, setMilestones] = useState(initialMilestones || []);
     const [newTitle, setNewTitle] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [updatingId, setUpdatingId] = useState(null);
-    const [deletingId, setDeletingId] = useState(null);
 
     const getNextStatus = (current) => {
         if (current === 'PENDING') return 'IN_PROGRESS';
-        if (current === 'IN_PROGRESS') return 'COMPLETED';
+        if (current === 'IN_PROGRESS') return 'IN_REVIEW';
+        if (current === 'IN_REVIEW') return 'IN_PROGRESS';
+        if (current === 'COMPLETED') return 'PENDING';
         return 'PENDING'; // Cycles back to start
     };
 
@@ -25,7 +26,7 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
             const response = await axios.patch(`/api/milestones/${milestoneId}`, {
                 status: nextStatus
             });
- 
+
             setMilestones(prev =>
                 prev.map(m => m.id === milestoneId ? { ...m, status: response.data.status } : m)
             );
@@ -35,6 +36,13 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
         } finally {
             setUpdatingId(null);
         }
+    };
+
+    const statusStyles = {
+        PENDING: "bg-gray-100 text-gray-500 border-gray-200",
+        IN_PROGRESS: "bg-blue-50 text-blue-700 border-blue-200",
+        IN_REVIEW: "bg-amber-50 text-amber-700 border-amber-200 animate-pulse",
+        COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-200"
     };
 
     // Status Icon Component with a "clickable" look
@@ -118,14 +126,20 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
                         </span>
 
                         <button
-                            onClick={() => handleDelete(milestone.id)}
-                            disabled={deletingId === milestone.id}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-all"
+                            disabled={updatingId === milestone.id || milestone.status === 'COMPLETED'}
+                            onClick={() => handleStatusToggle(milestone.id, milestone.status)}
+                            className={`flex items-center gap-2 text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-lg border transition-all ${statusStyles[milestone.status]}`}
                         >
-                            {deletingId === milestone.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                            {updatingId === milestone.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                                <Trash2 className="w-4 h-4" />
+                                <>
+                                    {milestone.status === 'PENDING' && <CircleDashed className="w-3 h-3" />}
+                                    {milestone.status === 'IN_PROGRESS' && <ArrowRightCircle className="w-3 h-3" />}
+                                    {milestone.status === 'IN_REVIEW' && <Eye className="w-3 h-3" />}
+                                    {milestone.status === 'COMPLETED' && <CheckCircle2 className="w-3 h-3" />}
+                                    {milestone.status === 'IN_REVIEW' ? 'Awaiting Client' : milestone.status.replace('_', ' ')}
+                                </>
                             )}
                         </button>
 

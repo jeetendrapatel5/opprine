@@ -3,8 +3,9 @@ import prisma from '@/lib/prisma'
 import PortalHeader from '@/components/portal/PortalHeader'
 import UpdateFeed from '@/components/portal/UpdateFeed'
 import ProjectMilestones from '@/components/portal/ProjectMilestones'
-import FileDeliverables from '@/components/portal/FileDeliverables' // Create this below
+import FileDeliverables from '@/components/portal/FileDeliverables'
 import ProjectSignOff from '../../../components/portal/ProjectSignOff'
+import ActionPanel from '@/components/portal/ActionPanel'
 
 export default async function PortalPage({ params }) {
   const { token } = await params
@@ -25,9 +26,17 @@ export default async function PortalPage({ params }) {
   if (!client) notFound()
   const { project } = client
 
+  const actionItems = [
+    ...project.milestones.filter(m => m.status === 'IN_REVIEW'),
+    ...project.updates.filter(u => u.status === 'IN_REVIEW')
+  ]
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]"> {/* Slate-50 background for premium feel */}
       <div className="max-w-6xl mx-auto px-4 py-10">
+
+        {/* ACTION: Surfaces items the client must click to unblock the freelancer */}
+        <ActionPanel items={actionItems} token={token} />
 
         {/* 1. HEADER: The Context */}
         <PortalHeader
@@ -64,7 +73,7 @@ export default async function PortalPage({ params }) {
               </h2>
               <FileDeliverables files={project.files} />
             </section>
-            <ProjectSignOff projectId={project.id} freelancerName={project.user.name} existingRating={project.clientRating}       
+            <ProjectSignOff projectId={project.id} freelancerName={project.user.name} existingRating={project.clientRating}
               existingTestimonial={project.testimonial} />
 
             {/* Support Card */}

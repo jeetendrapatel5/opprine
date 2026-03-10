@@ -62,6 +62,7 @@ model Update {
   id        String      @id @default(cuid())
   text      String
   status    UpdateStatus @default(IN_PROGRESS)
+  approvedAt  DateTime?
   createdAt DateTime    @default(now())
   projectId String
   project   Project  @relation(fields: [projectId], references: [id])
@@ -72,6 +73,7 @@ model Milestone {
   title       String
   order       Int             
   status      MilestoneStatus @default(PENDING)
+  approvedAt  DateTime?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   
@@ -109,5 +111,6 @@ enum UpdateStatus {
 enum MilestoneStatus {
   PENDING
   IN_PROGRESS
+  IN_REVIEW
   COMPLETED
 }
