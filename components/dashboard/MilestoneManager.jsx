@@ -9,6 +9,7 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
     const [newTitle, setNewTitle] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [updatingId, setUpdatingId] = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
 
     const getNextStatus = (current) => {
         if (current === 'PENDING') return 'IN_PROGRESS';
@@ -150,8 +151,20 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
                         >
                             {milestone.status.replace('_', ' ')}
                         </button>
+                        <button
+                            onClick={() => handleDelete(milestone.id)}
+                            disabled={deletingId === milestone.id}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 p-1 rounded"
+                            title="Delete milestone"
+                        >
+                            {deletingId === milestone.id
+                                ? <Loader2 className="w-4 h-4 animate-spin" />
+                                : <Trash2 className="w-4 h-4" />
+                            }
+                        </button>
                     </div>
                 ))}
+
             </div>
 
             {/* Quick Add Form */}
