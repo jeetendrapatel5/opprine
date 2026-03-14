@@ -7,25 +7,31 @@ import { ArrowLeft, ChevronRight, Briefcase } from 'lucide-react'
 
 import ProjectSidebar from '@/components/project/ProjectSidebar'
 import ProjectTabs from '@/components/project/ProjectTabs'
-import MilestoneManager from '@/components/dashboard/MilestoneManager'
+import MilestoneManager from '@/components/dashboard/milestones'
 import ClientReviewCard from '@/components/dashboard/ClientReviewCard'
 
 export default async function ProjectPage({ params }) {
   const { id } = await params
   const session = await getServerSession(authOptions)
-  
+
   if (!session) redirect('/signin')
 
   const project = await prisma.project.findFirst({
     where: {
       id: id,
-      userId: session.user.id 
+      userId: session.user.id
     },
     include: {
       client: true,
       updates: { orderBy: { createdAt: "desc" } },
       files: { orderBy: { createdAt: "desc" } },
-      milestones: { orderBy: { order: "asc" } }
+      milestones: {
+        orderBy: { order: 'asc' },
+        include: {
+          milestoneUpdates: { orderBy: { createdAt: 'asc' } },
+          messages:         { orderBy: { createdAt: 'asc' } }
+        }
+      }
     }
   })
 
@@ -35,7 +41,7 @@ export default async function ProjectPage({ params }) {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] pb-24">
-      
+
       {/* TOP NAVIGATION BREADCRUMB */}
       <div className="border-b border-slate-200/60 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-2 text-sm font-medium text-slate-500">
@@ -52,7 +58,7 @@ export default async function ProjectPage({ params }) {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 lg:pt-10">
-        
+
         {/* PAGE TITLE */}
         <div className="mb-8">
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900">
@@ -67,14 +73,14 @@ export default async function ProjectPage({ params }) {
 
         {/* 2-COLUMN WORKSPACE GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
+
           {/* LEFT COLUMN: Main Interactive Workspace (Milestones & Tabs) */}
           <div className="lg:col-span-8 space-y-8">
             <MilestoneManager
               projectId={project.id}
               initialMilestones={project.milestones}
             />
-            
+
             <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
               <ProjectTabs project={project} />
             </div>
@@ -84,7 +90,7 @@ export default async function ProjectPage({ params }) {
           <div className="lg:col-span-4 space-y-6">
             {/* We extract the header info into a sleek sidebar widget */}
             <ProjectSidebar project={project} portalLink={portalLink} />
-            
+
             <ClientReviewCard project={project} />
           </div>
 

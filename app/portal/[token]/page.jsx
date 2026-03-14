@@ -17,7 +17,13 @@ export default async function PortalPage({ params }) {
           user: { select: { name: true, email: true } },
           updates: { orderBy: { createdAt: 'desc' }, take: 10 },
           files: { orderBy: { createdAt: 'desc' } },
-          milestones: { orderBy: { order: 'asc' } }
+          milestones: {
+            orderBy: { order: 'asc' },
+            include: {
+              milestoneUpdates: { orderBy: { createdAt: 'asc' } },
+              messages:         { orderBy: { createdAt: 'asc' } }
+            }
+          }
         }
       }
     }

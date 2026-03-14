@@ -1,62 +1,79 @@
 // app/api/portal/[token]/approve/route.js
 
-import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { NextResponse } from 'next/server'
+import prisma from '@/lib/prisma'
 
 export async function PATCH(request, { params }) {
   try {
-    const { token } = await params;
+    const { token } = await params
+    const { itemId, type, action = 'approve', reason } = await request.json()
 
-    // Added 'action' and 'reason' to the destructure.
-    // action = 'approve' or 'reject'
-    // reason = optional string, only sent when action is 'reject'
-    const { itemId, type, action = 'approve', reason } = await request.json();
-
-    // Your existing security check — unchanged, it's correct
+    // Verify the magic token — this is the client's auth
     const client = await prisma.client.findUnique({
       where: { magicToken: token },
       include: { project: true }
-    });
+    })
 
     if (!client) {
-      return NextResponse.json({ error: "Invalid access token" }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid access token' }, { status: 401 })
     }
 
-    // Decide what data to write based on the action
-    // approve → moves forward (COMPLETED / DONE)
-    // reject  → moves backward (IN_PROGRESS) so freelancer can fix it
+    // ── MILESTONE ────────────────────────────────────────────────────────────
     if (type === 'milestone') {
-
       const milestoneData = action === 'approve'
-        ? { status: 'COMPLETED', approvedAt: new Date(), rejectionNote: null }
-        : { status: 'IN_PROGRESS', approvedAt: null, rejectionNote: reason ?? null }
+        ? {
+            status:       'COMPLETED',
+            approvedAt:   new Date(),
+            rejectionNote: null,  // clear the red-dot indicator on approval
+          }
+        : {
+            status:       'IN_PROGRESS',
+            approvedAt:   null,
+            rejectionNote: reason ?? null,  // update quick-access field
+          }
 
+      // Update the milestone status
       const updated = await prisma.milestone.update({
         where: { id: itemId, projectId: client.projectId },
-        data: milestoneData
-      });
+        data: milestoneData,
+      })
 
-      return NextResponse.json(updated);
-    };
+      // ── KEY CHANGE ───────────────────────────────────────────────────────
+      // On rejection, permanently save the message to MilestoneMessage.
+      // This record is NEVER overwritten — every rejection gets its own row.
+      // That is why history is now preserved across multiple review cycles.
+      if (action === 'reject' && reason?.trim()) {
+        await prisma.milestoneMessage.create({
+          data: {
+            content:    reason.trim(),
+            sender:     'CLIENT',
+            milestoneId: itemId,
+          }
+        })
+      }
+      // ─────────────────────────────────────────────────────────────────────
 
+      return NextResponse.json(updated)
+    }
+
+    // ── UPDATE (project-level update, not milestone) ─────────────────────────
     if (type === 'update') {
-
       const updateData = action === 'approve'
-        ? { status: 'DONE', approvedAt: new Date() }
+        ? { status: 'DONE',        approvedAt: new Date() }
         : { status: 'IN_PROGRESS', approvedAt: null }
 
       const updated = await prisma.update.update({
         where: { id: itemId, projectId: client.projectId },
-        data: updateData
-      });
+        data: updateData,
+      })
 
-      return NextResponse.json(updated);
+      return NextResponse.json(updated)
     }
 
-    return NextResponse.json({ error: "Invalid item type" }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid item type' }, { status: 400 })
 
   } catch (error) {
-    console.error("Approval Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error('[Approve route]', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
