@@ -1,55 +1,50 @@
-// components/project/ProjectTabs.jsx
 'use client'
 
-// Needs 'use client' for tab switching with useState
-
 import { useState } from 'react'
+import { MessageSquare, FileText, Settings, Zap } from 'lucide-react'
 import UpdatesTab from './UpdatesTab'
 import FilesTab from './FilesTab'
 
 export default function ProjectTabs({ project }) {
-  // activeTab tracks which tab is currently shown
   const [activeTab, setActiveTab] = useState('updates')
 
+  const tabs = [
+    { id: 'updates', label: 'Updates', icon: MessageSquare },
+    { id: 'files', label: 'Deliverables', icon: FileText },
+  ]
+
   return (
-    <div>
-
-      {/* Tab buttons */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit mb-6">
-
-        <button
-          onClick={() => setActiveTab('updates')}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-            activeTab === 'updates'
-              ? 'bg-white text-gray-900 shadow-sm'   // active tab
-              : 'text-gray-500 hover:text-gray-700'   // inactive tab
-          }`}
-        >
-          Updates
-        </button>
-
-        <button
-          onClick={() => setActiveTab('files')}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-            activeTab === 'files'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          Files
-        </button>
-
+    <div className="flex flex-col h-full">
+      {/* TAB NAVIGATION */}
+      <div className="flex items-center px-6 border-b border-slate-100 bg-white">
+        <div className="flex gap-8">
+          {tabs.map((tab) => {
+            const Icon = tab.icon
+            const isActive = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 py-4 text-sm font-medium transition-all relative ${
+                  isActive ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-indigo-600' : 'text-slate-400'}`} />
+                {tab.label}
+                {isActive && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
+                )}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
-      {/* Tab content — show only the active tab */}
-      {activeTab === 'updates' && (
-        <UpdatesTab project={project} />
-      )}
-
-      {activeTab === 'files' && (
-        <FilesTab project={project} />
-      )}
-
+      {/* TAB CONTENT */}
+      <div className="p-6">
+        {activeTab === 'updates' && <UpdatesTab project={project} />}
+        {activeTab === 'files' && <FilesTab project={project} />}
+      </div>
     </div>
   )
 }

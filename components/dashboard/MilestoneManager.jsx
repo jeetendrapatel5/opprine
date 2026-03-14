@@ -16,18 +16,16 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
         if (current === 'IN_PROGRESS') return 'IN_REVIEW';
         if (current === 'IN_REVIEW') return 'IN_PROGRESS';
         if (current === 'COMPLETED') return 'PENDING';
-        return 'PENDING'; // Cycles back to start
+        return 'PENDING';
     };
 
     const handleStatusToggle = async (milestoneId, currentStatus) => {
         const nextStatus = getNextStatus(currentStatus);
         setUpdatingId(milestoneId);
-
         try {
             const response = await axios.patch(`/api/milestones/${milestoneId}`, {
                 status: nextStatus
             });
-
             setMilestones(prev =>
                 prev.map(m => m.id === milestoneId ? { ...m, status: response.data.status } : m)
             );
@@ -46,21 +44,19 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
         COMPLETED: "bg-emerald-50 text-emerald-700 border-emerald-200"
     };
 
-    // Status Icon Component with a "clickable" look
     const ClickableStatusIcon = ({ status, milestoneId }) => {
         const isLoading = updatingId === milestoneId;
-
         if (isLoading) return <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />;
-
         return (
             <button
                 onClick={() => handleStatusToggle(milestoneId, status)}
                 className="hover:scale-110 transition-transform cursor-pointer focus:outline-none"
                 title="Click to change status"
             >
-                {status === 'COMPLETED' && <CheckCircle2 className="w-5 h-5 text-blue-600" />}
-                {status === 'IN_PROGRESS' && <ArrowRightCircle className="w-5 h-5 text-orange-500" />}
-                {status === 'PENDING' && <CircleDashed className="w-5 h-5 text-gray-300" />}
+                {status === 'COMPLETED'  && <CheckCircle2      className="w-5 h-5 text-blue-600" />}
+                {status === 'IN_PROGRESS'&& <ArrowRightCircle  className="w-5 h-5 text-orange-500" />}
+                {status === 'IN_REVIEW'  && <Eye               className="w-5 h-5 text-amber-500" />}
+                {status === 'PENDING'    && <CircleDashed       className="w-5 h-5 text-gray-300" />}
             </button>
         );
     };
@@ -68,16 +64,12 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
     const handleAddMilestone = async (e) => {
         e.preventDefault();
         if (!newTitle.trim()) return;
-
         setIsSubmitting(true);
         try {
-            // Using axios as it is in your package.json
             const response = await axios.post('/api/milestones', {
                 projectId,
                 title: newTitle
             });
-
-            // Optimistically update the UI
             setMilestones([...milestones, response.data]);
             setNewTitle("");
         } catch (error) {
@@ -90,11 +82,9 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
 
     const handleDelete = async (milestoneId) => {
         if (!confirm("Are you sure you want to delete this milestone?")) return;
-
         setDeletingId(milestoneId);
         try {
             await axios.delete(`/api/milestones/${milestoneId}`);
-            // Remove from UI immediately
             setMilestones(prev => prev.filter(m => m.id !== milestoneId));
         } catch (error) {
             alert("Failed to delete milestone.");
@@ -103,68 +93,90 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
         }
     };
 
-    const StatusIcon = ({ status }) => {
-        if (status === 'COMPLETED') return <CheckCircle2 className="w-5 h-5 text-blue-600" />;
-        if (status === 'IN_PROGRESS') return <ArrowRightCircle className="w-5 h-5 text-orange-500" />;
-        return <CircleDashed className="w-5 h-5 text-gray-300" />;
-    };
-
     return (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Project Milestones</h2>
 
-            {/* Existing Milestones List */}
+            {/* ↑ The rejection note block was incorrectly placed here before.
+                  It belongs inside the map below, where 'milestone' actually exists. */}
+
             <div className="space-y-2 mb-6">
                 {milestones.map((milestone) => (
-                    <div key={milestone.id} className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-lg group">
-                        <GripVertical className="w-4 h-4 text-gray-400 cursor-grab" />
+                    <div key={milestone.id}>
 
-                        {/* USE THE NEW CLICKABLE ICON */}
-                        <ClickableStatusIcon status={milestone.status} milestoneId={milestone.id} />
+                        {/* Row: grip + icon + title + badge + delete */}
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-lg group">
+                            <GripVertical className="w-4 h-4 text-gray-400 cursor-grab" />
 
-                        <span className={`text-sm flex-1 ${milestone.status === 'COMPLETED' ? 'line-through text-gray-500' : 'text-gray-900 font-medium'}`}>
-                            {milestone.title}
-                        </span>
+                            <ClickableStatusIcon
+                                status={milestone.status}
+                                milestoneId={milestone.id}
+                            />
 
-                        <button
-                            disabled={updatingId === milestone.id || milestone.status === 'COMPLETED'}
-                            onClick={() => handleStatusToggle(milestone.id, milestone.status)}
-                            className={`flex items-center gap-2 text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-lg border transition-all ${statusStyles[milestone.status]}`}
-                        >
-                            {updatingId === milestone.id ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                                <>
-                                    {milestone.status === 'PENDING' && <CircleDashed className="w-3 h-3" />}
-                                    {milestone.status === 'IN_PROGRESS' && <ArrowRightCircle className="w-3 h-3" />}
-                                    {milestone.status === 'IN_REVIEW' && <Eye className="w-3 h-3" />}
-                                    {milestone.status === 'COMPLETED' && <CheckCircle2 className="w-3 h-3" />}
-                                    {milestone.status === 'IN_REVIEW' ? 'Awaiting Client' : milestone.status.replace('_', ' ')}
-                                </>
-                            )}
-                        </button>
+                            <span className={`text-sm flex-1 ${
+                                milestone.status === 'COMPLETED'
+                                    ? 'line-through text-gray-500'
+                                    : 'text-gray-900 font-medium'
+                            }`}>
+                                {milestone.title}
+                            </span>
 
-                        {/* Also make the badge clickable for better UX */}
-                        <button
-                            onClick={() => handleStatusToggle(milestone.id, milestone.status)}
-                            className="text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded bg-white border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors"
-                        >
-                            {milestone.status.replace('_', ' ')}
-                        </button>
-                        <button
-                            onClick={() => handleDelete(milestone.id)}
-                            disabled={deletingId === milestone.id}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 p-1 rounded"
-                            title="Delete milestone"
-                        >
-                            {deletingId === milestone.id
-                                ? <Loader2 className="w-4 h-4 animate-spin" />
-                                : <Trash2 className="w-4 h-4" />
-                            }
-                        </button>
+                            <button
+                                disabled={updatingId === milestone.id || milestone.status === 'COMPLETED'}
+                                onClick={() => handleStatusToggle(milestone.id, milestone.status)}
+                                className={`flex items-center gap-2 text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-lg border transition-all ${statusStyles[milestone.status]}`}
+                            >
+                                {updatingId === milestone.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                    <>
+                                        {milestone.status === 'PENDING'     && <CircleDashed      className="w-3 h-3" />}
+                                        {milestone.status === 'IN_PROGRESS' && <ArrowRightCircle  className="w-3 h-3" />}
+                                        {milestone.status === 'IN_REVIEW'   && <Eye               className="w-3 h-3" />}
+                                        {milestone.status === 'COMPLETED'   && <CheckCircle2      className="w-3 h-3" />}
+                                        {milestone.status === 'IN_REVIEW'
+                                            ? 'Awaiting Client'
+                                            : milestone.status.replace('_', ' ')
+                                        }
+                                    </>
+                                )}
+                            </button>
+
+                            <button
+                                onClick={() => handleDelete(milestone.id)}
+                                disabled={deletingId === milestone.id}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 p-1 rounded"
+                                title="Delete milestone"
+                            >
+                                {deletingId === milestone.id
+                                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                                    : <Trash2  className="w-4 h-4" />
+                                }
+                            </button>
+                        </div>
+
+                        {/* Rejection note — now correctly INSIDE the map, under its own row.
+                            Only visible when:
+                            1. The client actually left a reason (rejectionNote is not null)
+                            2. The milestone is back IN_PROGRESS (freelancer is fixing it)
+                            Once the client approves, the API sets rejectionNote to null
+                            and this block disappears automatically. */}
+                        {milestone.rejectionNote && milestone.status === 'IN_PROGRESS' && (
+                            <div className="mt-1 mx-1 flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                <span className="text-red-500 mt-0.5 text-sm">💬</span>
+                                <div>
+                                    <p className="text-xs font-bold text-red-700 uppercase tracking-wide mb-0.5">
+                                        Client requested changes
+                                    </p>
+                                    <p className="text-sm text-red-800">
+                                        {milestone.rejectionNote}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
                     </div>
                 ))}
-
             </div>
 
             {/* Quick Add Form */}
