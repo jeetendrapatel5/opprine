@@ -33,7 +33,7 @@ function buildConversation(milestoneUpdates = [], messages = []) {
   )
 }
 
-export default function ProjectMilestones({ milestones }) {
+export default function ProjectMilestones({ milestones, freelancerName, clientName }) {
   if (!milestones || milestones.length === 0) return null
 
   const completedCount     = milestones.filter(m => m.status === 'COMPLETED').length
@@ -128,7 +128,7 @@ export default function ProjectMilestones({ milestones }) {
                               <div className="w-1.5 h-1.5 rounded-full bg-indigo-300 mt-1.5 shrink-0" />
                               <div className="flex-1">
                                 <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide mb-0.5">
-                                  Freelancer
+                                  {freelancerName}
                                 </p>
                                 <p className="text-sm text-gray-700 leading-relaxed">
                                   {item.note}
@@ -172,7 +172,7 @@ export default function ProjectMilestones({ milestones }) {
                             <div className="w-1.5 h-1.5 rounded-full bg-red-400 mt-1.5 shrink-0" />
                             <div className="flex-1">
                               <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide mb-0.5">
-                                💬 Your feedback
+                                💬 {clientName} your feedback
                               </p>
                               <p className="text-sm text-red-800 bg-red-50 border border-red-100 rounded-lg px-3 py-2 leading-relaxed">
                                 {item.content}

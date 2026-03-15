@@ -30,7 +30,7 @@ function SmallStatusIcon({ status }) {
   return <CircleDashed className="w-3 h-3" />
 }
 
-export default function MilestoneRow({ milestone, onStatusChange, onDelete, isUpdating, isDeleting }) {
+export default function MilestoneRow({ milestone, onStatusChange, onDelete, isUpdating, isDeleting, freelancerName, clientName }) {
   const [isOpen, setIsOpen]             = useState(false)
   const [localUpdates, setLocalUpdates] = useState(milestone.milestoneUpdates ?? [])
 
@@ -151,6 +151,8 @@ export default function MilestoneRow({ milestone, onStatusChange, onDelete, isUp
           <MilestoneUpdateFeed
             updates={localUpdates}
             messages={messages}
+            freelancerName={freelancerName}
+            clientName={clientName}
           />
 
           {/* Post new update */}

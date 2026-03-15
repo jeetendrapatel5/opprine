@@ -16,7 +16,7 @@ const nextStatusMap = {
   COMPLETED:   'PENDING',       // Cycle back (for accidental completions)
 }
 
-export default function MilestoneManager({ projectId, initialMilestones }) {
+export default function MilestoneManager({ projectId, initialMilestones, freelancerName, clientName }) {
   // milestones is the source of truth for the list
   // Starts from server-fetched data, mutated locally for instant UI feedback
   const [milestones, setMilestones] = useState(initialMilestones ?? [])
@@ -101,6 +101,8 @@ export default function MilestoneManager({ projectId, initialMilestones }) {
             onDelete={handleDelete}
             isUpdating={updatingId === milestone.id}
             isDeleting={deletingId === milestone.id}
+            freelancerName={freelancerName}
+            clientName={clientName}
           />
         ))}
       </div>

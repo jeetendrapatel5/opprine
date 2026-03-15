@@ -60,7 +60,7 @@ export default async function PortalPage({ params }) {
               <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4 px-1">
                 Project Timeline
               </h2>
-              <ProjectMilestones milestones={project.milestones} />
+              <ProjectMilestones milestones={project.milestones} freelancerName={project.user.name} clientName={client.name} />
             </section>
 
             <section>

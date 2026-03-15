@@ -27,7 +27,7 @@ function timeAgo(date) {
     return `${Math.floor(seconds / 86400)}d ago`
 }
 
-function FreelancerEntry({ item, isLast }) {
+function FreelancerEntry({ item, isLast, freelancerName }) {
     return (
         <div className="flex gap-3">
             <div className="flex flex-col items-center">
@@ -37,7 +37,7 @@ function FreelancerEntry({ item, isLast }) {
             <div className="flex-1 pb-3">
                 {/* Sender label */}
                 <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide mb-1">
-                    You
+                    {freelancerName}
                 </p>
                 <p className="text-sm text-gray-800 leading-relaxed">{item.note}</p>
 
@@ -72,7 +72,7 @@ function FreelancerEntry({ item, isLast }) {
     )
 }
 
-function ClientEntry({ item, isLast }) {
+function ClientEntry({ item, isLast, clientName }) {
     return (
         <div className="flex gap-3">
             <div className="flex flex-col items-center">
@@ -82,7 +82,7 @@ function ClientEntry({ item, isLast }) {
             </div>
             <div className="flex-1 pb-3">
                 <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide mb-1">
-                    💬 Client feedback
+                    💬 {clientName}
                 </p>
                 <p className="text-sm text-red-800 bg-red-50 border border-red-100 rounded-lg px-3 py-2 leading-relaxed">
                     {item.content}
@@ -93,7 +93,7 @@ function ClientEntry({ item, isLast }) {
     )
 }
 
-export default function MilestoneUpdateFeed({ updates, messages }) {
+export default function MilestoneUpdateFeed({ updates = [], messages = [], freelancerName = 'Freelancer', clientName = 'Client' }) {
     const taggedUpdates = updates.map(u => ({ ...u, _type: 'update' }))
     const taggedMessages = messages.map(m => ({ ...m, _type: 'message' }))
 
@@ -117,9 +117,9 @@ export default function MilestoneUpdateFeed({ updates, messages }) {
             {combined.map((item, index) => {
                 const isLast = index === combined.length - 1
                 if (item._type === 'update') {
-                    return <FreelancerEntry key={`u-${item.id}`} item={item} isLast={isLast} />
+                    return <FreelancerEntry key={`u-${item.id}`} item={item} isLast={isLast} freelancerName={freelancerName}/>
                 }
-                return <ClientEntry key={`m-${item.id}`} item={item} isLast={isLast} />
+                return <ClientEntry key={`m-${item.id}`} item={item} isLast={isLast} clientName={clientName} />
             })}
         </div>
     )

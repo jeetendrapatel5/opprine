@@ -79,6 +79,8 @@ export default async function ProjectPage({ params }) {
             <MilestoneManager
               projectId={project.id}
               initialMilestones={project.milestones}
+              freelancerName={session.user.name}
+              clientName={project.client?.name ?? 'Client'}
             />
 
             <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
