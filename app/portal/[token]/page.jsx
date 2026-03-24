@@ -6,6 +6,9 @@ import ProjectMilestones from '@/components/portal/ProjectMilestones'
 import FileDeliverables from '@/components/portal/FileDeliverables'
 import ProjectSignOff from '../../../components/portal/ProjectSignOff'
 import ActionPanel from '@/components/portal/ActionPanel'
+import { getProjectProgress } from '@/lib/projectProgress'
+import ProgressBanner from '@/components/portal/ProgressBanner'
+import CurrentlyWorkingOn from '@/components/portal/CurrentlyWorkingOn'
 
 export default async function PortalPage({ params }) {
   const { token } = await params
@@ -21,7 +24,7 @@ export default async function PortalPage({ params }) {
             orderBy: { order: 'asc' },
             include: {
               milestoneUpdates: { orderBy: { createdAt: 'asc' } },
-              messages:         { orderBy: { createdAt: 'asc' } }
+              messages: { orderBy: { createdAt: 'asc' } }
             }
           }
         }
@@ -30,7 +33,15 @@ export default async function PortalPage({ params }) {
   })
 
   if (!client) notFound()
+
+  prisma.client.update({
+    where: { magicToken: token },
+    data: { lastViewedAt: new Date() },
+  }).catch(() => {})
+
   const { project } = client
+
+  const progress = getProjectProgress(project.milestones)
 
   const actionItems = [
     ...project.milestones.filter(m => m.status === 'IN_REVIEW'),
@@ -40,6 +51,19 @@ export default async function PortalPage({ params }) {
   return (
     <div className="min-h-screen bg-[#F8FAFC]"> {/* Slate-50 background for premium feel */}
       <div className="max-w-6xl mx-auto px-4 py-10">
+        {/* Progress banner at the top */}
+        <ProgressBanner
+          progress={progress}
+          projectName={project.name}
+          milestones={project.milestones}
+        />
+
+        {/* Show "currently working on" only when something is actively IN_PROGRESS */}
+        {/* AND nothing is IN_REVIEW — if something needs client approval,          */}
+        {/* ActionPanel already surfaces that more urgently. No need to show both.  */}
+        {progress.projectStatus === 'ON_TRACK' && progress.currentMilestone && (
+          <CurrentlyWorkingOn milestone={progress.currentMilestone} />
+        )}
 
         {/* ACTION: Surfaces items the client must click to unblock the freelancer */}
         <ActionPanel items={actionItems} token={token} />

@@ -24,11 +24,13 @@ export async function PATCH(request, { params }) {
         ? {
             status:       'COMPLETED',
             approvedAt:   new Date(),
+            completedAt:   new Date(),
             rejectionNote: null,  // clear the red-dot indicator on approval
           }
         : {
             status:       'IN_PROGRESS',
             approvedAt:   null,
+            completedAt:   null,
             rejectionNote: reason ?? null,  // update quick-access field
           }
 

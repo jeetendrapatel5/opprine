@@ -53,6 +53,7 @@ model Client {
   name       String
   email      String
   magicToken String   @unique @default(cuid())
+  lastViewedAt DateTime?
   createdAt  DateTime @default(now())
   projectId  String   @unique
   project    Project  @relation(fields: [projectId], references: [id])
@@ -74,7 +75,22 @@ model Milestone {
   order       Int             
   status      MilestoneStatus @default(PENDING)
   approvedAt  DateTime?
-  rejectionNote String?         
+  rejectionNote String?
+  
+  // When this milestone reached COMPLETED status — set automatically by the API
+  completedAt   DateTime?                          // NEW
+
+  // Scheduling
+  dueDate       DateTime?                          // NEW — freelancer can set a target date
+
+  // Delivery card — freelancer fills these before sending to client for review
+  deliveryHeadline  String?                        // NEW — e.g. "Homepage is ready for review"
+  deliverySummary   String?                        // NEW — paragraph explaining what was done
+  deliveryFileUrl   String?                        // NEW — Cloudinary URL of the main deliverable
+  deliveryFileName  String?                        // NEW — original filename shown to client
+  deliveryFileType  String?                        // NEW — MIME type e.g. "image/png"
+  deliveryChecklist String[]    @default([])       // NEW — checklist items client should verify
+         
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   
