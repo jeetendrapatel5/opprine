@@ -43,11 +43,8 @@ export default async function PortalPage({ params }) {
 
   const progress = getProjectProgress(project.milestones)
 
-  const actionItems = [
-    ...project.milestones.filter(m => m.status === 'IN_REVIEW'),
-    ...project.updates.filter(u => u.status === 'IN_REVIEW')
-  ]
-
+  const actionItems = project.updates.filter(u => u.status === 'IN_REVIEW')
+  
   return (
     <div className="min-h-screen bg-[#F8FAFC]"> {/* Slate-50 background for premium feel */}
       <div className="max-w-6xl mx-auto px-4 py-10">
@@ -84,7 +81,7 @@ export default async function PortalPage({ params }) {
               <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4 px-1">
                 Project Timeline
               </h2>
-              <ProjectMilestones milestones={project.milestones} freelancerName={project.user.name} clientName={client.name} />
+              <ProjectMilestones milestones={project.milestones} freelancerName={project.user.name} clientName={client.name} token={token}/>
             </section>
 
             <section>
