@@ -2,38 +2,73 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Send, Loader2, ImageIcon } from 'lucide-react'
+import { X, Send, Loader2, ImageIcon, Plus, Trash2 } from 'lucide-react'
 import axios from 'axios'
 
-// fileOptions = the milestoneUpdates that have a file attached
-// These are shown as options in the "highlight a file" dropdown
-export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, onClose }) {
-  const [headline, setHeadline]   = useState(milestone.deliveryHeadline ?? '')
-  const [summary,  setSummary]    = useState(milestone.deliverySummary  ?? '')
-  const [selectedFileId, setSelectedFileId] = useState(null)
-  const [isSubmitting, setIsSubmitting]     = useState(false)
+// Maximum number of checklist items the freelancer can add.
+// Keeping it at 3 forces them to be specific — a 10-item checklist
+// is overwhelming for a client who doesn't understand technical work.
+const MAX_CHECKLIST_ITEMS = 3
 
-  // Find the full file object for the selected option
+export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, onClose }) {
+  const [headline,   setHeadline]   = useState(milestone.deliveryHeadline ?? '')
+  const [summary,    setSummary]    = useState(milestone.deliverySummary  ?? '')
+  const [selectedFileId, setSelectedFileId] = useState(null)
+  const [isSubmitting,   setIsSubmitting]   = useState(false)
+
+  // Checklist state — array of strings.
+  // Pre-populate from saved data if the freelancer previously saved a draft.
+  // Filter out empty strings so stale empty items don't appear on re-open.
+  const [checklist, setChecklist] = useState(
+    (milestone.deliveryChecklist ?? []).filter(item => item.trim() !== '')
+  )
+
   const selectedFile = fileOptions.find(f => f.id === selectedFileId) ?? null
 
+  // ── Checklist helpers ─────────────────────────────────────────────────────
+
+  // Add a new empty input slot (up to the max)
+  const addChecklistItem = () => {
+    if (checklist.length >= MAX_CHECKLIST_ITEMS) return
+    setChecklist(prev => [...prev, ''])
+  }
+
+  // Update the text of one item by its index in the array
+  // We use index because checklist items have no ID — they're just strings
+  const updateChecklistItem = (index, value) => {
+    setChecklist(prev => prev.map((item, i) => i === index ? value : item))
+  }
+
+  // Remove one item by index — filters it out, re-indexes automatically
+  const removeChecklistItem = (index) => {
+    setChecklist(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!headline.trim()) return
 
     setIsSubmitting(true)
     try {
+      // Filter out any checklist items the freelancer left blank.
+      // We don't want to save ["Check the form", "", "Review mobile layout"]
+      // — the empty string in the middle is meaningless to the client.
+      const cleanedChecklist = checklist
+        .map(item => item.trim())
+        .filter(item => item !== '')
+
       const response = await axios.patch(`/api/milestones/${milestone.id}`, {
-        // Move to IN_REVIEW and save the delivery card data in one request
-        status:           'IN_REVIEW',
-        deliveryHeadline: headline.trim(),
-        deliverySummary:  summary.trim(),
-        // Only send file fields if the freelancer picked a file
-        deliveryFileUrl:  selectedFile?.fileUrl  ?? null,
-        deliveryFileName: selectedFile?.fileName ?? null,
-        deliveryFileType: selectedFile?.fileType ?? null,
+        status:            'IN_REVIEW',
+        deliveryHeadline:  headline.trim(),
+        deliverySummary:   summary.trim(),
+        deliveryChecklist: cleanedChecklist,
+        // File fields — null if no file was selected (clears any previous value)
+        deliveryFileUrl:   selectedFile?.fileUrl  ?? null,
+        deliveryFileName:  selectedFile?.fileName ?? null,
+        deliveryFileType:  selectedFile?.fileType ?? null,
       })
 
-      // Tell the parent the update succeeded, pass back the updated milestone
       onSuccess(response.data)
       onClose()
 
@@ -45,20 +80,18 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
   }
 
   return (
-    // Backdrop — clicking outside closes the modal
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+      {/* max-h + overflow-y-auto makes the modal scrollable on small screens */}
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-base font-bold text-gray-900">Send for Client Review</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              "{milestone.title}"
-            </p>
+            <p className="text-xs text-gray-500 mt-0.5">"{milestone.title}"</p>
           </div>
           <button
             onClick={onClose}
@@ -70,7 +103,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
 
-          {/* Headline — what the client reads first */}
+          {/* ── Headline ── */}
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
               Headline <span className="text-red-400">*</span>
@@ -88,7 +121,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             </p>
           </div>
 
-          {/* Summary — plain English explanation */}
+          {/* ── Summary ── */}
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
               Summary <span className="text-gray-400">(optional)</span>
@@ -102,7 +135,74 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             />
           </div>
 
-          {/* File highlight — pick one file to feature prominently */}
+          {/* ── Checklist ── */}
+          {/* This is the new section for Feature 4.1 */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide">
+                What should the client check?{' '}
+                <span className="text-gray-400">(optional)</span>
+              </label>
+              {/* Item counter — shows "2 / 3" so freelancer knows the limit */}
+              {checklist.length > 0 && (
+                <span className="text-[10px] font-bold text-gray-400">
+                  {checklist.length} / {MAX_CHECKLIST_ITEMS}
+                </span>
+              )}
+            </div>
+
+            <p className="text-[10px] text-gray-400 mb-3">
+              Give the client specific things to verify before approving. Keep it simple.
+            </p>
+
+            {/* Existing checklist items */}
+            <div className="space-y-2">
+              {checklist.map((item, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  {/* Visual checkbox — not interactive, just decorative */}
+                  {/* It signals to the freelancer "this is what the client sees" */}
+                  <div className="w-4 h-4 rounded border-2 border-gray-300 shrink-0" />
+
+                  <input
+                    type="text"
+                    value={item}
+                    onChange={(e) => updateChecklistItem(index, e.target.value)}
+                    placeholder={`e.g. ${[
+                      'Check that the contact form submits correctly',
+                      'Review the mobile layout on your phone',
+                      'Confirm the brand colours match',
+                    ][index] ?? 'Add a check item'}`}
+                    maxLength={120}
+                    className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
+                  />
+
+                  {/* Remove button */}
+                  <button
+                    type="button"
+                    onClick={() => removeChecklistItem(index)}
+                    className="text-gray-300 hover:text-red-400 transition-colors shrink-0"
+                    title="Remove this item"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add item button — hidden once max is reached */}
+            {checklist.length < MAX_CHECKLIST_ITEMS && (
+              <button
+                type="button"
+                onClick={addChecklistItem}
+                className="mt-2 flex items-center gap-1.5 text-xs text-indigo-500 hover:text-indigo-700 font-semibold transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add check item
+              </button>
+            )}
+          </div>
+
+          {/* ── File highlight ── */}
           <div>
             <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
               <ImageIcon className="w-3.5 h-3.5 inline mr-1" />
@@ -115,7 +215,6 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
               </p>
             ) : (
               <div className="space-y-2">
-                {/* "None" option */}
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="radio"
@@ -128,7 +227,6 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
                   <span className="text-sm text-gray-500">No file highlight</span>
                 </label>
 
-                {/* One radio per file that has a URL */}
                 {fileOptions.map((f) => (
                   <label key={f.id} className="flex items-center gap-2 cursor-pointer group">
                     <input
@@ -151,7 +249,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             )}
           </div>
 
-          {/* Preview of how it'll look — only if image is selected */}
+          {/* Image preview */}
           {selectedFile?.fileType?.startsWith('image/') && (
             <div className="rounded-xl overflow-hidden border border-indigo-100 bg-indigo-50">
               <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wide px-3 pt-2">
@@ -165,7 +263,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             </div>
           )}
 
-          {/* Actions */}
+          {/* ── Actions ── */}
           <div className="flex gap-3 pt-1">
             <button
               type="button"
@@ -181,7 +279,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             >
               {isSubmitting
                 ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <Send className="w-4 h-4" />
+                : <Send    className="w-4 h-4" />
               }
               {isSubmitting ? 'Sending...' : 'Send for Review'}
             </button>

@@ -1,6 +1,4 @@
 // components/dashboard/milestones/index.jsx
-// This is the entry point for the milestone feature.
-// It manages the list of milestones and delegates rendering each one to MilestoneRow.
 'use client'
 
 import { useState } from 'react'
@@ -8,27 +6,23 @@ import axios from 'axios'
 import { Plus, Loader2 } from 'lucide-react'
 import MilestoneRow from './MilestoneRow'
 
-// What status comes after the current one when the freelancer clicks the icon
 const nextStatusMap = {
   PENDING:     'IN_PROGRESS',
   IN_PROGRESS: 'IN_REVIEW',
-  IN_REVIEW:   'IN_PROGRESS',  // Back to in-progress if freelancer clicks again
-  COMPLETED:   'PENDING',       // Cycle back (for accidental completions)
+  IN_REVIEW:   'IN_PROGRESS',
+  COMPLETED:   'PENDING',
 }
 
 export default function MilestoneManager({ projectId, initialMilestones, freelancerName, clientName }) {
-  // milestones is the source of truth for the list
-  // Starts from server-fetched data, mutated locally for instant UI feedback
   const [milestones, setMilestones] = useState(initialMilestones ?? [])
   const [newTitle,   setNewTitle]   = useState('')
   const [isAdding,   setIsAdding]   = useState(false)
-
-  // Track which milestone ID is currently having its status updated
   const [updatingId, setUpdatingId] = useState(null)
-  // Track which milestone ID is being deleted
   const [deletingId, setDeletingId] = useState(null)
 
   // ── Status toggle ─────────────────────────────────────────────────────────
+  // Used when the freelancer clicks the status icon directly on the row.
+  // This function calls the API itself and updates one field (status) in state.
   const handleStatusChange = async (milestoneId, currentStatus) => {
     const nextStatus = nextStatusMap[currentStatus]
     setUpdatingId(milestoneId)
@@ -36,9 +30,8 @@ export default function MilestoneManager({ projectId, initialMilestones, freelan
       const response = await axios.patch(`/api/milestones/${milestoneId}`, {
         status: nextStatus
       })
-      // Update only this milestone in the array, keep everything else
-      setMilestones((prev) =>
-        prev.map((m) => m.id === milestoneId ? { ...m, status: response.data.status } : m)
+      setMilestones(prev =>
+        prev.map(m => m.id === milestoneId ? { ...m, status: response.data.status } : m)
       )
     } catch {
       alert('Could not update status. Please try again.')
@@ -47,13 +40,37 @@ export default function MilestoneManager({ projectId, initialMilestones, freelan
     }
   }
 
+  // ── Full milestone replace ────────────────────────────────────────────────
+  // Used when the DeliveryModal submits successfully.
+  // The modal already called the API and received the full updated milestone
+  // object back. We don't call the API again here — we just slot the new
+  // object into the array in place of the old one.
+  //
+  // WHY a separate function: handleStatusChange only merges { status }.
+  // After a delivery submission, we need to merge ALL the new fields:
+  // status, deliveryHeadline, deliverySummary, deliveryChecklist, etc.
+  // Replacing the whole object is cleaner than merging individual fields.
+  const handleMilestoneUpdate = (updatedMilestone) => {
+    setMilestones(prev =>
+      prev.map(m => m.id === updatedMilestone.id
+        // Spread the existing milestone first, then overwrite with updated fields.
+        // WHY: The API response from the PATCH route returns the Prisma milestone
+        // record, which does NOT include milestoneUpdates or messages (those are
+        // relations, not scalar fields). So we keep the existing relations from
+        // the old object and only overwrite what the API returned.
+        ? { ...m, ...updatedMilestone }
+        : m
+      )
+    )
+  }
+
   // ── Delete ────────────────────────────────────────────────────────────────
   const handleDelete = async (milestoneId) => {
     if (!confirm('Delete this milestone and all its updates?')) return
     setDeletingId(milestoneId)
     try {
       await axios.delete(`/api/milestones/${milestoneId}`)
-      setMilestones((prev) => prev.filter((m) => m.id !== milestoneId))
+      setMilestones(prev => prev.filter(m => m.id !== milestoneId))
     } catch {
       alert('Failed to delete milestone.')
     } finally {
@@ -71,8 +88,7 @@ export default function MilestoneManager({ projectId, initialMilestones, freelan
         projectId,
         title: newTitle.trim()
       })
-      // New milestones start with no updates, so we attach an empty array
-      setMilestones((prev) => [...prev, { ...response.data, milestoneUpdates: [] }])
+      setMilestones(prev => [...prev, { ...response.data, milestoneUpdates: [], messages: [] }])
       setNewTitle('')
     } catch {
       alert('Failed to add milestone. Please try again.')
@@ -85,7 +101,6 @@ export default function MilestoneManager({ projectId, initialMilestones, freelan
     <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Project Milestones</h2>
 
-      {/* Milestone rows */}
       <div className="space-y-2 mb-6">
         {milestones.length === 0 && (
           <p className="text-sm text-gray-400 text-center py-6 border-2 border-dashed border-gray-100 rounded-xl">
@@ -98,6 +113,7 @@ export default function MilestoneManager({ projectId, initialMilestones, freelan
             key={milestone.id}
             milestone={milestone}
             onStatusChange={handleStatusChange}
+            onMilestoneUpdate={handleMilestoneUpdate}
             onDelete={handleDelete}
             isUpdating={updatingId === milestone.id}
             isDeleting={deletingId === milestone.id}
@@ -107,7 +123,6 @@ export default function MilestoneManager({ projectId, initialMilestones, freelan
         ))}
       </div>
 
-      {/* Add milestone form */}
       <form onSubmit={handleAdd} className="flex gap-2">
         <input
           type="text"
