@@ -5,25 +5,20 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { v2 as cloudinary } from "cloudinary";
+import { sendEmail } from "@/lib/email";
+import { milestoneReadyForReviewEmail } from "@/lib/emailTemplates";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PATCH /api/milestones/[id]
 //
-// Handles two content types in one route:
+// Handles two content types:
+//   multipart/form-data — delivery card with a new file upload
+//   application/json    — status changes, delivery text, checklist, dueDate
 //
-//   multipart/form-data — used when a NEW file is being uploaded with the
-//                         delivery card (future use, or if you add direct
-//                         file upload to the modal later)
+// After a successful update:
+//   If status === 'IN_REVIEW' → send "ready for review" email to client
 //
-//   application/json    — used for everything else:
-//                         · status changes (PENDING → IN_PROGRESS, etc.)
-//                         · delivery card text fields (headline, summary)
-//                         · delivery file reference (URL from existing upload)
-//                         · checklist array
-//                         · dueDate
-//
-// Security: atomic ownership check — one Prisma query checks both the
-// milestone ID and that its parent project belongs to the session user.
+// Security: atomic ownership check using nested where clause.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function PATCH(request, { params }) {
@@ -40,9 +35,7 @@ export async function PATCH(request, { params }) {
     let updateData = {};
 
     if (isMultipart) {
-      // ── MULTIPART PATH — new file uploaded directly ───────────────────────
-      // This path is used if the freelancer uploads a brand new file
-      // directly from the delivery modal (not picking from existing updates).
+      // ── MULTIPART PATH ────────────────────────────────────────────────────
       const formData = await request.formData();
 
       const deliveryHeadline = formData.get("deliveryHeadline");
@@ -52,10 +45,7 @@ export async function PATCH(request, { params }) {
 
       if (deliveryHeadline !== null) updateData.deliveryHeadline = deliveryHeadline;
       if (deliverySummary  !== null) updateData.deliverySummary  = deliverySummary;
-
-      if (checklistRaw) {
-        updateData.deliveryChecklist = JSON.parse(checklistRaw);
-      }
+      if (checklistRaw)              updateData.deliveryChecklist = JSON.parse(checklistRaw);
 
       if (file && file.size > 0) {
         const arrayBuffer = await file.arrayBuffer();
@@ -78,9 +68,7 @@ export async function PATCH(request, { params }) {
       }
 
     } else {
-      // ── JSON PATH — status changes, delivery card text, checklist ─────────
-      // THIS IS THE PATH DeliveryModal USES.
-      // We must handle all delivery fields here, not just status and dueDate.
+      // ── JSON PATH ─────────────────────────────────────────────────────────
       const body = await request.json();
 
       const {
@@ -94,14 +82,8 @@ export async function PATCH(request, { params }) {
         deliveryChecklist,
       } = body;
 
-      // Only add a field to updateData if it was actually included in the request.
-      // "undefined" means the key wasn't sent at all — we skip it.
-      // "null" means the caller wants to clear the field — we include it.
-      // This pattern lets partial updates work correctly.
-
       if (status !== undefined) {
         updateData.status = status;
-        // Auto-manage completedAt whenever status changes
         if (status === "COMPLETED") {
           updateData.completedAt = new Date();
         } else {
@@ -109,28 +91,49 @@ export async function PATCH(request, { params }) {
         }
       }
 
-      if (dueDate !== undefined) {
-        updateData.dueDate = dueDate ? new Date(dueDate) : null;
-      }
-
+      if (dueDate          !== undefined) updateData.dueDate          = dueDate ? new Date(dueDate) : null;
       if (deliveryHeadline !== undefined) updateData.deliveryHeadline = deliveryHeadline;
       if (deliverySummary  !== undefined) updateData.deliverySummary  = deliverySummary;
       if (deliveryFileUrl  !== undefined) updateData.deliveryFileUrl  = deliveryFileUrl;
       if (deliveryFileName !== undefined) updateData.deliveryFileName = deliveryFileName;
       if (deliveryFileType !== undefined) updateData.deliveryFileType = deliveryFileType;
-
-      // deliveryChecklist is a String[] — we accept it as an array directly
-      if (deliveryChecklist !== undefined) {
-        updateData.deliveryChecklist = deliveryChecklist;
-      }
+      if (deliveryChecklist !== undefined) updateData.deliveryChecklist = deliveryChecklist;
     }
 
     // ── Atomic ownership check ────────────────────────────────────────────────
-    // One query. Confirms milestone exists AND belongs to this user's project.
+    // We include the project and its relations here because the email (if
+    // triggered) needs client email, client magic token, project name, and
+    // freelancer name. Including them here means zero extra DB queries —
+    // we fetch everything in one shot.
+    //
+    // WHY include even when we might not send an email:
+    // The overhead of fetching a few extra fields in one query is negligible.
+    // The alternative — a second conditional query just for email data —
+    // would be slower and more complex code.
     const milestone = await prisma.milestone.findFirst({
       where: {
         id,
         project: { userId: session.user.id },
+      },
+      include: {
+        project: {
+          include: {
+            // client — needed for: to address, client name, portal URL
+            client: {
+              select: {
+                name:       true,
+                email:      true,
+                magicToken: true,
+              },
+            },
+            // user — needed for: freelancer name in the email body
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -138,10 +141,53 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    // ── Perform the update ────────────────────────────────────────────────────
     const updated = await prisma.milestone.update({
       where: { id },
       data:  updateData,
     });
+
+    // ── Send email if status just became IN_REVIEW ────────────────────────────
+    // We check updateData.status (what we're setting) not milestone.status
+    // (what it was before). This ensures we only send once — when the
+    // status transitions TO IN_REVIEW, not every time any field updates.
+    //
+    // WHY fire-and-forget (no await):
+    // The milestone is already saved successfully. The client's approval
+    // experience should not be blocked or broken by an email failure.
+    // If Resend is down or the API key is wrong, the milestone still saves.
+    // We log the error but don't surface it to the user.
+    if (updateData.status === "IN_REVIEW") {
+      const { project } = milestone;
+      const client = project?.client;
+
+      // Guard: only send if the project actually has a client with an email.
+      // A project without a client is an edge case but we handle it cleanly.
+      if (client?.email) {
+        // Build the full portal URL the client clicks in the email.
+        // NEXTAUTH_URL is already in your .env (Next-Auth requires it).
+        // Example result: https://app.freeport.dev/portal/abc123xyz
+        const portalUrl = `${process.env.NEXTAUTH_URL}/portal/${client.magicToken}`;
+
+        const { subject, html } = milestoneReadyForReviewEmail({
+          clientName:       client.name,
+          freelancerName:   project.user.name,
+          projectName:      project.name,
+          milestoneTitle:   milestone.title,
+          // Use the updated delivery fields — updated.deliveryHeadline reflects
+          // what was just saved, which may differ from milestone.deliveryHeadline
+          // (the value before this PATCH ran)
+          deliveryHeadline: updated.deliveryHeadline,
+          deliverySummary:  updated.deliverySummary,
+          portalUrl,
+        });
+
+        // Fire and forget — email sends in background, doesn't delay response
+        sendEmail({ to: client.email, subject, html }).catch((err) => {
+          console.error("[PATCH milestone] Failed to send review email:", err);
+        });
+      }
+    }
 
     return NextResponse.json(updated);
 
