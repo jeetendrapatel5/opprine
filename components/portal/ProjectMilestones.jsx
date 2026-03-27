@@ -1,20 +1,10 @@
 // components/portal/ProjectMilestones.jsx
 'use client'
 
-// WHY 'use client':
-// The delivery card has two interactive pieces that require React state:
-//   1. Checklist checkboxes — client checks them off locally before approving
-//   2. Approve / Request Changes buttons — call the API, need loading state
-// Server components cannot have useState or call event handlers.
-
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import {
-  CheckCircle2, CircleDashed, ArrowRightCircle, Eye,
-  Loader2, XCircle, CheckCircle, ChevronDown, ChevronUp,
-  Download, Paperclip
-} from 'lucide-react'
+import { Loader2, XCircle, CheckCircle, ChevronDown, ChevronUp, Download, Paperclip } from 'lucide-react'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -34,31 +24,92 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-// ── DeliveryCard ─────────────────────────────────────────────────────────────
-// Rendered only when a milestone is IN_REVIEW.
-// Replaces the flat timeline row entirely.
-//
-// Props:
-//   milestone  — the full milestone object, must have delivery card fields
-//   token      — the client's magic token, used to call the approve route
-//   clientName — shown on the rejection feedback label
-//
-// State this component owns:
-//   checkedItems  — Set of checklist indices the client has ticked
-//   isWorkLogOpen — whether the "View work log" toggle is expanded
-//   isRejecting   — whether the rejection form is visible
-//   rejectReason  — the text the client typed
-//   isLoading     — prevents double-submitting
+// Formats a date for display on the timeline.
+// e.g. "12 Sep 2025"
+function formatDate(date) {
+  if (!date) return null
+  return new Date(date).toLocaleDateString('en-GB', {
+    day:   'numeric',
+    month: 'short',
+    year:  'numeric',
+  })
+}
 
-function DeliveryCard({ milestone, token, clientName }) {
+// ── Timeline node components ──────────────────────────────────────────────────
+// Each status gets its own node component.
+// All nodes are 24x24px (w-6 h-6) so the spine line always aligns correctly.
+// The spine is a vertical line positioned at left-3 (12px from left edge),
+// which is exactly the center of a 24px node.
+
+function CompletedNode() {
+  return (
+    // Filled amber circle with a white checkmark inside
+    <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+      style={{ background: '#F59E0B' }}
+    >
+      <svg className="w-3 h-3" fill="none" viewBox="0 0 12 12">
+        <path
+          d="M2 6l3 3 5-5"
+          stroke="white"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
+  )
+}
+
+function InProgressNode() {
+  return (
+    // Pulsing blue circle — same pattern as CurrentlyWorkingOn component
+    // The outer ring animates (ping), the inner dot stays solid
+    <div className="relative w-6 h-6 flex items-center justify-center shrink-0">
+      <span
+        className="absolute inline-flex w-full h-full rounded-full opacity-20 animate-ping"
+        style={{ background: '#3b82f6' }}
+      />
+      <span
+        className="relative inline-flex w-3 h-3 rounded-full"
+        style={{ background: '#3b82f6' }}
+      />
+    </div>
+  )
+}
+
+function InReviewNode() {
+  return (
+    // Pulsing amber circle — signals "your action needed"
+    <div className="relative w-6 h-6 flex items-center justify-center shrink-0">
+      <span
+        className="absolute inline-flex w-full h-full rounded-full opacity-20 animate-ping"
+        style={{ background: '#F59E0B' }}
+      />
+      <span
+        className="relative inline-flex w-3 h-3 rounded-full"
+        style={{ background: '#F59E0B' }}
+      />
+    </div>
+  )
+}
+
+function PendingNode() {
+  return (
+    // Empty circle with a dark border — not started, no action needed
+    <div
+      className="w-6 h-6 rounded-full shrink-0 border-2"
+      style={{ borderColor: '#1f2937', background: '#0e0e12' }}
+    />
+  )
+}
+
+// ── DeliveryCard ──────────────────────────────────────────────────────────────
+// Shown when milestone.status === 'IN_REVIEW'.
+// Full card with headline, summary, checklist, file, and approve/reject.
+
+function DeliveryCard({ milestone, token }) {
   const router = useRouter()
 
-  // checkedItems is a Set of array indices.
-  // e.g. if the client checks the first and third item: Set {0, 2}
-  // We use a Set because checking/unchecking is O(1) and order doesn't matter.
-  // This is LOCAL STATE ONLY — we never save this to the DB.
-  // The checkboxes are a tool to help the client work through the list
-  // before they click Approve. That's their only purpose.
   const [checkedItems,  setCheckedItems]  = useState(new Set())
   const [isWorkLogOpen, setIsWorkLogOpen] = useState(false)
   const [isRejecting,   setIsRejecting]   = useState(false)
@@ -68,15 +119,10 @@ function DeliveryCard({ milestone, token, clientName }) {
   const checklist = milestone.deliveryChecklist ?? []
   const workLog   = milestone.milestoneUpdates  ?? []
 
-  // Toggle one checklist item on or off
   const toggleCheck = (index) => {
     setCheckedItems(prev => {
       const next = new Set(prev)
-      if (next.has(index)) {
-        next.delete(index)
-      } else {
-        next.add(index)
-      }
+      next.has(index) ? next.delete(index) : next.add(index)
       return next
     })
   }
@@ -122,54 +168,35 @@ function DeliveryCard({ milestone, token, clientName }) {
 
   return (
     <div
-      className="rounded-2xl border border-amber-500/20 overflow-hidden mb-6"
+      className="rounded-2xl border border-amber-500/20 overflow-hidden"
       style={{ background: '#0e0e12' }}
     >
-      {/* ── Top accent bar ── */}
-      {/* A thin amber line signals "this needs your attention" */}
       <div className="h-0.5 w-full bg-gradient-to-r from-amber-500 to-amber-400/30" />
 
-      <div className="p-6">
+      <div className="p-5">
 
-        {/* ── Status label ── */}
-        <div className="flex items-center gap-2 mb-4">
-          {/* Pulsing amber dot */}
-          <div className="relative flex items-center justify-center w-5 h-5">
-            <span className="absolute inline-flex w-full h-full rounded-full bg-amber-500 opacity-20 animate-ping" />
-            <span className="relative inline-flex w-2.5 h-2.5 rounded-full bg-amber-500" />
-          </div>
-          <p
-            className="text-xs font-bold uppercase tracking-[0.2em]"
-            style={{ color: '#F59E0B', fontFamily: 'DM Mono, monospace' }}
-          >
-            Awaiting Your Review
-          </p>
-        </div>
-
-        {/* ── Headline ── */}
-        {/* The most important text on the card. Large, serif, prominent. */}
+        {/* Headline */}
         <h3
-          className="text-xl font-bold text-white mb-3 leading-snug"
+          className="text-lg font-bold text-white mb-2 leading-snug"
           style={{ fontFamily: 'Fraunces, Georgia, serif' }}
         >
           {milestone.deliveryHeadline ?? milestone.title}
         </h3>
 
-        {/* ── Summary ── */}
+        {/* Summary */}
         {milestone.deliverySummary && (
           <p
-            className="text-sm leading-relaxed mb-5"
+            className="text-sm leading-relaxed mb-4"
             style={{ color: '#9ca3af', fontFamily: 'DM Sans, sans-serif' }}
           >
             {milestone.deliverySummary}
           </p>
         )}
 
-        {/* ── File preview or download ── */}
+        {/* File */}
         {milestone.deliveryFileUrl && (
-          <div className="mb-5">
+          <div className="mb-4">
             {milestone.deliveryFileType?.startsWith('image/') ? (
-              // Image — show as a large preview, clicking opens full size
               
               <a href={milestone.deliveryFileUrl}
                 target="_blank"
@@ -179,7 +206,7 @@ function DeliveryCard({ milestone, token, clientName }) {
                 <img
                   src={milestone.deliveryFileUrl}
                   alt={milestone.deliveryFileName ?? 'Deliverable'}
-                  className="w-full max-h-72 object-cover"
+                  className="w-full max-h-64 object-cover"
                 />
                 <div
                   className="px-3 py-2 text-xs flex items-center gap-2"
@@ -191,12 +218,11 @@ function DeliveryCard({ milestone, token, clientName }) {
                 </div>
               </a>
             ) : (
-              // Non-image file — download button
               
               <a href={milestone.deliveryFileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-white/10 px-4 py-3 hover:border-amber-500/40 transition-colors group"
+                className="flex items-center gap-3 rounded-xl border border-white/10 px-4 py-3 hover:border-amber-500/40 transition-colors"
                 style={{ background: '#16161a' }}
               >
                 <div
@@ -221,17 +247,15 @@ function DeliveryCard({ milestone, token, clientName }) {
           </div>
         )}
 
-        {/* ── Checklist ── */}
-        {/* Only rendered if the freelancer added checklist items */}
+        {/* Checklist */}
         {checklist.length > 0 && (
-          <div className="mb-5">
+          <div className="mb-4">
             <p
               className="text-[10px] font-bold uppercase tracking-[0.2em] mb-3"
               style={{ color: '#6b7280', fontFamily: 'DM Mono, monospace' }}
             >
               Before you approve, please check:
             </p>
-
             <div className="space-y-2.5">
               {checklist.map((item, index) => {
                 const isChecked = checkedItems.has(index)
@@ -242,9 +266,6 @@ function DeliveryCard({ milestone, token, clientName }) {
                     onClick={() => toggleCheck(index)}
                     className="w-full flex items-center gap-3 text-left group"
                   >
-                    {/* Custom checkbox */}
-                    {/* WHY not a real <input type="checkbox">: we want full */}
-                    {/* control over the visual style to match the dark theme */}
                     <div className={`
                       w-5 h-5 rounded flex items-center justify-center shrink-0
                       border-2 transition-all duration-150
@@ -265,13 +286,11 @@ function DeliveryCard({ milestone, token, clientName }) {
                         </svg>
                       )}
                     </div>
-
                     <span
-                      className={`text-sm transition-colors ${
-                        isChecked ? 'line-through' : ''
-                      }`}
+                      className="text-sm transition-colors"
                       style={{
-                        color: isChecked ? '#6b7280' : '#e5e7eb',
+                        color:      isChecked ? '#6b7280' : '#e5e7eb',
+                        textDecoration: isChecked ? 'line-through' : 'none',
                         fontFamily: 'DM Sans, sans-serif',
                       }}
                     >
@@ -284,9 +303,9 @@ function DeliveryCard({ milestone, token, clientName }) {
           </div>
         )}
 
-        {/* ── Approve / Request Changes buttons ── */}
+        {/* Approve / Request Changes */}
         {!isRejecting ? (
-          <div className="flex gap-3 mt-2">
+          <div className="flex gap-3">
             <button
               onClick={() => setIsRejecting(true)}
               disabled={isLoading}
@@ -296,7 +315,6 @@ function DeliveryCard({ milestone, token, clientName }) {
               <XCircle className="w-4 h-4" />
               Request Changes
             </button>
-
             <button
               onClick={handleApprove}
               disabled={isLoading}
@@ -308,16 +326,15 @@ function DeliveryCard({ milestone, token, clientName }) {
               }}
             >
               {isLoading
-                ? <Loader2  className="w-4 h-4 animate-spin" />
+                ? <Loader2    className="w-4 h-4 animate-spin" />
                 : <CheckCircle className="w-4 h-4" />
               }
               {isLoading ? 'Approving...' : 'Approve'}
             </button>
           </div>
         ) : (
-          // Rejection form — appears in place of the buttons
           <div
-            className="rounded-xl border border-white/10 p-4 mt-2"
+            className="rounded-xl border border-white/10 p-4"
             style={{ background: '#16161a' }}
           >
             <label
@@ -329,9 +346,9 @@ function DeliveryCard({ milestone, token, clientName }) {
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="e.g. The colour scheme doesn't match our brand guidelines. Please use #003366."
+              placeholder="e.g. The colour scheme doesn't match our brand guidelines."
               rows={3}
-              className="w-full text-sm rounded-lg px-3 py-2 outline-none resize-none border border-white/10 focus:border-amber-500/50 focus:ring-0"
+              className="w-full text-sm rounded-lg px-3 py-2 outline-none resize-none border border-white/10 focus:border-amber-500/50"
               style={{
                 background: '#0e0e12',
                 color: '#e5e7eb',
@@ -342,7 +359,7 @@ function DeliveryCard({ milestone, token, clientName }) {
               <button
                 type="button"
                 onClick={() => { setIsRejecting(false); setRejectReason('') }}
-                className="flex-1 text-sm py-2 rounded-xl border border-white/10 transition-colors hover:border-white/20"
+                className="flex-1 text-sm py-2 rounded-xl border border-white/10 hover:border-white/20 transition-colors"
                 style={{ color: '#9ca3af' }}
               >
                 Cancel
@@ -353,21 +370,16 @@ function DeliveryCard({ milestone, token, clientName }) {
                 disabled={isLoading || !rejectReason.trim()}
                 className="flex-1 flex items-center justify-center gap-2 text-sm font-bold py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50"
               >
-                {isLoading
-                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                  : null
-                }
+                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                 Submit Feedback
               </button>
             </div>
           </div>
         )}
 
-        {/* ── Work log toggle ── */}
-        {/* Collapsed by default — client doesn't need to see every update */}
-        {/* but it's available if they want to understand what was done     */}
+        {/* Work log toggle */}
         {workLog.length > 0 && (
-          <div className="mt-5 pt-5 border-t border-white/5">
+          <div className="mt-4 pt-4 border-t border-white/5">
             <button
               type="button"
               onClick={() => setIsWorkLogOpen(v => !v)}
@@ -385,12 +397,12 @@ function DeliveryCard({ milestone, token, clientName }) {
               <div className="mt-3 space-y-3">
                 {workLog.map((entry) => (
                   <div key={entry.id} className="flex gap-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500/40 mt-1.5 shrink-0" />
+                    <div
+                      className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0"
+                      style={{ background: '#F59E0B40' }}
+                    />
                     <div className="flex-1">
-                      <p
-                        className="text-sm leading-relaxed"
-                        style={{ color: '#d1d5db' }}
-                      >
+                      <p className="text-sm leading-relaxed" style={{ color: '#d1d5db' }}>
                         {entry.note}
                       </p>
                       {entry.fileUrl && (
@@ -452,9 +464,9 @@ export default function ProjectMilestones({ milestones, freelancerName, clientNa
         <span
           className="text-sm font-medium px-3 py-1 rounded-full"
           style={{
-            background: '#F59E0B18',
-            color: '#F59E0B',
-            fontFamily: 'DM Mono, monospace',
+            background:  '#F59E0B18',
+            color:       '#F59E0B',
+            fontFamily:  'DM Mono, monospace',
           }}
         >
           {progressPercentage}% Complete
@@ -462,112 +474,134 @@ export default function ProjectMilestones({ milestones, freelancerName, clientNa
       </div>
 
       {/* Progress bar */}
-      <div className="w-full bg-white/5 rounded-full h-2 mb-8">
+      <div className="w-full rounded-full h-2 mb-8" style={{ background: '#ffffff08' }}>
         <div
           className="h-2 rounded-full transition-all duration-700"
           style={{
-            width: `${progressPercentage}%`,
+            width:      `${progressPercentage}%`,
             background: 'linear-gradient(90deg, #F59E0B, #FBBF24)',
           }}
         />
       </div>
 
-      {/* Milestone list */}
-      <div className="space-y-6">
-        {milestones.map((milestone, index) => {
-          const isCompleted  = milestone.status === 'COMPLETED'
-          const isInProgress = milestone.status === 'IN_PROGRESS'
-          const isInReview   = milestone.status === 'IN_REVIEW'
-          const isPending    = milestone.status === 'PENDING'
-          const isLast       = index === milestones.length - 1
+      {/* ── Timeline ── */}
+      {/*
+        HOW THE SPINE WORKS:
+        Each milestone row is a flex container: [node][content]
+        The node is always w-6 (24px).
+        The spine is a single absolutely-positioned vertical line
+        running the full height of the list container, at left: 11px
+        (which is exactly the center of 24px = 12px, minus 1px for
+        the line's own 2px width = 11px).
+        WHY absolute instead of per-row borders:
+        Per-row borders create gaps between rows and are hard to control
+        when some rows are taller (like the delivery card). One absolute
+        line runs cleanly behind everything.
+      */}
+      <div className="relative">
 
-          // IN_REVIEW milestones get the full delivery card treatment.
-          // The card takes the place of the normal timeline row entirely.
-          if (isInReview) {
+        {/* The spine — runs full height behind all milestone nodes */}
+        {milestones.length > 1 && (
+          <div
+            className="absolute top-3 bottom-3 w-px"
+            style={{ left: '11px', background: '#ffffff08' }}
+          />
+        )}
+
+        <div className="space-y-8">
+          {milestones.map((milestone) => {
+            const isCompleted  = milestone.status === 'COMPLETED'
+            const isInProgress = milestone.status === 'IN_PROGRESS'
+            const isInReview   = milestone.status === 'IN_REVIEW'
+            const isPending    = milestone.status === 'PENDING'
+
             return (
-              <div key={milestone.id} className="relative">
-                {/* Connecting line above the card */}
-                {index > 0 && (
-                  <div
-                    className="absolute -top-6 left-3 w-px h-6"
-                    style={{ background: '#ffffff08' }}
-                  />
-                )}
-                <DeliveryCard
-                  milestone={milestone}
-                  token={token}
-                  clientName={clientName}
-                />
+              <div key={milestone.id} className="relative flex gap-4">
+
+                {/* ── Node — always renders, always w-6 h-6 ── */}
+                {/*
+                  The node sits on top of the spine (z-10).
+                  Its background matches the card background so it
+                  visually "cuts" the spine line cleanly.
+                  Without the background, the spine line would show
+                  through the center of hollow nodes.
+                */}
+                <div className="relative z-10 mt-0.5 shrink-0" style={{ background: '#0e0e12' }}>
+                  {isCompleted  && <CompletedNode  />}
+                  {isInProgress && <InProgressNode />}
+                  {isInReview   && <InReviewNode   />}
+                  {isPending    && <PendingNode     />}
+                </div>
+
+                {/* ── Content — everything to the right of the node ── */}
+                <div className="flex-1 min-w-0">
+
+                  {isInReview ? (
+                    // IN_REVIEW — full delivery card replaces the text row
+                    <DeliveryCard
+                      milestone={milestone}
+                      token={token}
+                    />
+                  ) : (
+                    // All other statuses — simple text row
+                    <div className="pt-0.5">
+                      <p
+                        className={`text-sm font-medium leading-snug ${
+                          isCompleted  ? 'line-through opacity-40 text-white' :
+                          isInProgress ? 'text-white' :
+                          'text-gray-600'
+                        }`}
+                        style={{ fontFamily: 'DM Sans, sans-serif' }}
+                      >
+                        {milestone.title}
+                      </p>
+
+                      {/* Sub-label under each title */}
+                      {isCompleted && milestone.completedAt && (
+                        <p
+                          className="text-xs mt-0.5"
+                          style={{ color: '#F59E0B', fontFamily: 'DM Mono, monospace' }}
+                        >
+                          ✓ Approved · {formatDate(milestone.completedAt)}
+                        </p>
+                      )}
+
+                      {isCompleted && !milestone.completedAt && (
+                        <p
+                          className="text-xs mt-0.5"
+                          style={{ color: '#F59E0B', fontFamily: 'DM Mono, monospace' }}
+                        >
+                          ✓ Approved
+                        </p>
+                      )}
+
+                      {isInProgress && (
+                        <p className="text-xs text-blue-400 mt-0.5 font-medium">
+                          Currently being worked on
+                        </p>
+                      )}
+
+                      {isPending && (
+                        <p
+                          className="text-xs mt-0.5"
+                          style={{
+                            color:      milestone.dueDate ? '#6b7280' : '#374151',
+                            fontFamily: 'DM Mono, monospace',
+                          }}
+                        >
+                          {milestone.dueDate
+                            ? `Due ${formatDate(milestone.dueDate)}`
+                            : 'Not started yet'
+                          }
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )
-          }
-
-          // All other statuses use the standard timeline node
-          return (
-            <div key={milestone.id} className="relative">
-              {/* Connecting line between nodes */}
-              {!isLast && (
-                <div
-                  className="absolute left-3 top-8 w-px"
-                  style={{
-                    bottom: '-1.5rem',
-                    background: isCompleted ? '#F59E0B22' : '#ffffff08',
-                  }}
-                />
-              )}
-
-              <div className="flex items-start gap-4">
-                {/* Status icon */}
-                <div className="relative z-10 pt-1 shrink-0" style={{ background: '#0e0e12' }}>
-                  {isCompleted  && <CheckCircle2     className="w-6 h-6" style={{ color: '#F59E0B' }} />}
-                  {isInProgress && <ArrowRightCircle className="w-6 h-6 text-blue-400" />}
-                  {isPending    && <CircleDashed     className="w-6 h-6" style={{ color: '#374151' }} />}
-                </div>
-
-                <div className="flex-1">
-                  <p
-                    className={`text-sm font-medium ${
-                      isCompleted  ? 'line-through opacity-40' :
-                      isInProgress ? 'text-white' :
-                      'text-gray-600'
-                    }`}
-                    style={{ fontFamily: 'DM Sans, sans-serif' }}
-                  >
-                    {milestone.title}
-                  </p>
-
-                  {isCompleted && (
-                    <p
-                      className="text-xs mt-0.5"
-                      style={{ color: '#F59E0B', fontFamily: 'DM Mono, monospace' }}
-                    >
-                      ✓ Approved
-                      {milestone.completedAt && ` · ${timeAgo(milestone.completedAt)}`}
-                    </p>
-                  )}
-
-                  {isInProgress && (
-                    <p className="text-xs text-blue-400 mt-0.5 font-medium">
-                      Currently being worked on
-                    </p>
-                  )}
-
-                  {isPending && (
-                    <p
-                      className="text-xs mt-0.5"
-                      style={{ color: '#374151', fontFamily: 'DM Mono, monospace' }}
-                    >
-                      {milestone.dueDate
-                        ? `Due ${new Date(milestone.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
-                        : 'Not started'
-                      }
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )
-        })}
+          })}
+        </div>
       </div>
     </div>
   )

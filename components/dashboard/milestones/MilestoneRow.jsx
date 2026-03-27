@@ -5,11 +5,12 @@ import { useState } from 'react'
 import {
   GripVertical, CheckCircle2, CircleDashed, ArrowRightCircle,
   Eye, Loader2, Trash2, ChevronDown, ChevronRight, MessageSquare,
-  Send
+  Send, Calendar
 } from 'lucide-react'
 import MilestoneUpdateFeed from './MilestoneUpdateFeed'
 import MilestoneUpdateForm from './MilestoneUpdateForm'
 import DeliveryModal from './DeliveryModal'
+import axios from 'axios'
 
 const statusStyles = {
   PENDING:     'bg-gray-100    text-gray-500    border-gray-200',
@@ -32,19 +33,49 @@ function SmallStatusIcon({ status }) {
   return <CircleDashed className="w-3 h-3" />
 }
 
+// Converts a JS Date or ISO string to "YYYY-MM-DD" format.
+// WHY: The native <input type="date"> requires its value in exactly this format.
+// If you pass an ISO string like "2025-09-01T00:00:00.000Z", the input
+// won't display it correctly — you must strip it down to just the date part.
+function toDateInputValue(date) {
+  if (!date) return ''
+  return new Date(date).toISOString().split('T')[0]
+}
+
+// Formats a date for display in the row — short and scannable.
+// e.g. "Due 1 Sep" — no year because milestone dates are always near-future.
+// If the date is in the past, we show "Overdue" in red.
+function formatDueDateDisplay(date) {
+  if (!date) return null
+  const d       = new Date(date)
+  const today   = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const isOverdue = d < today
+  const label = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+
+  return { label: `Due ${label}`, isOverdue }
+}
+
 export default function MilestoneRow({
   milestone,
   onStatusChange,
-  onMilestoneUpdate,   // NEW — receives the full updated milestone from DeliveryModal
+  onMilestoneUpdate,
   onDelete,
   isUpdating,
   isDeleting,
   freelancerName,
-  clientName
+  clientName,
 }) {
-  const [isOpen,          setIsOpen]          = useState(false)
-  const [localUpdates,    setLocalUpdates]    = useState(milestone.milestoneUpdates ?? [])
-  const [isDeliveryOpen,  setIsDeliveryOpen]  = useState(false)
+  const [isOpen,         setIsOpen]         = useState(false)
+  const [localUpdates,   setLocalUpdates]   = useState(milestone.milestoneUpdates ?? [])
+  const [isDeliveryOpen, setIsDeliveryOpen] = useState(false)
+
+  // Due date — owned locally so the input feels instant.
+  // Initialized from the milestone prop. When the freelancer changes it,
+  // we update local state immediately AND call the API in the background.
+  const [dueDate,       setDueDate]       = useState(milestone.dueDate ?? null)
+  const [isDueSaving,   setIsDueSaving]   = useState(false)
 
   const messages = milestone.messages ?? []
 
@@ -52,24 +83,43 @@ export default function MilestoneRow({
     setLocalUpdates(prev => [...prev, newUpdate])
   }
 
-  // When DeliveryModal submits successfully, it passes back the full updated
-  // milestone from the API. We forward it up to MilestoneManager so the
-  // array stays in sync. The modal closes itself after calling onSuccess.
   const handleDeliverySuccess = (updatedMilestone) => {
     onMilestoneUpdate(updatedMilestone)
   }
 
-  const totalItems = localUpdates.length + messages.length
+  // Called when the freelancer picks a date from the input.
+  // e.target.value is a "YYYY-MM-DD" string, or "" if they cleared it.
+  const handleDueDateChange = async (e) => {
+    const rawValue = e.target.value  // "2025-09-01" or ""
+
+    // Update local state immediately — the input feels responsive
+    const newDate = rawValue ? new Date(rawValue) : null
+    setDueDate(newDate)
+
+    setIsDueSaving(true)
+    try {
+      // Send to API — the route accepts dueDate as an ISO string or null
+      // null = clear the due date
+      await axios.patch(`/api/milestones/${milestone.id}`, {
+        dueDate: rawValue || null,
+      })
+      // No need to call onMilestoneUpdate here — dueDate is display-only
+      // in the parent list. Local state is enough.
+    } catch {
+      // If save fails, revert local state back to what it was before
+      setDueDate(milestone.dueDate ?? null)
+      alert('Could not save due date. Please try again.')
+    } finally {
+      setIsDueSaving(false)
+    }
+  }
+
+  const totalItems   = localUpdates.length + messages.length
+  const fileOptions  = localUpdates.filter(u => !!u.fileUrl)
+  const dueDateDisplay = formatDueDateDisplay(dueDate)
 
   const hasUnresolvedFeedback =
     !!milestone.rejectionNote && milestone.status !== 'COMPLETED'
-
-  // fileOptions — the milestoneUpdates that have a file attached.
-  // These are shown in the DeliveryModal as options the freelancer
-  // can "highlight" as the main deliverable for the client to see.
-  // We use localUpdates (not milestone.milestoneUpdates) so newly
-  // posted updates appear as options immediately without a page refresh.
-  const fileOptions = localUpdates.filter(u => !!u.fileUrl)
 
   return (
     <>
@@ -80,7 +130,7 @@ export default function MilestoneRow({
 
           <GripVertical className="w-4 h-4 text-gray-300 cursor-grab shrink-0" />
 
-          {/* Status icon — clicking cycles to next status */}
+          {/* Status icon */}
           <button
             onClick={() => onStatusChange(milestone.id, milestone.status)}
             disabled={isUpdating}
@@ -93,7 +143,7 @@ export default function MilestoneRow({
             }
           </button>
 
-          {/* Title — clicking expands/collapses */}
+          {/* Title + due date display */}
           <button
             onClick={() => setIsOpen(v => !v)}
             className="flex-1 text-left flex items-center gap-2 min-w-0"
@@ -103,6 +153,19 @@ export default function MilestoneRow({
             }`}>
               {milestone.title}
             </span>
+
+            {/* Due date badge — shown in the row when a date is set */}
+            {/* Small, muted, doesn't compete with the title */}
+            {dueDateDisplay && milestone.status !== 'COMPLETED' && (
+              <span className={`shrink-0 flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                dueDateDisplay.isOverdue
+                  ? 'bg-red-50 text-red-500'      // overdue — red, urgent
+                  : 'bg-gray-100 text-gray-500'   // upcoming — neutral
+              }`}>
+                <Calendar className="w-2.5 h-2.5" />
+                {dueDateDisplay.label}
+              </span>
+            )}
 
             {totalItems > 0 && (
               <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-full">
@@ -125,24 +188,18 @@ export default function MilestoneRow({
             </span>
           </button>
 
-          {/* "Send for Review" button — ONLY shown when status is IN_PROGRESS */}
-          {/* WHY only IN_PROGRESS: */}
-          {/*   PENDING    → work hasn't started, nothing to review yet         */}
-          {/*   IN_REVIEW  → already sent, waiting for client, don't re-send    */}
-          {/*   COMPLETED  → approved and done, no action needed                */}
-          {/*   IN_PROGRESS → actively being worked on, this is the right moment */}
+          {/* Send for Review button — only when IN_PROGRESS */}
           {milestone.status === 'IN_PROGRESS' && (
             <button
               onClick={() => setIsDeliveryOpen(true)}
               className="shrink-0 flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-lg transition-colors"
-              title="Prepare delivery card and send to client for review"
             >
               <Send className="w-3 h-3" />
               Send for Review
             </button>
           )}
 
-          {/* Status badge — shown when NOT IN_PROGRESS (button takes its place) */}
+          {/* Status badge — shown when NOT IN_PROGRESS */}
           {milestone.status !== 'IN_PROGRESS' && (
             <button
               disabled={isUpdating || milestone.status === 'COMPLETED'}
@@ -154,7 +211,7 @@ export default function MilestoneRow({
             </button>
           )}
 
-          {/* Delete — visible on hover */}
+          {/* Delete */}
           <button
             onClick={() => onDelete(milestone.id)}
             disabled={isDeleting}
@@ -168,21 +225,65 @@ export default function MilestoneRow({
           </button>
         </div>
 
-        {/* ── Expandable panel ──────────────────────────────────────────── */}
+        {/* ── Expanded panel ────────────────────────────────────────────── */}
         {isOpen && (
-          <div className="px-4 py-4 bg-white">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">
-              Conversation
-            </p>
+          <div className="px-4 py-4 bg-white space-y-4">
 
-            <MilestoneUpdateFeed
-              updates={localUpdates}
-              messages={messages}
-              freelancerName={freelancerName}
-              clientName={clientName}
-            />
+            {/* Due date picker — sits at the top of the expanded panel */}
+            {/* Compact, unobtrusive, but easy to find when you need it   */}
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 shrink-0">
+                <Calendar className="w-3 h-3" />
+                Due date
+              </label>
 
-            <div className="border-t border-gray-100 mt-4 pt-4">
+              <div className="relative flex items-center">
+                {/* Native date input — cross-browser, no library needed */}
+                {/* Styled to look minimal, matching the rest of the UI   */}
+                <input
+                  type="date"
+                  value={toDateInputValue(dueDate)}
+                  onChange={handleDueDateChange}
+                  disabled={isDueSaving}
+                  className="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 disabled:opacity-50 cursor-pointer"
+                />
+
+                {/* Saving spinner — appears next to input while API call is in flight */}
+                {isDueSaving && (
+                  <Loader2 className="w-3 h-3 text-indigo-400 animate-spin ml-2" />
+                )}
+              </div>
+
+              {/* Clear button — only shown when a date is already set */}
+              {dueDate && !isDueSaving && (
+                <button
+                  type="button"
+                  onClick={() => handleDueDateChange({ target: { value: '' } })}
+                  className="text-[10px] text-gray-400 hover:text-red-400 transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-100" />
+
+            {/* Conversation feed */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">
+                Conversation
+              </p>
+              <MilestoneUpdateFeed
+                updates={localUpdates}
+                messages={messages}
+                freelancerName={freelancerName}
+                clientName={clientName}
+              />
+            </div>
+
+            {/* New update form */}
+            <div className="border-t border-gray-100 pt-4">
               <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
                 Add Update
               </p>
@@ -191,14 +292,12 @@ export default function MilestoneRow({
                 onSuccess={handleNewUpdate}
               />
             </div>
+
           </div>
         )}
       </div>
 
-      {/* ── Delivery Modal ────────────────────────────────────────────────── */}
-      {/* Rendered OUTSIDE the row div so it's not clipped by overflow:hidden */}
-      {/* WHY: The row has overflow-hidden for its border radius. If the modal */}
-      {/* were inside, it would be cut off by the parent's boundaries.         */}
+      {/* Delivery modal — outside row to avoid overflow:hidden clipping */}
       {isDeliveryOpen && (
         <DeliveryModal
           milestone={milestone}
