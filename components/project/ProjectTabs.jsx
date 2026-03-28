@@ -1,25 +1,28 @@
+// components/project/ProjectTabs.jsx
 'use client'
 
 import { useState } from 'react'
-import { MessageSquare, FileText, Settings, Zap } from 'lucide-react'
-import UpdatesTab from './UpdatesTab'
-import FilesTab from './FilesTab'
+import { MessageSquare, FileText, Receipt } from 'lucide-react'
+import UpdatesTab  from './UpdatesTab'
+import FilesTab    from './FilesTab'
+import InvoicesTab from '@/components/dashboard/invoices/InvoicesTab'
 
 export default function ProjectTabs({ project }) {
   const [activeTab, setActiveTab] = useState('updates')
 
   const tabs = [
-    { id: 'updates', label: 'Updates', icon: MessageSquare },
-    { id: 'files', label: 'Deliverables', icon: FileText },
+    { id: 'updates',  label: 'Updates',     icon: MessageSquare },
+    { id: 'files',    label: 'Deliverables', icon: FileText      },
+    { id: 'invoices', label: 'Invoices',     icon: Receipt       },
   ]
 
   return (
     <div className="flex flex-col h-full">
-      {/* TAB NAVIGATION */}
+      {/* Tab navigation */}
       <div className="flex items-center px-6 border-b border-slate-100 bg-white">
         <div className="flex gap-8">
           {tabs.map((tab) => {
-            const Icon = tab.icon
+            const Icon     = tab.icon
             const isActive = activeTab === tab.id
             return (
               <button
@@ -40,10 +43,11 @@ export default function ProjectTabs({ project }) {
         </div>
       </div>
 
-      {/* TAB CONTENT */}
+      {/* Tab content */}
       <div className="p-6">
-        {activeTab === 'updates' && <UpdatesTab project={project} />}
-        {activeTab === 'files' && <FilesTab project={project} />}
+        {activeTab === 'updates'  && <UpdatesTab  project={project} />}
+        {activeTab === 'files'    && <FilesTab    project={project} />}
+        {activeTab === 'invoices' && <InvoicesTab project={project} />}
       </div>
     </div>
   )

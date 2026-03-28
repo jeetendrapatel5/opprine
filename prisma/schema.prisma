@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -16,6 +15,11 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   projects  Project[]
+
+  // Profile fields — shown on the client portal "About your developer" card
+  bio          String?   // one-line summary e.g. "Full-stack developer based in Goa"
+  avatarUrl    String?   // Cloudinary URL of profile photo
+  portfolioUrl String?   // e.g. "https://jeetu.dev"
 }
 
 model Project {
@@ -36,6 +40,7 @@ model Project {
   clientRating  Int?    
   testimonial   String?   @db.Text
   inquiries     Inquiry[]
+  invoices      Invoice[]
 }
 
 model File {
@@ -99,6 +104,7 @@ model Milestone {
   project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   milestoneUpdates MilestoneUpdate[]
   messages         MilestoneMessage[]
+  invoices         Invoice[] 
 }
 
 model MilestoneUpdate {
@@ -162,4 +168,41 @@ enum MilestoneStatus {
 enum MessageSender {
   CLIENT
   FREELANCER  // reserved for future: freelancer replies in-thread
+}
+
+model Invoice {
+  id          String        @id @default(cuid())
+  number      String        // e.g. "INV-001" — human readable, shown to client
+  amount      Float         // e.g. 2500.00
+  currency    String        @default("USD")
+  status      InvoiceStatus @default(UNPAID)
+  dueDate     DateTime?     // optional payment deadline
+  note        String?       @db.Text  // optional message to client
+
+  // Optional link to a specific milestone.
+  // e.g. "This invoice is for the Homepage Design milestone"
+  // null means it's a general project invoice, not tied to a milestone.
+  milestoneId String?
+  milestone   Milestone?    @relation(fields: [milestoneId], references: [id])
+
+  // Stripe fields — populated after createPaymentLink() succeeds
+  // stripePaymentLinkId is Stripe's internal ID (e.g. "plink_xxx")
+  // stripePaymentLinkUrl is the URL we give the client to pay
+  stripePaymentLinkId  String?
+  stripePaymentLinkUrl String?
+
+  // Set when Stripe webhook confirms payment
+  paidAt      DateTime?
+
+  projectId   String
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+  CANCELLED
 }

@@ -1,3 +1,5 @@
+// app/dashboard/projects/[id]/page.jsx
+
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { redirect, notFound } from 'next/navigation'
@@ -18,21 +20,28 @@ export default async function ProjectPage({ params }) {
 
   const project = await prisma.project.findFirst({
     where: {
-      id: id,
-      userId: session.user.id
+      id:     id,
+      userId: session.user.id,
     },
     include: {
-      client: true,
-      updates: { orderBy: { createdAt: "desc" } },
-      files: { orderBy: { createdAt: "desc" } },
+      client:  true,
+      updates: { orderBy: { createdAt: 'desc' } },
+      files:   { orderBy: { createdAt: 'desc' } },
       milestones: {
         orderBy: { order: 'asc' },
         include: {
           milestoneUpdates: { orderBy: { createdAt: 'asc' } },
-          messages:         { orderBy: { createdAt: 'asc' } }
-        }
-      }
-    }
+          messages:         { orderBy: { createdAt: 'asc' } },
+          invoices:         true,   // milestone-linked invoices
+        },
+      },
+      invoices: {
+        orderBy: { createdAt: 'desc' },
+        include: {
+          milestone: { select: { title: true } },
+        },
+      },
+    },
   })
 
   if (!project) notFound()
@@ -45,7 +54,10 @@ export default async function ProjectPage({ params }) {
       {/* TOP NAVIGATION BREADCRUMB */}
       <div className="border-b border-slate-200/60 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-2 text-sm font-medium text-slate-500">
-          <Link href="/dashboard" className="flex items-center gap-1.5 hover:text-slate-900 transition-colors">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1.5 hover:text-slate-900 transition-colors"
+          >
             <ArrowLeft className="w-4 h-4" />
             Dashboard
           </Link>
@@ -74,7 +86,7 @@ export default async function ProjectPage({ params }) {
         {/* 2-COLUMN WORKSPACE GRID */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
-          {/* LEFT COLUMN: Main Interactive Workspace (Milestones & Tabs) */}
+          {/* LEFT COLUMN */}
           <div className="lg:col-span-8 space-y-8">
             <MilestoneManager
               projectId={project.id}
@@ -88,11 +100,9 @@ export default async function ProjectPage({ params }) {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Sidebar Metadata & Actions */}
+          {/* RIGHT COLUMN */}
           <div className="lg:col-span-4 space-y-6">
-            {/* We extract the header info into a sleek sidebar widget */}
             <ProjectSidebar project={project} portalLink={portalLink} />
-
             <ClientReviewCard project={project} />
           </div>
 
