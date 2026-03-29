@@ -2,16 +2,17 @@
 
 import { notFound } from 'next/navigation'
 import prisma from '@/lib/prisma'
-import PortalHeader        from '@/components/portal/PortalHeader'
-import UpdateFeed          from '@/components/portal/UpdateFeed'
-import ProjectMilestones   from '@/components/portal/ProjectMilestones'
-import FileDeliverables    from '@/components/portal/FileDeliverables'
-import ProjectSignOff      from '@/components/portal/ProjectSignOff'
-import ActionPanel         from '@/components/portal/ActionPanel'
-import ProgressBanner      from '@/components/portal/ProgressBanner'
-import CurrentlyWorkingOn  from '@/components/portal/CurrentlyWorkingOn'
-import InvoicePanel        from '@/components/portal/InvoicePanel'
+import PortalHeader from '@/components/portal/PortalHeader'
+import UpdateFeed from '@/components/portal/UpdateFeed'
+import ProjectMilestones from '@/components/portal/ProjectMilestones'
+import FileDeliverables from '@/components/portal/FileDeliverables'
+import ProjectSignOff from '@/components/portal/ProjectSignOff'
+import ActionPanel from '@/components/portal/ActionPanel'
+import ProgressBanner from '@/components/portal/ProgressBanner'
+import CurrentlyWorkingOn from '@/components/portal/CurrentlyWorkingOn'
+import InvoicePanel from '@/components/portal/InvoicePanel'
 import { getProjectProgress } from '@/lib/projectProgress'
+import FreelancerCard from '@/components/portal/FreelancerCard'
 
 export default async function PortalPage({ params }) {
   const { token } = await params
@@ -21,14 +22,14 @@ export default async function PortalPage({ params }) {
     include: {
       project: {
         include: {
-          user:    { select: { name: true, email: true } },
+          user: { select: { name: true, email: true, bio: true, avatarUrl: true, portfolioUrl: true } },
           updates: { orderBy: { createdAt: 'desc' }, take: 10 },
-          files:   { orderBy: { createdAt: 'desc' } },
+          files: { orderBy: { createdAt: 'desc' } },
           milestones: {
             orderBy: { order: 'asc' },
             include: {
               milestoneUpdates: { orderBy: { createdAt: 'asc' } },
-              messages:         { orderBy: { createdAt: 'asc' } },
+              messages: { orderBy: { createdAt: 'asc' } },
             },
           },
           // Invoices — ordered newest first.
@@ -50,11 +51,11 @@ export default async function PortalPage({ params }) {
   // Fire-and-forget — log when client opens the portal
   prisma.client.update({
     where: { magicToken: token },
-    data:  { lastViewedAt: new Date() },
-  }).catch(() => {})
+    data: { lastViewedAt: new Date() },
+  }).catch(() => { })
 
   const { project } = client
-  const progress    = getProjectProgress(project.milestones)
+  const progress = getProjectProgress(project.milestones)
 
   // ActionPanel only handles project-level updates, not milestones.
   // Milestone approvals are handled by DeliveryCard inside ProjectMilestones.
@@ -114,6 +115,14 @@ export default async function PortalPage({ params }) {
           {/* RIGHT — Invoices, Files, Sign-off, Support */}
           <div className="space-y-8">
 
+            {/* About your developer — always shown at the top */}
+            <FreelancerCard
+              name={project.user.name}
+              bio={project.user.bio}
+              avatarUrl={project.user.avatarUrl}
+              portfolioUrl={project.user.portfolioUrl}
+            />
+
             {/* Invoices — shown first because payment is time-sensitive */}
             {/* InvoicePanel renders nothing if there are no visible invoices */}
             <InvoicePanel invoices={project.invoices} />
@@ -138,7 +147,7 @@ export default async function PortalPage({ params }) {
               <p className="text-blue-100 text-sm mb-4">
                 Have questions about the latest deliverables? Reach out to {project.user.name}.
               </p>
-              
+
               <a href={`mailto:${project.user.email}`}
                 className="block text-center bg-white text-blue-600 py-2 rounded-xl font-bold text-sm hover:bg-blue-50 transition-colors"
               >

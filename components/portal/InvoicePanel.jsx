@@ -205,7 +205,7 @@ export default function InvoicePanel({ invoices = [] }) {
                       strokeLinejoin="round"
                     />
                   </svg>
-                  Payment received
+                  Payment Send
                 </div>
               )}
             </div>
