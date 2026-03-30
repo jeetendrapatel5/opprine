@@ -1,59 +1,57 @@
 // components/dashboard/milestones/DeliveryModal.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// The modal the freelancer fills out before sending a milestone to the client
+// for review. It sets status → IN_REVIEW and populates the delivery card
+// fields: headline, summary, checklist, and an optional file highlight.
+//
+// Design: Dark modal (bg-fp-raised) on a dark backdrop (bg-black/60 blur).
+// This is consistent — we're inside the dark dashboard world.
+//
+// The modal header is sticky so the freelancer always sees which milestone
+// they're submitting a review for, even when scrolled down.
+//
+// The checklist is limited to 3 items intentionally. A 10-item checklist
+// overwhelms a non-technical client and gets ignored. Three specific things
+// to check = focused, actionable feedback.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client'
 
 import { useState } from 'react'
 import { X, Send, Loader2, ImageIcon, Plus, Trash2 } from 'lucide-react'
 import axios from 'axios'
 
-// Maximum number of checklist items the freelancer can add.
-// Keeping it at 3 forces them to be specific — a 10-item checklist
-// is overwhelming for a client who doesn't understand technical work.
 const MAX_CHECKLIST_ITEMS = 3
 
 export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, onClose }) {
-  const [headline,   setHeadline]   = useState(milestone.deliveryHeadline ?? '')
-  const [summary,    setSummary]    = useState(milestone.deliverySummary  ?? '')
+  const [headline,       setHeadline]       = useState(milestone.deliveryHeadline ?? '')
+  const [summary,        setSummary]        = useState(milestone.deliverySummary  ?? '')
   const [selectedFileId, setSelectedFileId] = useState(null)
   const [isSubmitting,   setIsSubmitting]   = useState(false)
 
-  // Checklist state — array of strings.
-  // Pre-populate from saved data if the freelancer previously saved a draft.
-  // Filter out empty strings so stale empty items don't appear on re-open.
   const [checklist, setChecklist] = useState(
     (milestone.deliveryChecklist ?? []).filter(item => item.trim() !== '')
   )
 
   const selectedFile = fileOptions.find(f => f.id === selectedFileId) ?? null
 
-  // ── Checklist helpers ─────────────────────────────────────────────────────
-
-  // Add a new empty input slot (up to the max)
   const addChecklistItem = () => {
     if (checklist.length >= MAX_CHECKLIST_ITEMS) return
     setChecklist(prev => [...prev, ''])
   }
 
-  // Update the text of one item by its index in the array
-  // We use index because checklist items have no ID — they're just strings
   const updateChecklistItem = (index, value) => {
     setChecklist(prev => prev.map((item, i) => i === index ? value : item))
   }
 
-  // Remove one item by index — filters it out, re-indexes automatically
   const removeChecklistItem = (index) => {
     setChecklist(prev => prev.filter((_, i) => i !== index))
   }
 
-  // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!headline.trim()) return
-
     setIsSubmitting(true)
     try {
-      // Filter out any checklist items the freelancer left blank.
-      // We don't want to save ["Check the form", "", "Review mobile layout"]
-      // — the empty string in the middle is meaningless to the client.
       const cleanedChecklist = checklist
         .map(item => item.trim())
         .filter(item => item !== '')
@@ -63,7 +61,6 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
         deliveryHeadline:  headline.trim(),
         deliverySummary:   summary.trim(),
         deliveryChecklist: cleanedChecklist,
-        // File fields — null if no file was selected (clears any previous value)
         deliveryFileUrl:   selectedFile?.fileUrl  ?? null,
         deliveryFileName:  selectedFile?.fileName ?? null,
         deliveryFileType:  selectedFile?.fileType ?? null,
@@ -71,7 +68,6 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
 
       onSuccess(response.data)
       onClose()
-
     } catch {
       alert('Failed to send for review. Please try again.')
     } finally {
@@ -79,122 +75,143 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
     }
   }
 
+  // Shared input class — used for all text inputs inside the modal
+  const inputClass = `
+    w-full bg-fp-base border border-fp-border text-fp-text-primary
+    text-sm rounded-lg px-3 py-2.5
+    placeholder:text-fp-text-tertiary
+    focus:outline-none focus:ring-2 focus:ring-fp-accent/30 focus:border-fp-accent/50
+    transition-colors duration-150
+  `
+
   return (
+    // Backdrop — clicking outside (on the backdrop itself) closes the modal
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      {/* max-h + overflow-y-auto makes the modal scrollable on small screens */}
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      {/* Modal box */}
+      <div className="
+        bg-fp-raised border border-fp-border rounded-xl shadow-2xl
+        w-full max-w-lg max-h-[90vh] overflow-y-auto
+      ">
 
-        {/* ── Header ── */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+        {/* ── Sticky header ── */}
+        {/* sticky top-0 so the milestone name stays visible while scrolling */}
+        <div className="
+          flex items-center justify-between px-5 py-4
+          border-b border-fp-border bg-fp-raised sticky top-0 z-10
+        ">
           <div>
-            <h2 className="text-base font-bold text-gray-900">Send for Client Review</h2>
-            <p className="text-xs text-gray-500 mt-0.5">"{milestone.title}"</p>
+            <h2 className="text-fp-text-primary text-sm font-semibold">
+              Send for Client Review
+            </h2>
+            <p className="text-fp-text-tertiary text-xs mt-0.5">
+              "{milestone.title}"
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 transition-colors p-1 rounded-lg hover:bg-gray-100"
+            className="
+              text-fp-text-tertiary hover:text-fp-text-primary
+              p-1.5 rounded-lg hover:bg-fp-surface
+              transition-colors duration-150
+            "
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
+        {/* ── Form ── */}
+        <form onSubmit={handleSubmit} className="px-5 py-5 space-y-5">
 
-          {/* ── Headline ── */}
+          {/* Headline — required */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-              Headline <span className="text-red-400">*</span>
+            <label className="block text-[10px] font-bold text-fp-text-secondary uppercase tracking-widest mb-1.5">
+              Headline <span className="text-fp-danger">*</span>
             </label>
             <input
               type="text"
               value={headline}
               onChange={(e) => setHeadline(e.target.value)}
               placeholder="e.g. Your homepage design is ready for review"
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
+              className={inputClass}
               required
             />
-            <p className="text-[10px] text-gray-400 mt-1">
+            <p className="text-[10px] text-fp-text-tertiary mt-1">
               Write this for the client, not yourself. No jargon.
             </p>
           </div>
 
-          {/* ── Summary ── */}
+          {/* Summary — optional */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-              Summary <span className="text-gray-400">(optional)</span>
+            <label className="block text-[10px] font-bold text-fp-text-secondary uppercase tracking-widest mb-1.5">
+              Summary
+              <span className="text-fp-text-tertiary font-normal normal-case ml-1">(optional)</span>
             </label>
             <textarea
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
-              placeholder="Describe what was done in plain language. What changed, why, and what the client should look at."
+              placeholder="Describe what was done in plain language. What changed, why, and what they should look at."
               rows={3}
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 resize-none"
+              className={`${inputClass} resize-none`}
             />
           </div>
 
-          {/* ── Checklist ── */}
-          {/* This is the new section for Feature 4.1 */}
+          {/* Checklist — optional, max 3 items */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide">
-                What should the client check?{' '}
-                <span className="text-gray-400">(optional)</span>
+              <label className="block text-[10px] font-bold text-fp-text-secondary uppercase tracking-widest">
+                What should the client check?
+                <span className="text-fp-text-tertiary font-normal normal-case ml-1">(optional)</span>
               </label>
-              {/* Item counter — shows "2 / 3" so freelancer knows the limit */}
               {checklist.length > 0 && (
-                <span className="text-[10px] font-bold text-gray-400">
+                <span className="text-[10px] font-bold text-fp-text-tertiary">
                   {checklist.length} / {MAX_CHECKLIST_ITEMS}
                 </span>
               )}
             </div>
-
-            <p className="text-[10px] text-gray-400 mb-3">
-              Give the client specific things to verify before approving. Keep it simple.
+            <p className="text-[10px] text-fp-text-tertiary mb-3">
+              Give the client specific things to verify. 3 items max — keep it focused.
             </p>
 
-            {/* Existing checklist items */}
             <div className="space-y-2">
               {checklist.map((item, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  {/* Visual checkbox — not interactive, just decorative */}
-                  {/* It signals to the freelancer "this is what the client sees" */}
-                  <div className="w-4 h-4 rounded border-2 border-gray-300 shrink-0" />
-
+                  {/* Visual checkbox — decorative only, shows client experience */}
+                  <div className="w-4 h-4 rounded border-2 border-fp-border shrink-0" />
                   <input
                     type="text"
                     value={item}
                     onChange={(e) => updateChecklistItem(index, e.target.value)}
-                    placeholder={`e.g. ${[
-                      'Check that the contact form submits correctly',
+                    placeholder={[
+                      'Check that the contact form works',
                       'Review the mobile layout on your phone',
                       'Confirm the brand colours match',
-                    ][index] ?? 'Add a check item'}`}
+                    ][index] ?? 'Add a check item'}
                     maxLength={120}
-                    className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
+                    className={inputClass}
                   />
-
-                  {/* Remove button */}
                   <button
                     type="button"
                     onClick={() => removeChecklistItem(index)}
-                    className="text-gray-300 hover:text-red-400 transition-colors shrink-0"
-                    title="Remove this item"
+                    className="text-fp-text-tertiary hover:text-fp-danger transition-colors shrink-0"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ))}
             </div>
 
-            {/* Add item button — hidden once max is reached */}
             {checklist.length < MAX_CHECKLIST_ITEMS && (
               <button
                 type="button"
                 onClick={addChecklistItem}
-                className="mt-2 flex items-center gap-1.5 text-xs text-indigo-500 hover:text-indigo-700 font-semibold transition-colors"
+                className="
+                  mt-2 flex items-center gap-1.5
+                  text-xs text-fp-accent hover:text-fp-accent-hover
+                  font-semibold transition-colors duration-150
+                "
               >
                 <Plus className="w-3.5 h-3.5" />
                 Add check item
@@ -202,16 +219,17 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             )}
           </div>
 
-          {/* ── File highlight ── */}
+          {/* File highlight — optional */}
           <div>
-            <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+            <label className="block text-[10px] font-bold text-fp-text-secondary uppercase tracking-widest mb-1.5">
               <ImageIcon className="w-3.5 h-3.5 inline mr-1" />
-              Highlight a file <span className="text-gray-400">(optional)</span>
+              Highlight a file
+              <span className="text-fp-text-tertiary font-normal normal-case ml-1">(optional)</span>
             </label>
 
             {fileOptions.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">
-                No files attached to this milestone yet. Post an update with a file first.
+              <p className="text-xs text-fp-text-tertiary italic">
+                No files attached yet. Post an update with a file first.
               </p>
             ) : (
               <div className="space-y-2">
@@ -222,9 +240,9 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
                     value=""
                     checked={selectedFileId === null}
                     onChange={() => setSelectedFileId(null)}
-                    className="accent-indigo-600"
+                    className="accent-fp-accent"
                   />
-                  <span className="text-sm text-gray-500">No file highlight</span>
+                  <span className="text-sm text-fp-text-tertiary">No file highlight</span>
                 </label>
 
                 {fileOptions.map((f) => (
@@ -235,13 +253,16 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
                       value={f.id}
                       checked={selectedFileId === f.id}
                       onChange={() => setSelectedFileId(f.id)}
-                      className="accent-indigo-600"
+                      className="accent-fp-accent"
                     />
-                    <span className="text-sm text-gray-700 group-hover:text-indigo-600 transition-colors truncate max-w-[300px]">
+                    <span className="
+                      text-sm text-fp-text-secondary truncate max-w-[280px]
+                      group-hover:text-fp-accent transition-colors duration-150
+                    ">
                       {f.fileName}
                     </span>
                     {f.fileType?.startsWith('image/') && (
-                      <span className="text-[10px] text-indigo-400 font-bold">IMAGE</span>
+                      <span className="text-[10px] text-fp-accent font-bold">IMAGE</span>
                     )}
                   </label>
                 ))}
@@ -249,16 +270,16 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             )}
           </div>
 
-          {/* Image preview */}
+          {/* Image preview — shown when an image file is selected */}
           {selectedFile?.fileType?.startsWith('image/') && (
-            <div className="rounded-xl overflow-hidden border border-indigo-100 bg-indigo-50">
-              <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wide px-3 pt-2">
+            <div className="rounded-lg overflow-hidden border border-fp-border">
+              <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest px-3 py-2 bg-fp-surface">
                 Preview
               </p>
               <img
                 src={selectedFile.fileUrl}
                 alt={selectedFile.fileName}
-                className="w-full max-h-40 object-cover mt-1"
+                className="w-full max-h-40 object-cover"
               />
             </div>
           )}
@@ -268,14 +289,24 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 border border-gray-200 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+              className="
+                flex-1 border border-fp-border text-fp-text-secondary
+                text-sm font-medium py-2.5 rounded-lg
+                hover:bg-fp-surface hover:text-fp-text-primary
+                transition-colors duration-150
+              "
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || !headline.trim()}
-              className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-2.5 rounded-xl transition-colors disabled:opacity-50"
+              className="
+                flex-1 flex items-center justify-center gap-2
+                bg-fp-accent hover:bg-fp-accent-hover text-fp-base
+                text-sm font-bold py-2.5 rounded-lg
+                transition-colors duration-150 disabled:opacity-50
+              "
             >
               {isSubmitting
                 ? <Loader2 className="w-4 h-4 animate-spin" />

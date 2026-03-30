@@ -1,9 +1,26 @@
 // components/dashboard/milestones/index.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// MilestoneManager — the orchestrator component for the milestone system.
+// Owns the local milestone list state and all API calls.
+// Renders a list of MilestoneRow components and the "Add milestone" form.
+//
+// Why this component exists:
+//   The project page is a Server Component (fetches data on server).
+//   But the milestone list needs to update without full page reloads
+//   (adding, deleting, status change). So this Client Component receives
+//   `initialMilestones` as a prop from the server, owns the list in local state,
+//   and mutates that state directly after each API call — no router.refresh().
+//
+// nextStatusMap: When the freelancer clicks the status icon, the milestone
+// advances to the next logical status. The exception is IN_REVIEW: clicking
+// it goes back to IN_PROGRESS (meaning "I'm continuing work"). COMPLETED
+// goes back to PENDING as an intentional reset (unlikely to be used often).
+// ─────────────────────────────────────────────────────────────────────────────
 'use client'
 
 import { useState } from 'react'
 import axios from 'axios'
-import { Plus, Loader2 } from 'lucide-react'
+import { Plus, Loader2, ListTodo } from 'lucide-react'
 import MilestoneRow from './MilestoneRow'
 
 const nextStatusMap = {
@@ -13,22 +30,25 @@ const nextStatusMap = {
   COMPLETED:   'PENDING',
 }
 
-export default function MilestoneManager({ projectId, initialMilestones, freelancerName, clientName }) {
+export default function MilestoneManager({
+  projectId,
+  initialMilestones,
+  freelancerName,
+  clientName,
+}) {
   const [milestones, setMilestones] = useState(initialMilestones ?? [])
   const [newTitle,   setNewTitle]   = useState('')
   const [isAdding,   setIsAdding]   = useState(false)
   const [updatingId, setUpdatingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
 
-  // ── Status toggle ─────────────────────────────────────────────────────────
-  // Used when the freelancer clicks the status icon directly on the row.
-  // This function calls the API itself and updates one field (status) in state.
+  // ── Status advance ────────────────────────────────────────────────────────
   const handleStatusChange = async (milestoneId, currentStatus) => {
     const nextStatus = nextStatusMap[currentStatus]
     setUpdatingId(milestoneId)
     try {
       const response = await axios.patch(`/api/milestones/${milestoneId}`, {
-        status: nextStatus
+        status: nextStatus,
       })
       setMilestones(prev =>
         prev.map(m => m.id === milestoneId ? { ...m, status: response.data.status } : m)
@@ -40,27 +60,13 @@ export default function MilestoneManager({ projectId, initialMilestones, freelan
     }
   }
 
-  // ── Full milestone replace ────────────────────────────────────────────────
-  // Used when the DeliveryModal submits successfully.
-  // The modal already called the API and received the full updated milestone
-  // object back. We don't call the API again here — we just slot the new
-  // object into the array in place of the old one.
-  //
-  // WHY a separate function: handleStatusChange only merges { status }.
-  // After a delivery submission, we need to merge ALL the new fields:
-  // status, deliveryHeadline, deliverySummary, deliveryChecklist, etc.
-  // Replacing the whole object is cleaner than merging individual fields.
+  // ── Full milestone replace (after DeliveryModal submit) ───────────────────
+  // The DeliveryModal already called the API. It passes back the full updated
+  // milestone object. We spread existing (keeping relations like milestoneUpdates)
+  // then overwrite with new scalar fields from the API response.
   const handleMilestoneUpdate = (updatedMilestone) => {
     setMilestones(prev =>
-      prev.map(m => m.id === updatedMilestone.id
-        // Spread the existing milestone first, then overwrite with updated fields.
-        // WHY: The API response from the PATCH route returns the Prisma milestone
-        // record, which does NOT include milestoneUpdates or messages (those are
-        // relations, not scalar fields). So we keep the existing relations from
-        // the old object and only overwrite what the API returned.
-        ? { ...m, ...updatedMilestone }
-        : m
-      )
+      prev.map(m => m.id === updatedMilestone.id ? { ...m, ...updatedMilestone } : m)
     )
   }
 
@@ -78,7 +84,7 @@ export default function MilestoneManager({ projectId, initialMilestones, freelan
     }
   }
 
-  // ── Add new milestone ─────────────────────────────────────────────────────
+  // ── Add ───────────────────────────────────────────────────────────────────
   const handleAdd = async (e) => {
     e.preventDefault()
     if (!newTitle.trim()) return
@@ -86,26 +92,39 @@ export default function MilestoneManager({ projectId, initialMilestones, freelan
     try {
       const response = await axios.post('/api/milestones', {
         projectId,
-        title: newTitle.trim()
+        title: newTitle.trim(),
       })
+      // New milestone starts with empty relations — add them so MilestoneRow
+      // doesn't have to handle undefined milestoneUpdates / messages arrays.
       setMilestones(prev => [...prev, { ...response.data, milestoneUpdates: [], messages: [] }])
       setNewTitle('')
     } catch {
-      alert('Failed to add milestone. Please try again.')
+      alert('Failed to add milestone.')
     } finally {
       setIsAdding(false)
     }
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Project Milestones</h2>
+    <div className="bg-fp-surface border border-fp-border rounded-xl p-5">
 
-      <div className="space-y-2 mb-6">
+      {/* Section heading */}
+      <div className="flex items-center gap-2 mb-5">
+        <ListTodo className="w-4 h-4 text-fp-text-tertiary" />
+        <h2 className="text-fp-text-secondary text-xs font-bold uppercase tracking-widest">
+          Milestones
+        </h2>
+      </div>
+
+      {/* Milestone list */}
+      <div className="space-y-2 mb-5">
         {milestones.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-6 border-2 border-dashed border-gray-100 rounded-xl">
-            No milestones yet. Add your first step below.
-          </p>
+          // Empty state — invitation, not error
+          <div className="border border-dashed border-fp-border rounded-xl py-8 text-center">
+            <p className="text-fp-text-tertiary text-xs">
+              No milestones yet. Add the first step below.
+            </p>
+          </div>
         )}
 
         {milestones.map((milestone) => (
@@ -123,24 +142,40 @@ export default function MilestoneManager({ projectId, initialMilestones, freelan
         ))}
       </div>
 
+      {/* Add milestone form */}
       <form onSubmit={handleAdd} className="flex gap-2">
         <input
           type="text"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="e.g. Homepage design, Final handoff..."
-          className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
+          placeholder="Add a milestone — e.g. Homepage design, Final handoff..."
           disabled={isAdding}
+          className="
+            flex-1 bg-fp-raised border border-fp-border text-fp-text-primary
+            text-sm rounded-lg px-3 py-2
+            placeholder:text-fp-text-tertiary
+            focus:outline-none focus:ring-2 focus:ring-fp-accent/30 focus:border-fp-accent/50
+            disabled:opacity-50 transition-colors duration-150
+          "
         />
         <button
           type="submit"
           disabled={isAdding || !newTitle.trim()}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
+          className="
+            flex items-center gap-1.5 shrink-0
+            bg-fp-accent hover:bg-fp-accent-hover text-fp-base
+            text-xs font-bold px-3 py-2 rounded-lg
+            transition-colors duration-150 disabled:opacity-50
+          "
         >
-          {isAdding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-          Add Step
+          {isAdding
+            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            : <Plus    className="w-3.5 h-3.5" />
+          }
+          Add
         </button>
       </form>
+
     </div>
   )
 }

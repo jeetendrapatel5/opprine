@@ -1,22 +1,29 @@
-"use client"
+// components/project/FilesTab.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// Project-level file management. Freelancer uploads files, they appear in a
+// list with download links. Client can also see these in the portal.
+//
+// Design: File rows use bg-fp-raised with a hover border transition to
+// fp-accent/20. The file type emoji provides at-a-glance recognition.
+// The upload button is primary spec (fp-accent) — it's the main action here.
+// ─────────────────────────────────────────────────────────────────────────────
+'use client'
 
 import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation' // THE MISSING IMPORT
-import { FileIcon, ExternalLink, Trash2, Clock, Loader2, Upload } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ExternalLink, Clock, Loader2, Upload, File } from 'lucide-react'
 import axios from 'axios'
 
-// Helper: Format bytes to human readable size
 function formatSize(bytes) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  if (bytes < 1024)           return `${bytes} B`
+  if (bytes < 1024 * 1024)   return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-// Helper: Get a simple icon based on file type
-function fileIcon(fileType) {
-  if (!fileType) return '📁'
-  if (fileType.startsWith('image/')) return '🖼️'
-  if (fileType === 'application/pdf') return '📄'
+function fileEmoji(fileType) {
+  if (!fileType)                                                  return '📁'
+  if (fileType.startsWith('image/'))                             return '🖼️'
+  if (fileType === 'application/pdf')                            return '📄'
   if (fileType.includes('spreadsheet') || fileType.includes('excel')) return '📊'
   if (fileType.includes('word') || fileType.includes('document')) return '📝'
   if (fileType.includes('zip') || fileType.includes('compressed')) return '🗜️'
@@ -26,120 +33,124 @@ function fileIcon(fileType) {
 export default function FilesTab({ project }) {
   const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef(null)
-  const router = useRouter() // Now correctly defined
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click()
-  }
+  const router = useRouter()
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-
     setIsUploading(true)
-    
-    // Create FormData for the upload
+
     const formData = new FormData()
-    formData.append('file', file)
+    formData.append('file',      file)
     formData.append('projectId', project.id)
 
     try {
-      // Assuming you have an API route at /api/projects/[id]/files
       await axios.post(`/api/projects/${project.id}/files`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
       })
-      
-      // Refresh the server components to show the new file
-      router.refresh() 
-      
-      // Reset input
+      router.refresh()
       if (fileInputRef.current) fileInputRef.current.value = ''
-    } catch (error) {
-      console.error("Upload failed:", error)
-      alert("Failed to upload file. Check your API route.")
+    } catch {
+      alert('Failed to upload file.')
     } finally {
       setIsUploading(false)
     }
   }
 
   return (
-    <div className="space-y-6">
-      {/* Upload Section */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-gray-900">Deliverables</h3>
-            <p className="text-xs text-gray-500 mt-1">Upload files to share them with your client.</p>
-          </div>
-          
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileChange} 
-            className="hidden" 
-          />
-          
-          <button
-            onClick={handleUploadClick}
-            disabled={isUploading}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4" />
-                Upload Asset
-              </>
-            )}
-          </button>
+    <div className="space-y-4">
+
+      {/* ── Upload section ── */}
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-fp-text-primary text-sm font-semibold">Deliverables</p>
+          <p className="text-fp-text-tertiary text-xs mt-0.5">
+            Upload files to share with your client.
+          </p>
         </div>
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          className="hidden"
+        />
+
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          className="
+            flex items-center gap-2
+            bg-fp-accent hover:bg-fp-accent-hover text-fp-base
+            text-xs font-semibold px-3 py-2 rounded-lg
+            transition-colors duration-150 disabled:opacity-50
+          "
+        >
+          {isUploading
+            ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading...</>
+            : <><Upload  className="w-3.5 h-3.5" /> Upload</>
+          }
+        </button>
       </div>
 
-      {/* File List Grid */}
-      <div className="grid gap-3">
-        {project.files?.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-            <p className="text-sm text-gray-400 font-medium">No assets delivered yet.</p>
-          </div>
-        ) : (
-          project.files?.map((file) => (
-            <div key={file.id} className="bg-white border border-gray-200 p-4 rounded-2xl flex items-center justify-between group hover:border-blue-200 transition-all">
-              <div className="flex items-center gap-4">
-                <div className="text-2xl w-10 h-10 flex items-center justify-center bg-gray-50 rounded-lg">
-                  {fileIcon(file.fileType)}
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900">{file.name}</p>
-                  <div className="flex items-center gap-2 text-[10px] text-gray-400 uppercase font-bold tracking-tight mt-0.5">
+      {/* ── File list ── */}
+      {project.files?.length === 0 ? (
+        <div className="
+          border border-dashed border-fp-border rounded-xl
+          py-10 flex flex-col items-center gap-2
+        ">
+          <File className="w-6 h-6 text-fp-text-tertiary" />
+          <p className="text-fp-text-tertiary text-xs">No files yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {project.files?.map((file) => (
+            <div
+              key={file.id}
+              className="
+                bg-fp-raised border border-fp-border rounded-lg p-3
+                flex items-center justify-between gap-3
+                hover:border-fp-accent/20 transition-colors duration-150 group
+              "
+            >
+              {/* File info */}
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-lg shrink-0 leading-none">
+                  {fileEmoji(file.fileType)}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-fp-text-primary text-xs font-medium truncate">
+                    {file.name}
+                  </p>
+                  <p className="text-fp-text-tertiary text-[10px] flex items-center gap-1.5 mt-0.5">
                     <span>{formatSize(file.size)}</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {new Date(file.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
+                    <span className="text-fp-border">·</span>
+                    <Clock className="w-2.5 h-2.5" />
+                    {new Date(file.createdAt).toLocaleDateString('en-GB', {
+                      day: 'numeric', month: 'short',
+                    })}
+                  </p>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <a 
-                  href={file.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="p-2 hover:bg-blue-50 rounded-full text-gray-400 hover:text-blue-600 transition-colors"
-                  title="View/Download"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </a>
-              </div>
+
+              {/* Download link */}
+              <a
+                href={file.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
+                  shrink-0 text-fp-text-tertiary
+                  hover:text-fp-accent transition-colors duration-150
+                  p-1.5 rounded-lg hover:bg-fp-accent-muted
+                "
+                title="Open / download"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

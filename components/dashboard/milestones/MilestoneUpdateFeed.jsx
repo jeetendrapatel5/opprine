@@ -1,126 +1,194 @@
 // components/dashboard/milestones/MilestoneUpdateFeed.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// Renders the chronological conversation thread inside a milestone.
+// Merges two data sources into one sorted feed:
+//   - MilestoneUpdate (freelancer's work updates, with optional file)
+//   - MilestoneMessage (client's text feedback)
+//
+// Visual distinction:
+//   Freelancer entries: accent-colored dot (indigo) — "I made progress"
+//   Client entries:     warning-colored dot (amber) — "needs your attention"
+//
+// Why amber for client messages (not red)?
+// Red = error / destructive. Amber = attention needed. A client message is
+// not an error — it's information that requires a response. Amber communicates
+// the right urgency level without alarming the freelancer.
+//
+// The vertical line between items is created by CSS on the parent container
+// (a combination of relative positioning + the connector div inside each entry).
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Formats bytes into a human-readable string like "1.2 MB"
 function formatSize(bytes) {
-    if (!bytes) return ''
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (!bytes)              return ''
+  if (bytes < 1024)        return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-// Maps MIME type to a simple emoji icon
 function fileEmoji(fileType) {
-    if (!fileType) return '📁'
-    if (fileType.startsWith('image/')) return '🖼️'
-    if (fileType === 'application/pdf') return '📄'
-    if (fileType.includes('spreadsheet') || fileType.includes('excel')) return '📊'
-    if (fileType.includes('word') || fileType.includes('document')) return '📝'
-    if (fileType.includes('zip') || fileType.includes('compressed')) return '🗜️'
-    return '📁'
+  if (!fileType)                                                       return '📁'
+  if (fileType.startsWith('image/'))                                  return '🖼️'
+  if (fileType === 'application/pdf')                                 return '📄'
+  if (fileType.includes('spreadsheet') || fileType.includes('excel')) return '📊'
+  if (fileType.includes('word') || fileType.includes('document'))     return '📝'
+  if (fileType.includes('zip') || fileType.includes('compressed'))    return '🗜️'
+  return '📁'
 }
 
 function timeAgo(date) {
-    const seconds = Math.floor((new Date() - new Date(date)) / 1000)
-    if (seconds < 60) return 'just now'
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-    return `${Math.floor(seconds / 86400)}d ago`
+  const seconds = Math.floor((new Date() - new Date(date)) / 1000)
+  if (seconds < 60)     return 'just now'
+  if (seconds < 3600)   return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86400)  return `${Math.floor(seconds / 3600)}h ago`
+  return `${Math.floor(seconds / 86400)}d ago`
 }
 
+// Freelancer update entry — accent colored
 function FreelancerEntry({ item, isLast, freelancerName }) {
-    return (
-        <div className="flex gap-3">
-            <div className="flex flex-col items-center">
-                <div className="w-2 h-2 rounded-full bg-indigo-400 mt-1.5 shrink-0" />
-                {!isLast && <div className="w-px flex-1 bg-gray-100 mt-1" />}
-            </div>
-            <div className="flex-1 pb-3">
-                {/* Sender label */}
-                <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wide mb-1">
-                    {freelancerName}
-                </p>
-                <p className="text-sm text-gray-800 leading-relaxed">{item.note}</p>
+  return (
+    <div className="flex gap-3">
 
-                {/* Attached file */}
-                {item.fileUrl && (
-                    <div className="mt-2">
-                        {item.fileType?.startsWith('image/') ? (
-                            <a href={item.fileUrl} target="_blank" rel="noopener noreferrer">
-                                <img
-                                    src={item.fileUrl}
-                                    alt={item.fileName}
-                                    className="max-h-48 rounded-lg border border-gray-200 object-cover hover:opacity-90 transition-opacity cursor-zoom-in"
-                                />
-                            </a>
-                        ) : (
+      {/* Timeline column: dot + connector line */}
+      <div className="flex flex-col items-center">
+        <div className="w-2 h-2 rounded-full bg-fp-accent mt-1.5 shrink-0" />
+        {/* Connector line — extends down to the next item */}
+        {!isLast && <div className="w-px flex-1 bg-fp-border mt-1" />}
+      </div>
 
-                            <a href={item.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-colors"
-                            >
-                                <span>{fileEmoji(item.fileType)}</span>
-                                <span className="truncate max-w-[200px]">{item.fileName}</span>
-                                <span className="text-gray-400">· {formatSize(item.fileSize)}</span>
-                            </a>
-                        )}
-                    </div>
+      <div className="flex-1 pb-4">
+        {/* Sender label — small, uppercase, accent color */}
+        <p className="text-[10px] font-bold text-fp-accent uppercase tracking-wide mb-1">
+          {freelancerName}
+        </p>
+
+        {/* Note text */}
+        <p className="text-sm text-fp-text-secondary leading-relaxed">
+          {item.note}
+        </p>
+
+        {/* Attached file — image preview or file chip */}
+        {item.fileUrl && (
+          <div className="mt-2">
+            {item.fileType?.startsWith('image/') ? (
+              <a href={item.fileUrl} target="_blank" rel="noopener noreferrer">
+                <img
+                  src={item.fileUrl}
+                  alt={item.fileName}
+                  className="
+                    max-h-48 rounded-lg border border-fp-border object-cover
+                    hover:opacity-80 transition-opacity duration-150 cursor-zoom-in
+                  "
+                />
+              </a>
+            ) : (
+              <a
+                href={item.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="
+                  inline-flex items-center gap-1.5
+                  bg-fp-raised border border-fp-border rounded-lg px-3 py-1.5
+                  text-xs font-medium text-fp-text-secondary
+                  hover:border-fp-accent/30 hover:text-fp-accent
+                  transition-colors duration-150
+                "
+              >
+                <span>{fileEmoji(item.fileType)}</span>
+                <span className="truncate max-w-[200px]">{item.fileName}</span>
+                {item.fileSize && (
+                  <span className="text-fp-text-tertiary">· {formatSize(item.fileSize)}</span>
                 )}
-                <p className="text-[10px] text-gray-400 mt-1">{timeAgo(item.createdAt)}</p>
-            </div>
-        </div>
-    )
+              </a>
+            )}
+          </div>
+        )}
+
+        <p className="text-[10px] text-fp-text-tertiary mt-1.5">
+          {timeAgo(item.createdAt)}
+        </p>
+      </div>
+
+    </div>
+  )
 }
 
+// Client message entry — warning colored (amber = attention needed)
 function ClientEntry({ item, isLast, clientName }) {
-    return (
-        <div className="flex gap-3">
-            <div className="flex flex-col items-center">
-                {/* Red dot marks client messages clearly */}
-                <div className="w-2 h-2 rounded-full bg-red-400 mt-1.5 shrink-0" />
-                {!isLast && <div className="w-px flex-1 bg-red-100 mt-1" />}
-            </div>
-            <div className="flex-1 pb-3">
-                <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide mb-1">
-                    💬 {clientName}
-                </p>
-                <p className="text-sm text-red-800 bg-red-50 border border-red-100 rounded-lg px-3 py-2 leading-relaxed">
-                    {item.content}
-                </p>
-                <p className="text-[10px] text-gray-400 mt-1">{timeAgo(item.createdAt)}</p>
-            </div>
-        </div>
-    )
+  return (
+    <div className="flex gap-3">
+
+      <div className="flex flex-col items-center">
+        {/* Amber dot — distinct from freelancer's accent dot */}
+        <div className="w-2 h-2 rounded-full bg-fp-warning mt-1.5 shrink-0" />
+        {!isLast && <div className="w-px flex-1 bg-fp-border mt-1" />}
+      </div>
+
+      <div className="flex-1 pb-4">
+        <p className="text-[10px] font-bold text-fp-warning uppercase tracking-wide mb-1">
+          💬 {clientName}
+        </p>
+
+        {/* Client message — sits in a warning-tinted box to stand out */}
+        <p className="
+          text-sm text-fp-text-primary leading-relaxed
+          bg-fp-warning/5 border border-fp-warning/15 rounded-lg px-3 py-2
+        ">
+          {item.content}
+        </p>
+
+        <p className="text-[10px] text-fp-text-tertiary mt-1.5">
+          {timeAgo(item.createdAt)}
+        </p>
+      </div>
+
+    </div>
+  )
 }
 
-export default function MilestoneUpdateFeed({ updates = [], messages = [], freelancerName = 'Freelancer', clientName = 'Client' }) {
-    const taggedUpdates = updates.map(u => ({ ...u, _type: 'update' }))
-    const taggedMessages = messages.map(m => ({ ...m, _type: 'message' }))
+export default function MilestoneUpdateFeed({
+  updates   = [],
+  messages  = [],
+  freelancerName = 'Freelancer',
+  clientName     = 'Client',
+}) {
+  // Tag each item with its type so we know which component to render
+  const tagged = [
+    ...updates.map(u  => ({ ...u,  _type: 'update'  })),
+    ...messages.map(m => ({ ...m,  _type: 'message' })),
+  ].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+  // Sort ascending — oldest first, newest at bottom (chat convention)
 
-    // Step 2: Merge both arrays into one
-    const combined = [...taggedUpdates, ...taggedMessages]
-
-    // Step 3: Sort by createdAt ascending — oldest first, newest at bottom
-    // This gives a natural chat-like reading order
-    combined.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-
-    if (combined.length === 0) {
-        return (
-            <p className="text-xs text-gray-400 italic py-2">
-                No updates yet. Post one below to start the work log.
-            </p>
-        )
-    }
-
+  if (tagged.length === 0) {
     return (
-        <div className="space-y-0">
-            {combined.map((item, index) => {
-                const isLast = index === combined.length - 1
-                if (item._type === 'update') {
-                    return <FreelancerEntry key={`u-${item.id}`} item={item} isLast={isLast} freelancerName={freelancerName}/>
-                }
-                return <ClientEntry key={`m-${item.id}`} item={item} isLast={isLast} clientName={clientName} />
-            })}
-        </div>
+      <p className="text-xs text-fp-text-tertiary italic py-2">
+        No updates yet. Post one below to start the work log.
+      </p>
     )
+  }
+
+  return (
+    <div>
+      {tagged.map((item, index) => {
+        const isLast = index === tagged.length - 1
+        if (item._type === 'update') {
+          return (
+            <FreelancerEntry
+              key={`u-${item.id}`}
+              item={item}
+              isLast={isLast}
+              freelancerName={freelancerName}
+            />
+          )
+        }
+        return (
+          <ClientEntry
+            key={`m-${item.id}`}
+            item={item}
+            isLast={isLast}
+            clientName={clientName}
+          />
+        )
+      })}
+    </div>
+  )
 }

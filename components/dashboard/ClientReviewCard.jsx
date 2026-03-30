@@ -1,14 +1,36 @@
-"use client"
+// components/dashboard/ClientReviewCard.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// Shows the client's testimonial and star rating once a project is completed.
+// Before a review exists, shows an empty state explaining what will appear here.
+//
+// This card was previously written with an inline <style> tag using raw CSS.
+// PROBLEM with that approach: inline styles bypass the design system entirely —
+// any token change in globals.css has no effect on the component.
+// SOLUTION: Rewritten using only Tailwind + fp tokens. Every color and spacing
+// value now comes from the design system.
+//
+// The dark card aesthetic is kept — it's intentional (the ClientReviewCard sits
+// in the dark dashboard), and now implemented via fp tokens instead of hardcoded
+// hex values like `#0F0F0F`.
+//
+// The amber accent (`fp-portal-accent` / `#B07633`) is used for the stars because
+// gold/amber = quality, value, achievement. It's also the portal's accent color,
+// so the review card feels like it belongs to the client-facing world.
+// ─────────────────────────────────────────────────────────────────────────────
+'use client'
+
 import { useState } from 'react'
 import { Star, Copy, Check, ExternalLink, Share2, Quote } from 'lucide-react'
 
 export default function ClientReviewCard({ project }) {
   const [copied, setCopied] = useState(false)
 
-  const hasReview = project.clientRating || project.testimonial
-  // Use relative path for rendering to avoid SSR/client origin mismatch
+  const hasReview   = project.clientRating || project.testimonial
   const showcasePath = project.publicSlug ? `/showcase/${project.publicSlug}` : null
-  // Build full URL only inside event handlers where window is guaranteed available
+
+  // Build the full URL only inside browser event handlers — window is not
+  // available during server-side rendering, so we can't reference it at the
+  // top level of the component.
   const getFullUrl = () => `${window.location.origin}${showcasePath}`
 
   const handleCopy = () => {
@@ -27,347 +49,156 @@ export default function ClientReviewCard({ project }) {
     }
   }
 
-  // Empty state — project not completed yet
+  // ── Empty state ────────────────────────────────────────────────────────────
+  // Shown before the project has a review. Uses a dashed border (invitation
+  // style) and muted colors — it's not a broken state, just a future state.
   if (!hasReview) {
     return (
-      <div className="review-card review-card--empty">
-        <style>{styles}</style>
-        <div className="empty-inner">
-          <div className="empty-stars">
-            {[1,2,3,4,5].map(i => (
-              <Star key={i} className="empty-star" />
-            ))}
-          </div>
-          <p className="empty-label">Awaiting client sign-off</p>
-          <p className="empty-sub">Once your client approves & leaves a review, it will appear here.</p>
+      <div className="
+        border border-dashed border-fp-border rounded-xl p-6 text-center
+      ">
+        <div className="flex justify-center gap-1 mb-3">
+          {[1, 2, 3, 4, 5].map(i => (
+            <Star key={i} className="w-5 h-5 text-fp-border" />
+          ))}
         </div>
+        <p className="text-fp-text-secondary text-xs font-semibold mb-1">
+          Awaiting client sign-off
+        </p>
+        <p className="text-fp-text-tertiary text-xs leading-relaxed max-w-[240px] mx-auto">
+          Once your client approves and leaves a review, it will appear here.
+        </p>
       </div>
     )
   }
 
+  // ── Review card ────────────────────────────────────────────────────────────
   return (
-    <div className="review-card">
-      <style>{styles}</style>
+    // Dark surface with a subtle amber top line — premium presentation
+    <div className="bg-fp-surface border border-fp-border rounded-xl overflow-hidden relative">
 
-      {/* Header */}
-      <div className="card-header">
-        <span className="badge">
-          <span className="badge-dot" />
+      {/* Amber top accent line — signals "this is gold, this is an achievement" */}
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-fp-portal-accent to-transparent opacity-80" />
+
+      {/* ── Card header: badge + share actions ── */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-fp-border flex-wrap gap-2">
+
+        {/* Live badge — signals this is real, published content */}
+        <span className="flex items-center gap-2 text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest">
+          <span className="w-1.5 h-1.5 rounded-full bg-fp-success shadow-[0_0_6px_var(--color-fp-success)]" />
           Client Review
         </span>
+
+        {/* Share actions — only shown if a showcase page exists */}
         {showcasePath && (
-          <div className="action-row">
-            <button onClick={handleCopy} className="btn-ghost" title="Copy link">
-              {copied ? <Check className="icon-sm check" /> : <Copy className="icon-sm" />}
-              {copied ? 'Copied!' : 'Copy Link'}
+          <div className="flex items-center gap-1.5">
+
+            <button
+              onClick={handleCopy}
+              className="
+                inline-flex items-center gap-1 text-fp-text-tertiary text-xs font-medium
+                bg-fp-raised border border-fp-border rounded-lg px-2.5 py-1
+                hover:text-fp-text-secondary hover:border-fp-accent/20
+                transition-colors duration-150
+              "
+            >
+              {copied
+                ? <><Check className="w-3 h-3 text-fp-success" /> Copied!</>
+                : <><Copy  className="w-3 h-3" /> Copy</>
+              }
             </button>
-            <button onClick={handleShare} className="btn-ghost" title="Share">
-              <Share2 className="icon-sm" />
-              Share
-            </button>
-            <a href={showcasePath} target="_blank" rel="noopener noreferrer" className="btn-primary">
-              <ExternalLink className="icon-sm" />
-              View Showcase
+
+            <a
+              href={showcasePath}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="
+                inline-flex items-center gap-1 text-fp-base text-xs font-semibold
+                bg-[var(--color-fp-portal-accent)] hover:bg-[var(--color-fp-portal-accent-hover)]
+                rounded-lg px-2.5 py-1 transition-colors duration-150
+              "
+            >
+              <ExternalLink className="w-3 h-3" />
+              Showcase
             </a>
+
           </div>
         )}
       </div>
 
-      {/* Review Body */}
-      <div className="review-body">
-        <Quote className="quote-icon" />
+      {/* ── Review body ── */}
+      <div className="px-5 py-5 relative">
 
-        {/* Stars */}
-        <div className="stars-row">
-          {[1,2,3,4,5].map(star => (
+        {/* Decorative quote icon — ambient, not interactive */}
+        <Quote className="absolute top-4 right-4 w-8 h-8 text-[var(--color-fp-portal-accent)]/10 pointer-events-none" />
+
+        {/* Star rating */}
+        <div className="flex items-center gap-1 mb-4">
+          {[1, 2, 3, 4, 5].map(star => (
             <Star
               key={star}
-              className="star"
-              fill={star <= (project.clientRating ?? 0) ? '#F59E0B' : 'transparent'}
-              color={star <= (project.clientRating ?? 0) ? '#F59E0B' : '#D1D5DB'}
+              className="w-4 h-4"
+              fill={star <= (project.clientRating ?? 0) ? 'var(--color-fp-portal-accent)' : 'transparent'}
+              color={star <= (project.clientRating ?? 0) ? 'var(--color-fp-portal-accent)' : 'var(--color-fp-border)'}
             />
           ))}
-          <span className="rating-label">{project.clientRating}.0 / 5</span>
+          <span className="text-xs font-bold ml-1.5" style={{ color: 'var(--color-fp-portal-accent)' }}>
+            {project.clientRating}.0 / 5
+          </span>
         </div>
 
-        {/* Testimonial */}
+        {/* Testimonial text — Fraunces italic for the premium editorial feel */}
         {project.testimonial && (
-          <p className="testimonial">"{project.testimonial}"</p>
+          <p className="
+            font-display italic text-sm leading-relaxed
+            text-fp-text-secondary mb-5
+          ">
+            "{project.testimonial}"
+          </p>
         )}
 
         {/* Client attribution */}
-        <div className="attribution">
-          <div className="attribution-avatar">
+        <div className="flex items-center gap-3">
+          {/* Avatar — initial letter in a warm amber gradient box */}
+          <div className="
+            w-8 h-8 rounded-lg flex items-center justify-center shrink-0
+            text-sm font-bold text-white
+          " style={{ background: 'linear-gradient(135deg, var(--color-fp-portal-accent), var(--color-fp-danger))' }}>
             {project.client?.name?.[0]?.toUpperCase() ?? 'C'}
           </div>
           <div>
-            <p className="attribution-name">{project.client?.name ?? 'Verified Client'}</p>
-            <p className="attribution-sub">Client · {project.name}</p>
+            <p className="text-fp-text-primary text-xs font-semibold">
+              {project.client?.name ?? 'Verified Client'}
+            </p>
+            <p className="text-fp-text-tertiary text-[10px]">
+              Client · {project.name}
+            </p>
           </div>
         </div>
+
       </div>
 
-      {/* Showcase URL Strip */}
+      {/* ── Showcase URL strip ── */}
       {showcasePath && (
-        <div className="url-strip">
-          <span className="url-text">{showcasePath}</span>
-          <button onClick={handleCopy} className="url-copy-btn">
-            {copied ? <Check className="icon-xs" /> : <Copy className="icon-xs" />}
+        <div className="
+          flex items-center justify-between gap-3
+          px-5 py-3 border-t border-fp-border
+          bg-fp-raised
+        ">
+          <span className="text-[10px] text-fp-text-tertiary font-mono truncate">
+            {showcasePath}
+          </span>
+          <button
+            onClick={handleCopy}
+            className="text-fp-text-tertiary hover:text-[var(--color-fp-portal-accent)] transition-colors duration-150 shrink-0 p-1 rounded"
+          >
+            {copied
+              ? <Check className="w-3 h-3 text-fp-success" />
+              : <Copy  className="w-3 h-3" />
+            }
           </button>
         </div>
       )}
     </div>
   )
 }
-
-const styles = `
-  @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@400;500;600&display=swap');
-
-  .review-card {
-    font-family: 'DM Sans', sans-serif;
-    background: #0F0F0F;
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 20px;
-    overflow: hidden;
-    position: relative;
-  }
-
-  .review-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(245,158,11,0.6), transparent);
-  }
-
-  /* Empty state */
-  .review-card--empty {
-    background: #FAFAFA;
-    border: 1.5px dashed #E5E7EB;
-  }
-
-  .review-card--empty::before { display: none; }
-
-  .empty-inner {
-    padding: 40px 24px;
-    text-align: center;
-  }
-
-  .empty-stars {
-    display: flex;
-    justify-content: center;
-    gap: 6px;
-    margin-bottom: 16px;
-  }
-
-  .empty-star {
-    width: 24px; height: 24px;
-    color: #D1D5DB;
-    stroke-dasharray: 4;
-  }
-
-  .empty-label {
-    font-size: 14px;
-    font-weight: 600;
-    color: #6B7280;
-    margin: 0 0 6px;
-  }
-
-  .empty-sub {
-    font-size: 13px;
-    color: #9CA3AF;
-    margin: 0;
-    max-width: 280px;
-    margin: 0 auto;
-    line-height: 1.6;
-  }
-
-  /* Header */
-  .card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #A3A3A3;
-  }
-
-  .badge-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: #22C55E;
-    box-shadow: 0 0 6px #22C55E;
-  }
-
-  .action-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .btn-ghost {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
-    color: #A3A3A3;
-    font-size: 12px;
-    font-weight: 500;
-    font-family: 'DM Sans', sans-serif;
-    padding: 6px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .btn-ghost:hover {
-    background: rgba(255,255,255,0.1);
-    color: #E5E5E5;
-  }
-
-  .btn-ghost .check { color: #22C55E; }
-
-  .btn-primary {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: #F59E0B;
-    color: #0F0F0F;
-    font-size: 12px;
-    font-weight: 600;
-    font-family: 'DM Sans', sans-serif;
-    padding: 6px 14px;
-    border-radius: 8px;
-    text-decoration: none;
-    transition: all 0.15s ease;
-  }
-
-  .btn-primary:hover {
-    background: #FBBF24;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(245,158,11,0.35);
-  }
-
-  /* Review body */
-  .review-body {
-    padding: 28px 24px 20px;
-    position: relative;
-  }
-
-  .quote-icon {
-    width: 36px; height: 36px;
-    color: rgba(245,158,11,0.15);
-    position: absolute;
-    top: 20px; right: 20px;
-  }
-
-  .stars-row {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 16px;
-  }
-
-  .star { width: 20px; height: 20px; }
-
-  .rating-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: #F59E0B;
-    margin-left: 8px;
-  }
-
-  .testimonial {
-    font-family: 'Lora', serif;
-    font-style: italic;
-    font-size: 16px;
-    line-height: 1.75;
-    color: #E5E5E5;
-    margin: 0 0 24px;
-    max-width: 560px;
-  }
-
-  .attribution {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .attribution-avatar {
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #F59E0B, #EF4444);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    font-weight: 700;
-    color: white;
-    flex-shrink: 0;
-  }
-
-  .attribution-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: #E5E5E5;
-    margin: 0 0 2px;
-  }
-
-  .attribution-sub {
-    font-size: 11px;
-    color: #6B7280;
-    margin: 0;
-  }
-
-  /* URL strip */
-  .url-strip {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 20px;
-    background: rgba(255,255,255,0.03);
-    border-top: 1px solid rgba(255,255,255,0.06);
-    gap: 12px;
-  }
-
-  .url-text {
-    font-size: 11px;
-    color: #525252;
-    font-family: 'DM Mono', 'Courier New', monospace;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .url-copy-btn {
-    background: none;
-    border: none;
-    color: #525252;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    transition: color 0.15s;
-  }
-
-  .url-copy-btn:hover { color: #F59E0B; }
-
-  .icon-sm { width: 14px; height: 14px; }
-  .icon-xs { width: 12px; height: 12px; }
-`

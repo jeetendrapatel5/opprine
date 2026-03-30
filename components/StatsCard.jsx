@@ -1,17 +1,61 @@
-const colorMap = {
-  blue:   'bg-blue-50 text-blue-600',
-  green:  'bg-green-50 text-green-600',
-  purple: 'bg-purple-50 text-purple-600',
-  orange: 'bg-orange-50 text-orange-600',
+// components/StatsCard.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// A single stat display card for the dashboard summary row.
+//
+// Design decisions:
+// - The large number uses font-display (Fraunces) — big numbers in a serif font
+//   look expensive and intentional, like a financial report or a revenue metric.
+//   Compare: Stripe's dashboard, Linear's stats — they use distinctive type for
+//   numbers because numbers ARE the message.
+// - The accent-colored top border is a thin stripe (2px) — it uses color to
+//   categorize cards without being loud. The color is muted (fp-accent/30)
+//   not full-saturation, so all 3 cards can sit together without visual noise.
+// - bg-fp-surface lifts the card one level above the bg-fp-base page background,
+//   creating depth without box-shadow tricks.
+// - No hover state — stats are read-only displays. Interactable elements have
+//   hovers. Non-interactable elements should not mislead with hover effects.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// variantStyles maps the "color" prop to a specific visual treatment.
+// Each stat card has a slightly different accent color so at a glance the
+// user can distinguish them without reading the labels.
+const variantStyles = {
+  default:  {
+    bar:   'bg-fp-accent',
+    value: 'text-fp-text-primary',
+  },
+  success: {
+    bar:   'bg-fp-success',
+    value: 'text-fp-success',
+  },
+  complete: {
+    bar:   'bg-fp-text-secondary',
+    value: 'text-fp-text-secondary',
+  },
 }
 
-export default function StatsCard({ label, value, color = 'blue' }) {
+export default function StatsCard({ label, value, variant = 'default' }) {
+  const styles = variantStyles[variant] ?? variantStyles.default
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <p className="text-sm text-gray-500 mb-1">{label}</p>
-      <p className={`text-3xl font-bold ${colorMap[color]}`}>
+    <div className="bg-fp-surface border border-fp-border rounded-xl p-5 relative overflow-hidden">
+
+      {/* Thin color bar at the top — the card's "signature" */}
+      {/* h-[2px] instead of h-1 (4px) because we want subtle, not bold */}
+      <div className={`absolute top-0 left-0 right-0 h-[2px] ${styles.bar} opacity-60`} />
+
+      {/* Label — small, secondary, uppercase with tracking */}
+      {/* Uppercase + letter-spacing = labels feel like labels, not body text */}
+      <p className="text-xs font-semibold text-fp-text-secondary uppercase tracking-widest mb-3">
+        {label}
+      </p>
+
+      {/* Value — Fraunces serif, large, distinctive */}
+      {/* The "leading-none" removes default line-height so the number sits flush */}
+      <p className={`font-display text-4xl font-semibold leading-none ${styles.value}`}>
         {value}
       </p>
+
     </div>
   )
 }
