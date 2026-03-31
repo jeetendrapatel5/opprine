@@ -165,7 +165,7 @@ export default function MilestoneManager({
             flex items-center gap-1.5 shrink-0
             bg-fp-accent hover:bg-fp-accent-hover text-fp-base
             text-xs font-bold px-3 py-2 rounded-lg
-            transition-colors duration-150 disabled:opacity-50
+            transition-colors duration-150 disabled:opacity-50 cursor-pointer
           "
         >
           {isAdding

@@ -1,42 +1,85 @@
-import { FileIcon, Download, ExternalLink } from 'lucide-react'
+// components/portal/FileDeliverables.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// Shows project-level files delivered by the freelancer.
+// Server Component — no interactivity needed, just download links.
+//
+// Design changes: white cards, fp-portal-border dividers, amber icon.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { File, Download } from 'lucide-react'
+
+function formatSize(bytes) {
+  if (!bytes)              return ''
+  if (bytes < 1024)        return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function fileEmoji(fileType) {
+  if (!fileType)                                                       return '📁'
+  if (fileType.startsWith('image/'))                                  return '🖼️'
+  if (fileType === 'application/pdf')                                 return '📄'
+  if (fileType.includes('spreadsheet') || fileType.includes('excel')) return '📊'
+  if (fileType.includes('word') || fileType.includes('document'))     return '📝'
+  if (fileType.includes('zip') || fileType.includes('compressed'))    return '🗜️'
+  return '📁'
+}
 
 export default function FileDeliverables({ files }) {
-  if (files.length === 0) {
+  if (!files || files.length === 0) {
     return (
-      <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center">
-        <div className="bg-gray-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-          <FileIcon className="w-6 h-6 text-gray-400" />
-        </div>
-        <p className="text-sm text-gray-500">No files delivered yet.</p>
+      <div className="
+        bg-fp-portal-surface border border-dashed border-fp-portal-border
+        rounded-xl p-6 flex flex-col items-center gap-2
+      ">
+        <File className="w-6 h-6 text-fp-portal-text-tertiary" />
+        <p className="text-fp-portal-text-secondary text-xs">
+          No files delivered yet.
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {files.map((file) => (
-        <div key={file.id} className="bg-white border border-gray-200 p-4 rounded-2xl flex items-center justify-between hover:border-blue-300 transition-all group">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-600 transition-colors">
-              <FileIcon className="w-5 h-5 text-blue-600 group-hover:text-white" />
-            </div>
-            <div className="max-w-[140px] md:max-w-none">
-              <p className="text-sm font-bold text-gray-900 truncate">{file.name}</p>
-              <p className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">
-                {(file.size / 1024).toFixed(1)} KB • {file.fileType}
+    <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl overflow-hidden">
+      <div className="divide-y divide-fp-portal-border">
+        {files.map((file) => (
+          <div
+            key={file.id}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-fp-portal-raised transition-colors duration-150 group"
+          >
+            {/* File type icon */}
+            <span className="text-lg shrink-0 leading-none">{fileEmoji(file.fileType)}</span>
+
+            {/* File info */}
+            <div className="flex-1 min-w-0">
+              <p className="text-fp-portal-text-primary text-xs font-medium truncate">
+                {file.name}
+              </p>
+              <p className="text-fp-portal-text-tertiary text-[10px] mt-0.5">
+                {formatSize(file.size)}
+                {file.fileType && ` · ${file.fileType.split('/')[1]?.toUpperCase()}`}
               </p>
             </div>
+
+            {/* Download link */}
+            <a
+              href={file.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="
+                shrink-0 p-1.5 rounded-lg
+                text-fp-portal-text-tertiary hover:text-fp-portal-accent
+                hover:bg-fp-portal-raised
+                transition-colors duration-150
+              "
+              title="Download"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </a>
           </div>
-          <a 
-            href={file.url} 
-            target="_blank" 
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            title="Download"
-          >
-            <Download className="w-5 h-5 text-gray-500" />
-          </a>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }

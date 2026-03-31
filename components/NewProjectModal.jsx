@@ -81,7 +81,7 @@ export default function NewProjectModal({ userId }) {
           bg-fp-accent hover:bg-fp-accent-hover
           text-fp-base text-sm font-semibold
           px-4 py-2 rounded-lg
-          transition-colors duration-150
+          transition-colors duration-150 cursor-pointer
         "
       >
         <Plus className="w-4 h-4" />

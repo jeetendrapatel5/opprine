@@ -1,16 +1,20 @@
 // components/portal/InvoicePanel.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// Shows the client their invoices. Renders nothing if all invoices are
+// CANCELLED — clients don't need to know about administrative cancellations.
 //
-// SERVER COMPONENT — no interactivity needed.
-// The "Pay Now" button is just an anchor tag linking to Stripe's hosted page.
-// No API calls from this component, no state, no 'use client'.
+// Design changes from old version:
+// - Was dark (#0e0e12) — now fp-portal-surface (white card).
+// - "Pay Now" button uses fp-portal-accent (amber) — warm gold signals
+//   value and is more appropriate for a payment CTA than generic blue.
+// - Invoice amounts use font-display (Fraunces) — numbers in a serif font
+//   look more like a proper invoice and less like a web form.
+// - Status badges use portal semantic tokens (fp-portal-success, fp-portal-danger).
 //
-// Props:
-//   invoices — array of invoice objects from Prisma
-//              each has: id, number, amount, currency, status,
-//              dueDate, note, stripePaymentLinkUrl, paidAt, milestone
+// Server Component — "Pay Now" is a plain <a> tag linking to Stripe's hosted
+// page. No client-side JS needed for the payment flow.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Formats a number as currency using the browser's built-in formatter.
-// e.g. formatCurrency(2500, 'USD') → "$2,500.00"
 function formatCurrency(amount, currency) {
   return new Intl.NumberFormat('en-US', {
     style:    'currency',
@@ -21,77 +25,52 @@ function formatCurrency(amount, currency) {
 function formatDate(date) {
   if (!date) return null
   return new Date(date).toLocaleDateString('en-GB', {
-    day:   'numeric',
-    month: 'short',
-    year:  'numeric',
+    day: 'numeric', month: 'short', year: 'numeric',
   })
 }
 
-// Checks if a due date has passed.
-// Used to show "Overdue" in red instead of the normal date.
 function isOverdue(date) {
   if (!date) return false
   return new Date(date) < new Date()
 }
 
 export default function InvoicePanel({ invoices = [] }) {
-  // Only show invoices that are UNPAID or PAID.
-  // CANCELLED invoices are hidden from the client — they don't need to
-  // know about administrative cancellations.
   const visible = invoices.filter(inv => inv.status !== 'CANCELLED')
-
   if (visible.length === 0) return null
 
   return (
-    <div
-      className="rounded-2xl border border-white/5 overflow-hidden"
-      style={{ background: '#0e0e12' }}
-    >
+    <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl overflow-hidden">
+
       {/* Section header */}
-      <div className="px-5 pt-5 pb-3 border-b border-white/5">
-        <h2
-          className="text-sm font-semibold text-white"
-          style={{ fontFamily: 'DM Sans, sans-serif' }}
-        >
+      <div className="px-5 pt-5 pb-3 border-b border-fp-portal-border">
+        <h2 className="text-fp-portal-text-primary text-sm font-semibold">
           Invoices
         </h2>
-        <p
-          className="text-xs mt-0.5"
-          style={{ color: '#6b7280', fontFamily: 'DM Mono, monospace' }}
-        >
+        <p className="text-fp-portal-text-tertiary text-xs mt-0.5">
           Secure payments via Stripe
         </p>
       </div>
 
-      {/* Invoice list */}
-      <div className="divide-y divide-white/5">
+      {/* Invoice rows */}
+      <div className="divide-y divide-fp-portal-border">
         {visible.map((invoice) => {
-          const isPaid    = invoice.status === 'PAID'
-          const overdue   = !isPaid && isOverdue(invoice.dueDate)
+          const isPaid   = invoice.status === 'PAID'
+          const overdue  = !isPaid && isOverdue(invoice.dueDate)
 
           return (
             <div key={invoice.id} className="px-5 py-4">
 
-              {/* Top row — number + status badge */}
+              {/* Top row: invoice number + milestone tag + status badge */}
               <div className="flex items-center justify-between gap-3 mb-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <p
-                    className="text-sm font-bold text-white truncate"
-                    style={{ fontFamily: 'DM Mono, monospace' }}
-                  >
+                  <p className="text-fp-portal-text-primary text-sm font-bold font-mono truncate">
                     {invoice.number}
                   </p>
-
-                  {/* Milestone link label — shown if invoice is tied to a milestone */}
                   {invoice.milestone?.title && (
-                    <span
-                      className="text-[10px] px-2 py-0.5 rounded-full shrink-0"
-                      style={{
-                        background: '#ffffff08',
-                        color: '#9ca3af',
-                        fontFamily: 'DM Mono, monospace',
-                      }}
-                    >
+                    <span className="
+                      text-[10px] px-1.5 py-0.5 rounded-full
+                      bg-fp-portal-raised text-fp-portal-text-tertiary shrink-0
+                    ">
                       {invoice.milestone.title}
                     </span>
                   )}
@@ -99,115 +78,81 @@ export default function InvoicePanel({ invoices = [] }) {
 
                 {/* Status badge */}
                 {isPaid ? (
-                  <span
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0"
-                    style={{
-                      background: '#10b98120',
-                      color: '#34d399',
-                      fontFamily: 'DM Mono, monospace',
-                    }}
-                  >
+                  <span className="
+                    text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0
+                    bg-fp-portal-success/10 text-fp-portal-success
+                  ">
                     Paid ✓
                   </span>
                 ) : (
-                  <span
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0"
-                    style={{
-                      background: overdue ? '#ef444420' : '#F59E0B20',
-                      color:      overdue ? '#f87171'   : '#F59E0B',
-                      fontFamily: 'DM Mono, monospace',
-                    }}
-                  >
+                  <span className={`
+                    text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0
+                    ${overdue
+                      ? 'bg-fp-portal-danger/10 text-fp-portal-danger'
+                      : 'bg-fp-portal-accent/10 text-fp-portal-accent'
+                    }
+                  `}>
                     {overdue ? 'Overdue' : 'Unpaid'}
                   </span>
                 )}
               </div>
 
-              {/* Amount */}
-              <p
-                className="text-xl font-bold mb-1"
-                style={{
-                  color:      isPaid ? '#6b7280' : '#ffffff',
-                  fontFamily: 'Fraunces, Georgia, serif',
-                  textDecoration: isPaid ? 'none' : 'none',
-                }}
-              >
+              {/* Amount — Fraunces for the number, makes it feel like a real invoice */}
+              <p className={`
+                font-display text-xl font-medium mb-1
+                ${isPaid ? 'text-fp-portal-text-tertiary' : 'text-fp-portal-text-primary'}
+              `}>
                 {formatCurrency(invoice.amount, invoice.currency)}
               </p>
 
               {/* Note from freelancer */}
               {invoice.note && (
-                <p
-                  className="text-xs mb-2 leading-relaxed"
-                  style={{ color: '#9ca3af', fontFamily: 'DM Sans, sans-serif' }}
-                >
+                <p className="text-fp-portal-text-secondary text-xs mb-2 leading-relaxed">
                   {invoice.note}
                 </p>
               )}
 
-              {/* Due date / paid date */}
+              {/* Due / paid date */}
               {isPaid && invoice.paidAt && (
-                <p
-                  className="text-xs mb-3"
-                  style={{ color: '#34d399', fontFamily: 'DM Mono, monospace' }}
-                >
+                <p className="text-xs text-fp-portal-success mb-3">
                   Paid on {formatDate(invoice.paidAt)}
                 </p>
               )}
-
               {!isPaid && invoice.dueDate && (
-                <p
-                  className="text-xs mb-3"
-                  style={{
-                    color:      overdue ? '#f87171' : '#6b7280',
-                    fontFamily: 'DM Mono, monospace',
-                  }}
-                >
+                <p className={`text-xs mb-3 ${overdue ? 'text-fp-portal-danger' : 'text-fp-portal-text-tertiary'}`}>
                   {overdue ? 'Was due' : 'Due'} {formatDate(invoice.dueDate)}
                 </p>
               )}
 
-              {/* Pay Now button — only for UNPAID invoices with a payment link */}
-              {/* This is a plain <a> tag — clicking it opens Stripe's hosted  */}
-              {/* payment page. No JavaScript needed. No API call from portal. */}
+              {/* Pay Now — plain <a> → Stripe hosted page */}
               {!isPaid && invoice.stripePaymentLinkUrl && (
-                
-                <a href={invoice.stripePaymentLinkUrl}
+                <a
+                  href={invoice.stripePaymentLinkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block text-center text-sm font-bold py-2.5 rounded-xl transition-all hover:opacity-90"
-                  style={{
-                    background: 'linear-gradient(135deg, #F59E0B, #FBBF24)',
-                    color:      '#000000',
-                    fontFamily: 'DM Sans, sans-serif',
-                  }}
+                  className="
+                    block text-center text-sm font-bold py-2.5 rounded-xl
+                    bg-fp-portal-accent hover:bg-fp-portal-accent-hover
+                    text-white transition-colors duration-150
+                  "
                 >
                   Pay Now →
                 </a>
               )}
 
-              {/* Paid state — no button, just a visual confirmation */}
+              {/* Paid confirmation strip */}
               {isPaid && (
-                <div
-                  className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{
-                    background: '#10b98110',
-                    color:      '#34d399',
-                    fontFamily: 'DM Sans, sans-serif',
-                  }}
-                >
+                <div className="
+                  flex items-center justify-center gap-2 py-2.5 rounded-xl
+                  bg-fp-portal-success/8 text-fp-portal-success text-sm font-semibold
+                ">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 16 16">
-                    <path
-                      d="M3 8l3.5 3.5L13 4.5"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
+                    <path d="M3 8l3.5 3.5L13 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  Payment Send
+                  Payment Received
                 </div>
               )}
+
             </div>
           )
         })}

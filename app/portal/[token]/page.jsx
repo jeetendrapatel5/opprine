@@ -1,18 +1,40 @@
 // app/portal/[token]/page.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// PSYCHOLOGICAL GOAL: The client opens this page and within 5 seconds thinks:
+// "My project is real, it's moving forward, and this person is a professional."
+//
+// LAYOUT (vertical, then 2-column):
+//   Full-width: ProgressBanner — immediate reassurance ("work is happening")
+//   Full-width: CurrentlyWorkingOn — what's being built RIGHT NOW
+//   Full-width: ActionPanel — if a milestone needs approval (most important CTA)
+//   Left 2/3:  ProjectMilestones (timeline) + UpdateFeed (work log)
+//   Right 1/3: FreelancerCard + InvoicePanel + FileDeliverables + ProjectSignOff
+//
+// HIERARCHY:
+//   1. Progress bar + project name (trust signal — scored immediately)
+//   2. Action items (if approval is needed — give client one job)
+//   3. Timeline (where are we? where are we going?)
+//   4. Freelancer identity (who is doing this work?)
+//   5. Everything else (invoices, files, sign-off)
+//
+// Server Component — data fetched here, passed down as props.
+// Client-side interactions (approval, sign-off) are in child Client Components.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import { notFound } from 'next/navigation'
 import prisma from '@/lib/prisma'
-import PortalHeader from '@/components/portal/PortalHeader'
-import UpdateFeed from '@/components/portal/UpdateFeed'
-import ProjectMilestones from '@/components/portal/ProjectMilestones'
-import FileDeliverables from '@/components/portal/FileDeliverables'
-import ProjectSignOff from '@/components/portal/ProjectSignOff'
-import ActionPanel from '@/components/portal/ActionPanel'
-import ProgressBanner from '@/components/portal/ProgressBanner'
-import CurrentlyWorkingOn from '@/components/portal/CurrentlyWorkingOn'
-import InvoicePanel from '@/components/portal/InvoicePanel'
 import { getProjectProgress } from '@/lib/projectProgress'
-import FreelancerCard from '@/components/portal/FreelancerCard'
+
+import ProgressBanner      from '@/components/portal/ProgressBanner'
+import CurrentlyWorkingOn  from '@/components/portal/CurrentlyWorkingOn'
+import ActionPanel         from '@/components/portal/ActionPanel'
+import ProjectMilestones   from '@/components/portal/ProjectMilestones'
+import UpdateFeed          from '@/components/portal/UpdateFeed'
+import FreelancerCard      from '@/components/portal/FreelancerCard'
+import InvoicePanel        from '@/components/portal/InvoicePanel'
+import FileDeliverables    from '@/components/portal/FileDeliverables'
+import ProjectSignOff      from '@/components/portal/ProjectSignOff'
+import { Mail }            from 'lucide-react'
 
 export default async function PortalPage({ params }) {
   const { token } = await params
@@ -22,19 +44,24 @@ export default async function PortalPage({ params }) {
     include: {
       project: {
         include: {
-          user: { select: { name: true, email: true, bio: true, avatarUrl: true, portfolioUrl: true } },
-          updates: { orderBy: { createdAt: 'desc' }, take: 10 },
-          files: { orderBy: { createdAt: 'desc' } },
+          user: {
+            select: {
+              name:         true,
+              email:        true,
+              bio:          true,
+              avatarUrl:    true,
+              portfolioUrl: true,
+            },
+          },
+          updates:  { orderBy: { createdAt: 'desc' }, take: 10 },
+          files:    { orderBy: { createdAt: 'desc' } },
           milestones: {
             orderBy: { order: 'asc' },
             include: {
               milestoneUpdates: { orderBy: { createdAt: 'asc' } },
-              messages: { orderBy: { createdAt: 'asc' } },
+              messages:         { orderBy: { createdAt: 'asc' } },
             },
           },
-          // Invoices — ordered newest first.
-          // We include the milestone title so InvoicePanel can show
-          // "For: Homepage Design" without an extra query.
           invoices: {
             orderBy: { createdAt: 'desc' },
             include: {
@@ -48,54 +75,54 @@ export default async function PortalPage({ params }) {
 
   if (!client) notFound()
 
-  // Fire-and-forget — log when client opens the portal
+  // Fire-and-forget — record when the client opened the portal.
+  // .catch() prevents an unhandled rejection if this fails.
   prisma.client.update({
     where: { magicToken: token },
-    data: { lastViewedAt: new Date() },
-  }).catch(() => { })
+    data:  { lastViewedAt: new Date() },
+  }).catch(() => {})
 
   const { project } = client
-  const progress = getProjectProgress(project.milestones)
+  const progress    = getProjectProgress(project.milestones)
 
-  // ActionPanel only handles project-level updates, not milestones.
-  // Milestone approvals are handled by DeliveryCard inside ProjectMilestones.
+  // Update-level action items (legacy Update model, not milestones)
   const actionItems = project.updates.filter(u => u.status === 'IN_REVIEW')
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      <div className="max-w-6xl mx-auto px-4 py-10">
+    // Portal world: warm paper-white background, generous padding
+    <div className="min-h-screen bg-fp-portal-bg font-body">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
 
-        {/* Progress banner */}
+        {/* ── Zone 1: Progress banner ── */}
+        {/* First thing the client sees. Contains the project name, progress bar,
+            milestone count. Answers "is work happening?" in 2 seconds. */}
         <ProgressBanner
           progress={progress}
           projectName={project.name}
+          clientName={client.name}
           milestones={project.milestones}
         />
 
-        {/* "Currently working on" — only when ON_TRACK and something is IN_PROGRESS */}
+        {/* ── Zone 2: Currently working on ── */}
+        {/* Only shown when there is an IN_PROGRESS milestone.
+            Tells the client exactly what is being built right now. */}
         {progress.projectStatus === 'ON_TRACK' && progress.currentMilestone && (
           <CurrentlyWorkingOn milestone={progress.currentMilestone} />
         )}
 
-        {/* Action panel — update-level approvals */}
+        {/* ── Zone 3: Action panel ── */}
+        {/* Only shown when there are Update-level items needing approval.
+            Milestone-level approvals live inside ProjectMilestones → DeliveryCard. */}
         <ActionPanel items={actionItems} token={token} />
 
-        {/* Portal header — project name, client name, freelancer name */}
-        <PortalHeader
-          project={project}
-          clientName={client.name}
-          freelancerName={project.user.name}
-        />
+        {/* ── Zone 4: Main 2-column grid ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
 
-        {/* Main 3-column grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+          {/* LEFT — Timeline + Work log */}
+          <div className="lg:col-span-8 space-y-6">
 
-          {/* LEFT — Timeline + Updates */}
-          <div className="lg:col-span-2 space-y-8">
             <section>
-              <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4 px-1">
-                Project Timeline
-              </h2>
+              <SectionLabel>Project Timeline</SectionLabel>
               <ProjectMilestones
                 milestones={project.milestones}
                 freelancerName={project.user.name}
@@ -105,17 +132,16 @@ export default async function PortalPage({ params }) {
             </section>
 
             <section>
-              <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4 px-1">
-                Recent Updates
-              </h2>
+              <SectionLabel>Recent Updates</SectionLabel>
               <UpdateFeed updates={project.updates} />
             </section>
+
           </div>
 
-          {/* RIGHT — Invoices, Files, Sign-off, Support */}
-          <div className="space-y-8">
+          {/* RIGHT — Freelancer, Invoices, Files, Sign-off */}
+          <div className="lg:col-span-4 space-y-5">
 
-            {/* About your developer — always shown at the top */}
+            {/* Who is doing this work? — always first on the right */}
             <FreelancerCard
               name={project.user.name}
               bio={project.user.bio}
@@ -123,17 +149,16 @@ export default async function PortalPage({ params }) {
               portfolioUrl={project.user.portfolioUrl}
             />
 
-            {/* Invoices — shown first because payment is time-sensitive */}
-            {/* InvoicePanel renders nothing if there are no visible invoices */}
+            {/* Invoices — time-sensitive, shown before files */}
             <InvoicePanel invoices={project.invoices} />
 
+            {/* Files */}
             <section>
-              <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-4 px-1">
-                Shared Deliverables
-              </h2>
+              <SectionLabel>Deliverables</SectionLabel>
               <FileDeliverables files={project.files} />
             </section>
 
+            {/* Sign-off form — only when project is near completion */}
             <ProjectSignOff
               projectId={project.id}
               freelancerName={project.user.name}
@@ -141,17 +166,27 @@ export default async function PortalPage({ params }) {
               existingTestimonial={project.testimonial}
             />
 
-            {/* Support card */}
-            <div className="bg-blue-600 rounded-2xl p-6 text-white shadow-lg shadow-blue-200">
-              <h3 className="font-bold text-lg mb-2">Need help?</h3>
-              <p className="text-blue-100 text-sm mb-4">
-                Have questions about the latest deliverables? Reach out to {project.user.name}.
+            {/* Contact card — always at the bottom of the right column */}
+            <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl p-5">
+              <p className="text-fp-portal-text-primary text-sm font-semibold mb-1">
+                Have a question?
               </p>
-
-              <a href={`mailto:${project.user.email}`}
-                className="block text-center bg-white text-blue-600 py-2 rounded-xl font-bold text-sm hover:bg-blue-50 transition-colors"
+              <p className="text-fp-portal-text-secondary text-xs leading-relaxed mb-4">
+                Reach out to {project.user.name} directly.
+              </p>
+              <a
+                href={`mailto:${project.user.email}`}
+                className="
+                  flex items-center justify-center gap-2
+                  bg-fp-portal-raised border border-fp-portal-border
+                  text-fp-portal-text-primary text-sm font-medium
+                  py-2.5 px-4 rounded-lg
+                  hover:border-fp-portal-accent/40 hover:text-fp-portal-accent
+                  transition-colors duration-150
+                "
               >
-                Send Message
+                <Mail className="w-4 h-4" />
+                Send a Message
               </a>
             </div>
 
@@ -159,5 +194,15 @@ export default async function PortalPage({ params }) {
         </div>
       </div>
     </div>
+  )
+}
+
+// Small section label — consistent across all portal sections
+// This is a pure display component local to this file (no need for a file)
+function SectionLabel({ children }) {
+  return (
+    <p className="text-[10px] font-bold text-fp-portal-text-tertiary uppercase tracking-widest mb-3 px-1">
+      {children}
+    </p>
   )
 }

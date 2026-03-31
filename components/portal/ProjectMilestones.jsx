@@ -1,12 +1,36 @@
 // components/portal/ProjectMilestones.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// The project timeline — the backbone of the client portal.
+// Shows every milestone with its status, and when a milestone is IN_REVIEW,
+// replaces the simple row with a full DeliveryCard for approve/reject.
+//
+// Architecture: DeliveryCard is defined in this file, not a separate file.
+// It only exists in this context so keeping it co-located is correct.
+//
+// DESIGN — Portal theme (warm white), NOT dark:
+// Timeline spine: fp-portal-border (subtle warm beige line)
+// Completed node: filled amber circle — "✓ done, paid for, delivered"
+// IN_PROGRESS node: pulsing amber — "being worked on right now"
+// IN_REVIEW node: pulsing accent — "needs your eyes"
+// PENDING node: empty circle — "coming soon"
+//
+// DeliveryCard design:
+// - fp-portal-surface card with an amber top border — premium presentation
+// - Fraunces headline — this is the "cover" of the deliverable
+// - Checklist items are interactive checkboxes — amber when checked
+// - Approve = fp-portal-success (green). Request Changes = ghost danger.
+// ─────────────────────────────────────────────────────────────────────────────
 'use client'
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import axios from 'axios'
-import { Loader2, XCircle, CheckCircle, ChevronDown, ChevronUp, Download, Paperclip } from 'lucide-react'
+import {
+  Loader2, XCircle, CheckCircle2,
+  ChevronDown, ChevronUp, Download, Paperclip,
+} from 'lucide-react'
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function timeAgo(date) {
   if (!date) return ''
@@ -18,43 +42,27 @@ function timeAgo(date) {
 }
 
 function formatSize(bytes) {
-  if (!bytes) return ''
+  if (!bytes)              return ''
   if (bytes < 1024)        return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-// Formats a date for display on the timeline.
-// e.g. "12 Sep 2025"
 function formatDate(date) {
   if (!date) return null
   return new Date(date).toLocaleDateString('en-GB', {
-    day:   'numeric',
-    month: 'short',
-    year:  'numeric',
+    day: 'numeric', month: 'short', year: 'numeric',
   })
 }
 
-// ── Timeline node components ──────────────────────────────────────────────────
-// Each status gets its own node component.
-// All nodes are 24x24px (w-6 h-6) so the spine line always aligns correctly.
-// The spine is a vertical line positioned at left-3 (12px from left edge),
-// which is exactly the center of a 24px node.
+// ── Timeline nodes ────────────────────────────────────────────────────────────
+// All nodes are w-6 h-6 (24px) — the spine sits at left: 11px (center of 24px)
 
 function CompletedNode() {
   return (
-    // Filled amber circle with a white checkmark inside
-    <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
-      style={{ background: '#F59E0B' }}
-    >
+    <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-fp-portal-accent">
       <svg className="w-3 h-3" fill="none" viewBox="0 0 12 12">
-        <path
-          d="M2 6l3 3 5-5"
-          stroke="white"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </div>
   )
@@ -62,50 +70,31 @@ function CompletedNode() {
 
 function InProgressNode() {
   return (
-    // Pulsing blue circle — same pattern as CurrentlyWorkingOn component
-    // The outer ring animates (ping), the inner dot stays solid
     <div className="relative w-6 h-6 flex items-center justify-center shrink-0">
-      <span
-        className="absolute inline-flex w-full h-full rounded-full opacity-20 animate-ping"
-        style={{ background: '#3b82f6' }}
-      />
-      <span
-        className="relative inline-flex w-3 h-3 rounded-full"
-        style={{ background: '#3b82f6' }}
-      />
+      <span className="absolute inline-flex w-full h-full rounded-full bg-fp-portal-accent opacity-20 animate-ping" />
+      <span className="relative inline-flex w-3 h-3 rounded-full bg-fp-portal-accent" />
     </div>
   )
 }
 
 function InReviewNode() {
   return (
-    // Pulsing amber circle — signals "your action needed"
+    // Faster pulse than IN_PROGRESS — "needs your action NOW"
     <div className="relative w-6 h-6 flex items-center justify-center shrink-0">
-      <span
-        className="absolute inline-flex w-full h-full rounded-full opacity-20 animate-ping"
-        style={{ background: '#F59E0B' }}
-      />
-      <span
-        className="relative inline-flex w-3 h-3 rounded-full"
-        style={{ background: '#F59E0B' }}
-      />
+      <span className="absolute inline-flex w-full h-full rounded-full bg-fp-portal-accent opacity-30 animate-ping" />
+      <span className="relative inline-flex w-3 h-3 rounded-full bg-fp-portal-accent" />
     </div>
   )
 }
 
 function PendingNode() {
   return (
-    // Empty circle with a dark border — not started, no action needed
-    <div
-      className="w-6 h-6 rounded-full shrink-0 border-2"
-      style={{ borderColor: '#1f2937', background: '#0e0e12' }}
-    />
+    <div className="w-6 h-6 rounded-full border-2 border-fp-portal-border bg-fp-portal-bg shrink-0" />
   )
 }
 
 // ── DeliveryCard ──────────────────────────────────────────────────────────────
-// Shown when milestone.status === 'IN_REVIEW'.
-// Full card with headline, summary, checklist, file, and approve/reject.
+// Shown in place of the simple text row when milestone.status === 'IN_REVIEW'
 
 function DeliveryCard({ milestone, token }) {
   const router = useRouter()
@@ -167,78 +156,66 @@ function DeliveryCard({ milestone, token }) {
   }
 
   return (
-    <div
-      className="rounded-2xl border border-amber-500/20 overflow-hidden"
-      style={{ background: '#0e0e12' }}
-    >
-      <div className="h-0.5 w-full bg-gradient-to-r from-amber-500 to-amber-400/30" />
+    <div className="bg-fp-portal-surface border border-fp-portal-accent/25 rounded-xl overflow-hidden">
+      {/* Amber top bar — "this card needs your attention" */}
+      <div className="h-[2px] w-full bg-fp-portal-accent" />
 
       <div className="p-5">
 
-        {/* Headline */}
-        <h3
-          className="text-lg font-bold text-white mb-2 leading-snug"
-          style={{ fontFamily: 'Fraunces, Georgia, serif' }}
-        >
+        {/* Headline — Fraunces, this is the deliverable's "title" */}
+        <h3 className="font-display text-lg font-medium text-fp-portal-text-primary mb-2 leading-snug">
           {milestone.deliveryHeadline ?? milestone.title}
         </h3>
 
-        {/* Summary */}
+        {/* Summary — plain language explanation */}
         {milestone.deliverySummary && (
-          <p
-            className="text-sm leading-relaxed mb-4"
-            style={{ color: '#9ca3af', fontFamily: 'DM Sans, sans-serif' }}
-          >
+          <p className="text-fp-portal-text-secondary text-sm leading-relaxed mb-4">
             {milestone.deliverySummary}
           </p>
         )}
 
-        {/* File */}
+        {/* File — image preview or download chip */}
         {milestone.deliveryFileUrl && (
           <div className="mb-4">
             {milestone.deliveryFileType?.startsWith('image/') ? (
-              
-              <a href={milestone.deliveryFileUrl}
+              <a
+                href={milestone.deliveryFileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block rounded-xl overflow-hidden border border-white/5 hover:opacity-90 transition-opacity"
+                className="block rounded-xl overflow-hidden border border-fp-portal-border hover:opacity-90 transition-opacity"
               >
                 <img
                   src={milestone.deliveryFileUrl}
                   alt={milestone.deliveryFileName ?? 'Deliverable'}
                   className="w-full max-h-64 object-cover"
                 />
-                <div
-                  className="px-3 py-2 text-xs flex items-center gap-2"
-                  style={{ color: '#6b7280', fontFamily: 'DM Mono, monospace' }}
-                >
+                <div className="px-3 py-2 bg-fp-portal-raised flex items-center gap-2 text-xs text-fp-portal-text-tertiary">
                   <Paperclip className="w-3 h-3" />
                   {milestone.deliveryFileName}
                   <span className="ml-auto">Click to view full size ↗</span>
                 </div>
               </a>
             ) : (
-              
-              <a href={milestone.deliveryFileUrl}
+              <a
+                href={milestone.deliveryFileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-xl border border-white/10 px-4 py-3 hover:border-amber-500/40 transition-colors"
-                style={{ background: '#16161a' }}
+                className="
+                  flex items-center gap-3 rounded-xl
+                  border border-fp-portal-border bg-fp-portal-raised
+                  px-4 py-3
+                  hover:border-fp-portal-accent/30
+                  transition-colors duration-150
+                "
               >
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: '#F59E0B22' }}
-                >
-                  <Download className="w-4 h-4" style={{ color: '#F59E0B' }} />
+                <div className="w-9 h-9 rounded-lg bg-fp-portal-accent/10 flex items-center justify-center shrink-0">
+                  <Download className="w-4 h-4 text-fp-portal-accent" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">
+                  <p className="text-sm font-medium text-fp-portal-text-primary truncate">
                     {milestone.deliveryFileName ?? 'Download file'}
                   </p>
-                  <p
-                    className="text-xs"
-                    style={{ color: '#6b7280', fontFamily: 'DM Mono, monospace' }}
-                  >
+                  <p className="text-xs text-fp-portal-text-tertiary">
                     Click to open
                   </p>
                 </div>
@@ -247,13 +224,10 @@ function DeliveryCard({ milestone, token }) {
           </div>
         )}
 
-        {/* Checklist */}
+        {/* Checklist — interactive amber checkboxes */}
         {checklist.length > 0 && (
-          <div className="mb-4">
-            <p
-              className="text-[10px] font-bold uppercase tracking-[0.2em] mb-3"
-              style={{ color: '#6b7280', fontFamily: 'DM Mono, monospace' }}
-            >
+          <div className="mb-5">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-fp-portal-text-tertiary mb-3">
               Before you approve, please check:
             </p>
             <div className="space-y-2.5">
@@ -266,34 +240,28 @@ function DeliveryCard({ milestone, token }) {
                     onClick={() => toggleCheck(index)}
                     className="w-full flex items-center gap-3 text-left group"
                   >
+                    {/* Checkbox — fills amber when checked */}
                     <div className={`
-                      w-5 h-5 rounded flex items-center justify-center shrink-0
-                      border-2 transition-all duration-150
+                      w-5 h-5 rounded border-2 flex items-center justify-center shrink-0
+                      transition-all duration-150
                       ${isChecked
-                        ? 'bg-amber-500 border-amber-500'
-                        : 'border-white/20 group-hover:border-amber-500/50'
+                        ? 'bg-fp-portal-accent border-fp-portal-accent'
+                        : 'border-fp-portal-border group-hover:border-fp-portal-accent/50'
                       }
                     `}>
                       {isChecked && (
-                        <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 12 12">
-                          <path
-                            d="M2 6l3 3 5-5"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 12 12">
+                          <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       )}
                     </div>
-                    <span
-                      className="text-sm transition-colors"
-                      style={{
-                        color:      isChecked ? '#6b7280' : '#e5e7eb',
-                        textDecoration: isChecked ? 'line-through' : 'none',
-                        fontFamily: 'DM Sans, sans-serif',
-                      }}
-                    >
+                    <span className={`
+                      text-sm transition-all duration-150
+                      ${isChecked
+                        ? 'text-fp-portal-text-tertiary line-through'
+                        : 'text-fp-portal-text-primary'
+                      }
+                    `}>
                       {item}
                     </span>
                   </button>
@@ -303,14 +271,19 @@ function DeliveryCard({ milestone, token }) {
           </div>
         )}
 
-        {/* Approve / Request Changes */}
+        {/* Approve / Request Changes buttons */}
         {!isRejecting ? (
           <div className="flex gap-3">
             <button
               onClick={() => setIsRejecting(true)}
               disabled={isLoading}
-              className="flex-1 flex items-center justify-center gap-2 border border-white/10 text-sm font-semibold py-2.5 rounded-xl transition-all hover:border-red-500/40 hover:text-red-400 disabled:opacity-50"
-              style={{ color: '#9ca3af', fontFamily: 'DM Sans, sans-serif' }}
+              className="
+                flex-1 flex items-center justify-center gap-2
+                border border-fp-portal-border text-fp-portal-text-secondary
+                text-sm font-semibold py-2.5 rounded-xl
+                hover:border-fp-portal-danger/30 hover:text-fp-portal-danger
+                transition-colors duration-150 disabled:opacity-50
+              "
             >
               <XCircle className="w-4 h-4" />
               Request Changes
@@ -318,29 +291,24 @@ function DeliveryCard({ milestone, token }) {
             <button
               onClick={handleApprove}
               disabled={isLoading}
-              className="flex-1 flex items-center justify-center gap-2 text-sm font-bold py-2.5 rounded-xl transition-all disabled:opacity-50"
-              style={{
-                background: 'linear-gradient(135deg, #10b981, #059669)',
-                color: 'white',
-                fontFamily: 'DM Sans, sans-serif',
-              }}
+              className="
+                flex-1 flex items-center justify-center gap-2
+                bg-fp-portal-success hover:bg-fp-portal-success/80
+                text-white text-sm font-bold py-2.5 rounded-xl
+                transition-colors duration-150 disabled:opacity-50
+              "
             >
               {isLoading
-                ? <Loader2    className="w-4 h-4 animate-spin" />
-                : <CheckCircle className="w-4 h-4" />
+                ? <Loader2     className="w-4 h-4 animate-spin" />
+                : <CheckCircle2 className="w-4 h-4" />
               }
               {isLoading ? 'Approving...' : 'Approve'}
             </button>
           </div>
         ) : (
-          <div
-            className="rounded-xl border border-white/10 p-4"
-            style={{ background: '#16161a' }}
-          >
-            <label
-              className="block text-xs font-bold uppercase tracking-wide mb-2"
-              style={{ color: '#9ca3af', fontFamily: 'DM Mono, monospace' }}
-            >
+          // Rejection form — inline
+          <div className="bg-fp-portal-raised border border-fp-portal-border rounded-xl p-4">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-fp-portal-text-tertiary mb-2">
               What needs to change?
             </label>
             <textarea
@@ -348,19 +316,23 @@ function DeliveryCard({ milestone, token }) {
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="e.g. The colour scheme doesn't match our brand guidelines."
               rows={3}
-              className="w-full text-sm rounded-lg px-3 py-2 outline-none resize-none border border-white/10 focus:border-amber-500/50"
-              style={{
-                background: '#0e0e12',
-                color: '#e5e7eb',
-                fontFamily: 'DM Sans, sans-serif',
-              }}
+              className="
+                w-full bg-fp-portal-surface border border-fp-portal-border
+                text-fp-portal-text-primary text-sm rounded-lg px-3 py-2.5
+                placeholder:text-fp-portal-text-tertiary resize-none
+                focus:outline-none focus:ring-2 focus:ring-fp-portal-accent/20
+                focus:border-fp-portal-accent/40 transition-colors duration-150
+              "
             />
             <div className="flex gap-2 mt-3">
               <button
                 type="button"
                 onClick={() => { setIsRejecting(false); setRejectReason('') }}
-                className="flex-1 text-sm py-2 rounded-xl border border-white/10 hover:border-white/20 transition-colors"
-                style={{ color: '#9ca3af' }}
+                className="
+                  flex-1 text-sm py-2 rounded-xl
+                  border border-fp-portal-border text-fp-portal-text-secondary
+                  hover:border-fp-portal-border/70 transition-colors duration-150
+                "
               >
                 Cancel
               </button>
@@ -368,23 +340,31 @@ function DeliveryCard({ milestone, token }) {
                 type="button"
                 onClick={handleReject}
                 disabled={isLoading || !rejectReason.trim()}
-                className="flex-1 flex items-center justify-center gap-2 text-sm font-bold py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-50"
+                className="
+                  flex-1 flex items-center justify-center gap-2
+                  bg-fp-portal-danger hover:bg-fp-portal-danger/80
+                  text-white text-sm font-bold py-2 rounded-xl
+                  transition-colors duration-150 disabled:opacity-50
+                "
               >
-                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                 Submit Feedback
               </button>
             </div>
           </div>
         )}
 
-        {/* Work log toggle */}
+        {/* Work log toggle — collapsed by default, available for curious clients */}
         {workLog.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-white/5">
+          <div className="mt-4 pt-4 border-t border-fp-portal-border">
             <button
               type="button"
               onClick={() => setIsWorkLogOpen(v => !v)}
-              className="flex items-center gap-2 text-xs font-semibold transition-colors hover:text-white"
-              style={{ color: '#6b7280', fontFamily: 'DM Mono, monospace' }}
+              className="
+                flex items-center gap-2 text-xs font-semibold
+                text-fp-portal-text-tertiary hover:text-fp-portal-text-secondary
+                transition-colors duration-150
+              "
             >
               {isWorkLogOpen
                 ? <ChevronUp   className="w-3.5 h-3.5" />
@@ -397,35 +377,31 @@ function DeliveryCard({ milestone, token }) {
               <div className="mt-3 space-y-3">
                 {workLog.map((entry) => (
                   <div key={entry.id} className="flex gap-3">
-                    <div
-                      className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0"
-                      style={{ background: '#F59E0B40' }}
-                    />
+                    <div className="w-1.5 h-1.5 rounded-full bg-fp-portal-accent/40 mt-1.5 shrink-0" />
                     <div className="flex-1">
-                      <p className="text-sm leading-relaxed" style={{ color: '#d1d5db' }}>
+                      <p className="text-sm text-fp-portal-text-secondary leading-relaxed">
                         {entry.note}
                       </p>
                       {entry.fileUrl && (
-                        
-                        <a href={entry.fileUrl}
+                        <a
+                          href={entry.fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 mt-1.5 text-xs hover:underline"
-                          style={{ color: '#F59E0B' }}
+                          className="
+                            inline-flex items-center gap-1.5 mt-1.5 text-xs
+                            text-fp-portal-accent hover:underline
+                          "
                         >
                           <Paperclip className="w-3 h-3" />
                           {entry.fileName}
                           {entry.fileSize && (
-                            <span style={{ color: '#6b7280' }}>
+                            <span className="text-fp-portal-text-tertiary">
                               {formatSize(entry.fileSize)}
                             </span>
                           )}
                         </a>
                       )}
-                      <p
-                        className="text-[10px] mt-0.5"
-                        style={{ color: '#6b7280', fontFamily: 'DM Mono, monospace' }}
-                      >
+                      <p className="text-[10px] text-fp-portal-text-tertiary mt-0.5">
                         {timeAgo(entry.createdAt)}
                       </p>
                     </div>
@@ -449,66 +425,41 @@ export default function ProjectMilestones({ milestones, freelancerName, clientNa
   const progressPercentage = Math.round((completedCount / milestones.length) * 100)
 
   return (
-    <div
-      className="rounded-2xl border border-white/5 p-6 shadow-sm"
-      style={{ background: '#0e0e12' }}
-    >
+    <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl p-6">
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2
-          className="text-base font-semibold text-white"
-          style={{ fontFamily: 'DM Sans, sans-serif' }}
-        >
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-fp-portal-text-primary text-sm font-semibold">
           Project Timeline
         </h2>
-        <span
-          className="text-sm font-medium px-3 py-1 rounded-full"
-          style={{
-            background:  '#F59E0B18',
-            color:       '#F59E0B',
-            fontFamily:  'DM Mono, monospace',
-          }}
-        >
+        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-fp-portal-accent/10 text-fp-portal-accent">
           {progressPercentage}% Complete
         </span>
       </div>
 
       {/* Progress bar */}
-      <div className="w-full rounded-full h-2 mb-8" style={{ background: '#ffffff08' }}>
+      <div className="w-full bg-fp-portal-raised rounded-full h-1.5 mb-7">
         <div
-          className="h-2 rounded-full transition-all duration-700"
-          style={{
-            width:      `${progressPercentage}%`,
-            background: 'linear-gradient(90deg, #F59E0B, #FBBF24)',
-          }}
+          className="h-1.5 rounded-full transition-all duration-700 bg-fp-portal-accent"
+          style={{ width: `${Math.max(progressPercentage, 3)}%` }}
         />
       </div>
 
-      {/* ── Timeline ── */}
-      {/*
-        HOW THE SPINE WORKS:
-        Each milestone row is a flex container: [node][content]
-        The node is always w-6 (24px).
-        The spine is a single absolutely-positioned vertical line
-        running the full height of the list container, at left: 11px
-        (which is exactly the center of 24px = 12px, minus 1px for
-        the line's own 2px width = 11px).
-        WHY absolute instead of per-row borders:
-        Per-row borders create gaps between rows and are hard to control
-        when some rows are taller (like the delivery card). One absolute
-        line runs cleanly behind everything.
+      {/* Timeline
+          HOW THE SPINE WORKS:
+          Each row is flex [node 24px][content]. The spine is a single absolute
+          line at left: 11px (center of 24px node). The node wrapper has
+          bg-fp-portal-surface to visually "cut" the spine behind hollow nodes.
       */}
       <div className="relative">
-
-        {/* The spine — runs full height behind all milestone nodes */}
         {milestones.length > 1 && (
           <div
-            className="absolute top-3 bottom-3 w-px"
-            style={{ left: '11px', background: '#ffffff08' }}
+            className="absolute top-3 bottom-3 w-px bg-fp-portal-border"
+            style={{ left: '11px' }}
           />
         )}
 
-        <div className="space-y-8">
+        <div className="space-y-7">
           {milestones.map((milestone) => {
             const isCompleted  = milestone.status === 'COMPLETED'
             const isInProgress = milestone.status === 'IN_PROGRESS'
@@ -518,77 +469,44 @@ export default function ProjectMilestones({ milestones, freelancerName, clientNa
             return (
               <div key={milestone.id} className="relative flex gap-4">
 
-                {/* ── Node — always renders, always w-6 h-6 ── */}
-                {/*
-                  The node sits on top of the spine (z-10).
-                  Its background matches the card background so it
-                  visually "cuts" the spine line cleanly.
-                  Without the background, the spine line would show
-                  through the center of hollow nodes.
-                */}
-                <div className="relative z-10 mt-0.5 shrink-0" style={{ background: '#0e0e12' }}>
+                {/* Node — sits on the spine, bg matches card to clip the line */}
+                <div className="relative z-10 mt-0.5 shrink-0 bg-fp-portal-surface">
                   {isCompleted  && <CompletedNode  />}
                   {isInProgress && <InProgressNode />}
                   {isInReview   && <InReviewNode   />}
                   {isPending    && <PendingNode     />}
                 </div>
 
-                {/* ── Content — everything to the right of the node ── */}
+                {/* Content */}
                 <div className="flex-1 min-w-0">
-
                   {isInReview ? (
-                    // IN_REVIEW — full delivery card replaces the text row
-                    <DeliveryCard
-                      milestone={milestone}
-                      token={token}
-                    />
+                    <DeliveryCard milestone={milestone} token={token} />
                   ) : (
-                    // All other statuses — simple text row
                     <div className="pt-0.5">
-                      <p
-                        className={`text-sm font-medium leading-snug ${
-                          isCompleted  ? 'line-through opacity-40 text-white' :
-                          isInProgress ? 'text-white' :
-                          'text-gray-600'
-                        }`}
-                        style={{ fontFamily: 'DM Sans, sans-serif' }}
-                      >
+                      <p className={`
+                        text-sm font-medium leading-snug
+                        ${isCompleted  ? 'line-through text-fp-portal-text-tertiary' : ''}
+                        ${isInProgress ? 'text-fp-portal-text-primary' : ''}
+                        ${isPending    ? 'text-fp-portal-text-tertiary' : ''}
+                      `}>
                         {milestone.title}
                       </p>
 
-                      {/* Sub-label under each title */}
-                      {isCompleted && milestone.completedAt && (
-                        <p
-                          className="text-xs mt-0.5"
-                          style={{ color: '#F59E0B', fontFamily: 'DM Mono, monospace' }}
-                        >
-                          ✓ Approved · {formatDate(milestone.completedAt)}
-                        </p>
-                      )}
-
-                      {isCompleted && !milestone.completedAt && (
-                        <p
-                          className="text-xs mt-0.5"
-                          style={{ color: '#F59E0B', fontFamily: 'DM Mono, monospace' }}
-                        >
+                      {isCompleted && (
+                        <p className="text-xs text-fp-portal-accent mt-0.5 font-medium">
                           ✓ Approved
+                          {milestone.completedAt && ` · ${formatDate(milestone.completedAt)}`}
                         </p>
                       )}
 
                       {isInProgress && (
-                        <p className="text-xs text-blue-400 mt-0.5 font-medium">
+                        <p className="text-xs text-fp-portal-text-tertiary mt-0.5">
                           Currently being worked on
                         </p>
                       )}
 
                       {isPending && (
-                        <p
-                          className="text-xs mt-0.5"
-                          style={{
-                            color:      milestone.dueDate ? '#6b7280' : '#374151',
-                            fontFamily: 'DM Mono, monospace',
-                          }}
-                        >
+                        <p className="text-xs text-fp-portal-text-tertiary mt-0.5">
                           {milestone.dueDate
                             ? `Due ${formatDate(milestone.dueDate)}`
                             : 'Not started yet'
