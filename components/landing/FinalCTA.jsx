@@ -1,60 +1,62 @@
 'use client'
-// ─────────────────────────────────────────────────────────────────────────────
-// components/landing/FinalCTA.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-import { FINAL_CTA } from './data'
-import { PrimaryButton } from './ui'
+// components/landing/FinalCTA.jsx + Footer
 
+import { FINAL_HEADLINE, FINAL_BODY, FINAL_CTA, FINAL_NOTE, FOOTER_LINKS, FOOTER_TAGLINE, FOOTER_COPYRIGHT } from './data'
+import { PrimaryButton, LogoMark } from './ui'
+
+// ── FinalCTA ──────────────────────────────────────────────────────────────────
+// Mirrors the opening pain from the hero — full circle moment.
+// "Stop sending project updates over WhatsApp" connects directly to Pain Block 1.
 export function FinalCTA({ onCTA }) {
+  const [line1, line2] = FINAL_HEADLINE.split('\n')
   return (
-    <section className="py-20 px-6">
-      <div className="reveal max-w-[860px] mx-auto bg-gradient-to-br from-indigo-500/12 to-violet-500/[0.06] border border-indigo-500/20 rounded-[28px] px-8 md:px-16 py-20 text-center relative overflow-hidden">
+    <section className="py-24 px-6 border-t border-fp-border">
+      <div className="max-w-[740px] mx-auto">
 
-        {/* Top glow line */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/70 to-transparent" />
+        {/* Card with subtle glow border */}
+        <div className="reveal relative rounded-2xl overflow-hidden border border-fp-accent/20 bg-fp-surface text-center px-8 py-16 sm:px-16">
 
-        {/* Bottom radial glow */}
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] h-[150px] rounded-[50%] pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)' }} />
+          {/* Accent top line */}
+          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-fp-accent to-transparent opacity-70" />
 
-        <div className="relative z-10">
-          <h2 className="text-[clamp(34px,5vw,58px)] font-black text-slate-50 leading-[1.1] tracking-[-0.03em] mb-4">
-            {FINAL_CTA.headline}<br />
-            <span className="text-indigo-400 italic font-black">{FINAL_CTA.headlineAccent}</span>
-          </h2>
-          <p className="text-[16px] text-slate-500 leading-[1.8] max-w-[480px] mx-auto mb-10">
-            {FINAL_CTA.subtext}
-          </p>
-          <PrimaryButton onClick={onCTA} className="!text-[15px] !py-4 !px-10 !shadow-[0_12px_40px_rgba(99,102,241,0.5)]">
-            {FINAL_CTA.ctaLabel}
-          </PrimaryButton>
-          <div className="mt-6 flex justify-center items-center gap-5 flex-wrap">
-            {FINAL_CTA.trustBullets.map(b => (
-              <span key={b} className="flex items-center gap-1.5 text-[12px] text-slate-700">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <circle cx="6" cy="6" r="5" stroke="#6366f1" strokeWidth="1" />
-                  <path d="M3.5 6l1.8 1.8 3-3.2" stroke="#6366f1" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                {b}
-              </span>
-            ))}
+          {/* Bottom radial glow */}
+          <div
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] h-[200px] pointer-events-none"
+            style={{ background: 'radial-gradient(ellipse, rgba(123,147,255,0.08) 0%, transparent 70%)' }}
+          />
+
+          <div className="relative z-10">
+            {/* Headline */}
+            <h2 className="font-display font-semibold text-fp-text-primary leading-[1.15] tracking-tight mb-6" style={{ fontSize: 'clamp(28px, 4vw, 46px)' }}>
+              {line1}
+              <br />
+              <span className="text-fp-accent">{line2}</span>
+            </h2>
+
+            {/* Body — mirrors the pain */}
+            <p className="text-fp-text-secondary text-[15px] leading-[1.85] max-w-[480px] mx-auto mb-8">
+              {FINAL_BODY}
+            </p>
+
+            {/* CTA */}
+            <PrimaryButton onClick={onCTA} className="!py-4 !px-10 !text-[15px] !shadow-[0_12px_40px_rgba(123,147,255,0.45)]">
+              {FINAL_CTA}
+            </PrimaryButton>
+
+            {/* Reassurance */}
+            <p className="text-fp-text-tertiary text-[12px] mt-4">{FINAL_NOTE}</p>
           </div>
         </div>
+
       </div>
     </section>
   )
 }
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// components/landing/Footer.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-import { FOOTER_LINKS, FOOTER_TAGLINE, FOOTER_COPYRIGHT, FOOTER_MADE_IN } from './data'
-import { LogoMark } from './ui'
-
+// ── Footer ────────────────────────────────────────────────────────────────────
 export function Footer() {
   return (
-    <footer className="border-t border-white/[0.04] pt-12 pb-8 px-6">
+    <footer className="border-t border-fp-border pt-12 pb-8 px-6">
       <div className="max-w-[1120px] mx-auto">
 
         {/* Top row */}
@@ -62,21 +64,25 @@ export function Footer() {
 
           {/* Brand block */}
           <div className="max-w-[220px]">
-            <LogoMark size={28} />
-            <p className="mt-3 text-[12px] text-slate-700 leading-[1.8]">{FOOTER_TAGLINE}</p>
+            <LogoMark size={30} />
+            <p className="mt-3 text-fp-text-tertiary text-[12px] leading-[1.8]">
+              {FOOTER_TAGLINE}
+            </p>
           </div>
 
           {/* Link columns */}
           <div className="flex gap-12 flex-wrap">
             {FOOTER_LINKS.map(({ heading, links }) => (
               <div key={heading}>
-                <p className="font-bold text-[11px] text-slate-600 uppercase tracking-[0.1em] mb-3">{heading}</p>
+                <p className="text-fp-text-tertiary text-[10px] font-bold uppercase tracking-[0.12em] mb-3">
+                  {heading}
+                </p>
                 <div className="flex flex-col gap-2">
                   {links.map(({ label, href }) => (
                     <a
                       key={label}
                       href={href}
-                      className="text-[13px] text-slate-700 hover:text-slate-400 transition-colors duration-150"
+                      className="text-[13px] text-fp-text-tertiary hover:text-fp-text-secondary transition-colors duration-150"
                     >
                       {label}
                     </a>
@@ -85,13 +91,12 @@ export function Footer() {
               </div>
             ))}
           </div>
-
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-white/[0.04] pt-6 flex flex-wrap justify-between items-center gap-3">
-          <p className="text-[12px] text-slate-800">{FOOTER_COPYRIGHT}</p>
-          <p className="font-mono text-[11px] text-slate-800">{FOOTER_MADE_IN}</p>
+        <div className="border-t border-fp-border pt-6 flex flex-wrap justify-between items-center gap-3">
+          <p className="text-fp-text-tertiary text-[12px]">{FOOTER_COPYRIGHT}</p>
+          <p className="text-fp-text-tertiary text-[11px] font-mono">Made with ♥ in India</p>
         </div>
 
       </div>

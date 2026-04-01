@@ -1,30 +1,24 @@
-// ─────────────────────────────────────────────────────────────────────────────
 // components/landing/ui.jsx
-//
-// Reusable "atoms" — tiny components used in many sections.
-// Change a component here and every section that uses it updates automatically.
-// ─────────────────────────────────────────────────────────────────────────────
+// Atomic components for the landing page.
+// Uses Fraunces (--font-display) and DM Sans (--font-body) from the design system.
 
 // ── SectionLabel ──────────────────────────────────────────────────────────────
-// The small ALL-CAPS tag above every section heading, e.g. "FEATURES"
 export function SectionLabel({ children }) {
   return (
-    <span className="block text-[11px] font-bold text-indigo-400 uppercase tracking-[0.15em] mb-3">
+    <span className="block text-[11px] font-bold text-fp-accent uppercase tracking-[0.18em] mb-3">
       {children}
     </span>
   )
 }
 
 // ── SectionHeading ────────────────────────────────────────────────────────────
-// The large display heading used in every section.
-// Wrap a word in <em> to render it in italic indigo accent color.
-// Example: <SectionHeading>Up and running in <em>three minutes.</em></SectionHeading>
+// Wrap words in <em> for the accent italic treatment.
 export function SectionHeading({ children, className = '' }) {
   return (
     <h2 className={`
-      text-[clamp(30px,4vw,50px)] font-black text-slate-50
-      leading-[1.1] tracking-[-0.03em]
-      [&>em]:not-italic [&>em]:text-indigo-400
+      font-display text-[clamp(28px,3.8vw,48px)] font-semibold
+      text-fp-text-primary leading-[1.15] tracking-tight
+      [&>em]:not-italic [&>em]:text-fp-accent
       ${className}
     `}>
       {children}
@@ -33,15 +27,13 @@ export function SectionHeading({ children, className = '' }) {
 }
 
 // ── PrimaryButton ─────────────────────────────────────────────────────────────
-// The main indigo CTA button. Has a shimmer sweep on hover.
-// Use `href` to render as an <a> tag instead of <button>.
 export function PrimaryButton({ children, onClick, href, className = '' }) {
   const base = `
-    btn-shimmer relative overflow-hidden inline-flex items-center justify-center
-    px-7 py-3.5 rounded-[13px] font-bold text-[14px] text-white
-    bg-gradient-to-br from-indigo-500 to-violet-600
-    shadow-[0_8px_28px_rgba(99,102,241,0.4)]
-    hover:shadow-[0_12px_36px_rgba(99,102,241,0.55)]
+    lp-btn-shimmer relative overflow-hidden inline-flex items-center justify-center gap-2
+    px-7 py-3.5 rounded-xl font-semibold text-[14px] text-fp-base
+    bg-fp-accent hover:bg-fp-accent-hover
+    shadow-[0_8px_28px_rgba(123,147,255,0.35)]
+    hover:shadow-[0_12px_40px_rgba(123,147,255,0.5)]
     hover:-translate-y-0.5 transition-all duration-200
     cursor-pointer border-none select-none
     ${className}
@@ -50,52 +42,42 @@ export function PrimaryButton({ children, onClick, href, className = '' }) {
   return <button onClick={onClick} className={base}>{children}</button>
 }
 
-// ── GhostButton ───────────────────────────────────────────────────────────────
-// Secondary outlined button.
-export function GhostButton({ children, onClick, className = '' }) {
-  return (
-    <button onClick={onClick} className={`
-      inline-flex items-center justify-center
-      px-6 py-3.5 rounded-[13px] font-semibold text-[14px]
-      text-slate-400 hover:text-slate-100
-      bg-transparent border border-white/[0.08] hover:border-white/20
-      transition-all duration-150 cursor-pointer
-      ${className}
-    `}>
-      {children}
-    </button>
-  )
+// ── SecondaryButton ───────────────────────────────────────────────────────────
+export function SecondaryButton({ children, onClick, href, className = '' }) {
+  const base = `
+    inline-flex items-center justify-center gap-2
+    px-6 py-3.5 rounded-xl font-medium text-[14px]
+    text-fp-text-secondary hover:text-fp-text-primary
+    bg-transparent border border-fp-border hover:border-fp-accent/30
+    transition-all duration-150 cursor-pointer
+    ${className}
+  `
+  if (href) return <a href={href} className={base}>{children}</a>
+  return <button onClick={onClick} className={base}>{children}</button>
 }
 
 // ── CheckItem ─────────────────────────────────────────────────────────────────
-// A checkmark icon + label. Used in Features bullets and Pricing feature lists.
-// variant: 'green' | 'indigo' | 'indigo-soft'
-export function CheckItem({ children, variant = 'green' }) {
-  const map = {
-    'green':      { bg: 'bg-emerald-500/10',  stroke: '#22c55e' },
-    'indigo':     { bg: 'bg-indigo-500/10',   stroke: '#6366f1' },
-    'indigo-soft':{ bg: 'bg-indigo-400/[0.15]', stroke: '#a5b4fc' },
-  }
-  const c = map[variant] || map.green
+export function CheckItem({ children, muted = false }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <div className={`w-[18px] h-[18px] rounded-[5px] flex-shrink-0 flex items-center justify-center ${c.bg}`}>
+    <div className="flex items-start gap-2.5">
+      <div className="w-[18px] h-[18px] rounded flex-shrink-0 flex items-center justify-center bg-fp-accent/15 mt-0.5">
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path d="M1 5L3.5 7.5L9 2" stroke={c.stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M1 5L3.5 7.5L9 2" stroke="var(--color-fp-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
-      <span className="text-[13px] text-slate-500 font-medium">{children}</span>
+      <span className={`text-[13px] font-medium leading-snug ${muted ? 'text-fp-text-tertiary' : 'text-fp-text-secondary'}`}>
+        {children}
+      </span>
     </div>
   )
 }
 
-// ── StarRating ────────────────────────────────────────────────────────────────
-// Renders `count` filled amber stars. Used in testimonial cards.
-export function StarRating({ count = 5 }) {
+// ── Stars ─────────────────────────────────────────────────────────────────────
+export function Stars({ count = 5 }) {
   return (
     <div className="flex gap-[3px]">
       {Array.from({ length: count }).map((_, i) => (
-        <svg key={i} width="12" height="12" viewBox="0 0 12 12" fill="#f59e0b">
+        <svg key={i} width="13" height="13" viewBox="0 0 12 12" fill="var(--color-fp-warning)">
           <path d="M6 1l1.4 2.9 3.1.4-2.3 2.2.6 3.1L6 8.2l-2.8 1.4.6-3.1L1.5 4.3l3.1-.4L6 1z" />
         </svg>
       ))}
@@ -104,36 +86,32 @@ export function StarRating({ count = 5 }) {
 }
 
 // ── WindowChrome ──────────────────────────────────────────────────────────────
-// macOS-style traffic-light dots + fake URL bar. Used in all browser mockups.
-export function WindowChrome({ url = 'app.freeport.dev' }) {
+export function WindowChrome({ url = 'app.freeport.dev', dark = true }) {
   return (
-    <div className="flex items-center gap-2 bg-[#161b27] px-4 py-3 border-b border-white/[0.05]">
+    <div className={`flex items-center gap-2 px-4 py-3 border-b ${dark ? 'bg-fp-surface border-fp-border' : 'bg-fp-portal-raised border-fp-portal-border'}`}>
       <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
       <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
       <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
-      <div className="flex-1 ml-2 bg-white/[0.04] rounded-md h-[22px] flex items-center px-2.5">
-        <span className="font-mono text-[11px] text-slate-600">{url}</span>
+      <div className={`flex-1 ml-2 rounded-md h-[22px] flex items-center px-2.5 ${dark ? 'bg-fp-raised' : 'bg-fp-portal-surface border border-fp-portal-border'}`}>
+        <span className={`font-mono text-[11px] ${dark ? 'text-fp-text-tertiary' : 'text-fp-portal-text-tertiary'}`}>{url}</span>
       </div>
     </div>
   )
 }
 
 // ── LogoMark ──────────────────────────────────────────────────────────────────
-// Freeport icon + wordmark. Used in Nav and Footer.
-export function LogoMark({ size = 30, showName = true }) {
+export function LogoMark({ size = 30 }) {
   return (
     <div className="flex items-center gap-2.5">
       <div
-        className="rounded-[9px] flex-shrink-0 bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20"
+        className="rounded-lg flex-shrink-0 bg-fp-accent flex items-center justify-center"
         style={{ width: size, height: size }}
       >
-        <svg width={size * 0.47} height={size * 0.47} viewBox="0 0 24 24" fill="white">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-        </svg>
+        <span className="font-bold text-fp-base" style={{ fontSize: size * 0.37, lineHeight: 1, letterSpacing: '-0.03em' }}>FP</span>
       </div>
-      {showName && (
-        <span className="font-black text-[15px] text-slate-50 tracking-[-0.03em]">Freeport</span>
-      )}
+      <span className="font-display font-medium text-fp-text-primary tracking-tight" style={{ fontSize: size * 0.57 }}>
+        Freeport
+      </span>
     </div>
   )
 }

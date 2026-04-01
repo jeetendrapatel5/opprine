@@ -1,141 +1,190 @@
 'use client'
-// ─────────────────────────────────────────────────────────────────────────────
 // components/landing/Hero.jsx
 // ─────────────────────────────────────────────────────────────────────────────
-import { HERO_BADGE, HERO_LINE_1, HERO_TYPED, HERO_SUBTEXT, HERO_TRUST } from './data'
-import { PrimaryButton, GhostButton, WindowChrome } from './ui'
-import { useTypewriter } from './hooks'
+// Two-column hero: copy left, product visual right.
+// WHY two-column: Centered single-column heroes feel like presentations.
+// Two-column heroes feel like products — the visual is already there, already
+// real. The visitor registers product AND copy simultaneously, which reduces
+// time-to-comprehension and increases conversion.
+//
+// The dashboard mockup shows the freelancer's world (dark, indigo accents).
+// Below it: a small portal notification chip showing "client viewed portal"
+// — the specific moment the freelancer most wants to see.
+// ─────────────────────────────────────────────────────────────────────────────
+import { HERO_PRE, HERO_HEADLINE_1, HERO_HEADLINE_2, HERO_SUB, HERO_CTA, HERO_TRUST } from './data'
+import { PrimaryButton, SecondaryButton, WindowChrome } from './ui'
 
-// ── DashboardMockup ───────────────────────────────────────────────────────────
-// The browser window preview that floats below the headline.
-// All values here are visual-only and purely hardcoded for appearance.
+// ── Dashboard Mockup ──────────────────────────────────────────────────────────
 function DashboardMockup() {
-  const statCells = [
-    { n: '4', label: 'Total',  color: 'text-indigo-400'  },
-    { n: '2', label: 'Active', color: 'text-emerald-400' },
-    { n: '1', label: 'Done',   color: 'text-violet-400'  },
-  ]
-  const projectRows = [
-    { pct: 62,  color: 'bg-emerald-500' },
-    { pct: 85,  color: 'bg-indigo-500'  },
-    { pct: 100, color: 'bg-emerald-500' },
-  ]
-
   return (
-    <div className="
-      rounded-[20px] overflow-hidden border border-white/[0.08]
-      shadow-[0_40px_120px_rgba(0,0,0,0.7),0_0_0_1px_rgba(99,102,241,0.08)]
-      bg-[#0d1117] relative
-    ">
-      <WindowChrome url="app.freeport.dev/dashboard" />
+    <div className="relative">
 
-      <div className="flex" style={{ height: 320 }}>
-        {/* Sidebar */}
-        <div className="w-12 bg-[#0d1117] border-r border-white/[0.05] flex flex-col items-center gap-3 py-4">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="white"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>
-          </div>
-          {[0,1,2,3].map(i => <div key={i} className={`w-5 h-5 rounded-md ${i === 0 ? 'bg-indigo-500/20' : 'bg-white/[0.04]'}`} />)}
-        </div>
+      {/* Main dashboard window */}
+      <div className="
+        rounded-[18px] overflow-hidden border border-fp-border
+        shadow-[0_40px_100px_rgba(0,0,0,0.8),0_0_0_1px_rgba(123,147,255,0.06)]
+        bg-fp-base
+      ">
+        <WindowChrome url="app.freeport.dev/dashboard" dark={true} />
 
-        {/* Main content */}
-        <div className="flex-1 p-5 overflow-hidden">
-          {/* Header skeleton */}
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <div className="h-3.5 w-44 rounded bg-white/10 mb-1.5" />
-              <div className="h-2 w-28 rounded bg-white/[0.04]" />
-            </div>
-            <div className="h-7 w-24 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-600 opacity-80" />
+        {/* Dashboard content */}
+        <div className="p-5">
+
+          {/* Greeting */}
+          <div className="mb-5">
+            <div className="h-3 w-52 rounded-sm bg-fp-text-primary/10 mb-1.5" />
+            <div className="h-2 w-36 rounded-sm bg-fp-text-tertiary/20" />
           </div>
 
-          {/* Stat cells */}
+          {/* Stats row */}
           <div className="grid grid-cols-3 gap-2 mb-4">
-            {statCells.map(s => (
-              <div key={s.label} className="bg-white/[0.03] rounded-xl p-2.5 border border-white/[0.05]">
-                <div className={`text-lg font-black ${s.color}`}>{s.n}</div>
-                <div className="text-[10px] text-slate-600">{s.label}</div>
+            {[
+              { n: '4', label: 'Projects', color: 'text-fp-accent' },
+              { n: '2', label: 'Active',   color: 'text-fp-success' },
+              { n: '1', label: 'Done',     color: 'text-fp-text-secondary' },
+            ].map(s => (
+              <div key={s.label} className="bg-fp-surface border border-fp-border rounded-xl p-3">
+                <div className={`font-display text-2xl font-semibold ${s.color} leading-none mb-1`}>{s.n}</div>
+                <div className="text-[10px] text-fp-text-tertiary uppercase tracking-wide font-semibold">{s.label}</div>
               </div>
             ))}
           </div>
 
           {/* Project rows */}
-          {projectRows.map((p, i) => (
-            <div key={i} className="bg-white/[0.02] rounded-xl p-2.5 mb-1.5 border border-white/[0.04] flex items-center gap-2.5">
-              <div className={`w-[3px] h-7 rounded flex-shrink-0 ${p.color} opacity-80`} />
+          {[
+            { name: 'Luminary Co. Website', pct: 85, status: 'Active',    statusClass: 'text-fp-accent bg-fp-accent-muted' },
+            { name: 'Mehta & Sons Rebrand', pct: 62, status: 'Active',    statusClass: 'text-fp-accent bg-fp-accent-muted' },
+            { name: 'Kiran\'s Portfolio',   pct: 100, status: 'Complete', statusClass: 'text-fp-success bg-fp-success/10' },
+          ].map((p, i) => (
+            <div key={i} className="bg-fp-surface border border-fp-border rounded-xl p-3 mb-2 flex items-center gap-3">
               <div className="flex-1 min-w-0">
-                <div className="h-2 w-3/5 rounded-sm bg-white/[0.12] mb-1.5" />
-                <div className="h-[3px] bg-white/[0.05] rounded-full overflow-hidden">
-                  <div className={`h-full ${p.color} rounded-full opacity-80`} style={{ width: `${p.pct}%` }} />
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[12px] font-medium text-fp-text-primary truncate">{p.name}</span>
+                  <span className={`text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${p.statusClass}`}>{p.status}</span>
+                </div>
+                <div className="h-1.5 bg-fp-border rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${p.pct}%`, background: p.pct === 100 ? 'var(--color-fp-success)' : 'var(--color-fp-accent)' }}
+                  />
                 </div>
               </div>
-              <div className={`h-[7px] w-7 rounded-full ${p.pct === 100 ? 'bg-emerald-500/20' : 'bg-indigo-500/20'}`} />
             </div>
           ))}
         </div>
       </div>
 
-      {/* Glow line at bottom */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/5 h-px bg-gradient-to-r from-transparent via-indigo-500/60 to-transparent" />
+      {/* Floating notification chip — the money moment */}
+      {/* Shows exactly what the freelancer most wants to see */}
+      <div className="
+        absolute -bottom-4 -right-4 sm:-bottom-5 sm:-right-6
+        bg-fp-surface border border-fp-border rounded-xl px-4 py-3
+        shadow-[0_12px_40px_rgba(0,0,0,0.6)]
+        flex items-center gap-3
+        animate-float-chip
+      ">
+        <div className="w-2 h-2 rounded-full bg-fp-success flex-shrink-0" />
+        <div>
+          <p className="text-fp-text-primary text-[11px] font-semibold leading-none mb-0.5">
+            Client viewed the portal
+          </p>
+          <p className="text-fp-text-tertiary text-[10px]">2 hours ago · Luminary Co.</p>
+        </div>
+      </div>
+
+      {/* Second floating chip — approval */}
+      <div className="
+        absolute -top-4 -left-4 sm:-top-5 sm:-left-6
+        bg-fp-surface border border-fp-success/20 rounded-xl px-4 py-3
+        shadow-[0_12px_40px_rgba(0,0,0,0.6)]
+        flex items-center gap-3
+        animate-float-chip-2
+      ">
+        <div className="w-2 h-2 rounded-full bg-fp-success flex-shrink-0 animate-pulse" />
+        <div>
+          <p className="text-fp-success text-[11px] font-semibold leading-none mb-0.5">
+            Milestone approved
+          </p>
+          <p className="text-fp-text-tertiary text-[10px]">Homepage Design · just now</p>
+        </div>
+      </div>
+
     </div>
   )
 }
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
 export default function Hero({ onCTA }) {
-  const typed = useTypewriter(HERO_TYPED)
-
   return (
-    <section className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden pt-20">
+    <section className="min-h-screen flex items-center relative overflow-hidden pt-24 pb-16">
 
-      {/* Background glow orbs */}
-      <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[700px] h-[700px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%)', animation: 'glow-pulse 6s ease-in-out infinite' }} />
-      <div className="absolute top-[30%] left-[15%] w-[300px] h-[300px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)', animation: 'glow-pulse 8s ease-in-out infinite 2s' }} />
-      <div className="absolute top-[20%] right-[10%] w-[250px] h-[250px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.07) 0%, transparent 70%)' }} />
+      {/* Background glow */}
+      <div
+        className="absolute top-0 right-[20%] w-[600px] h-[600px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(123,147,255,0.08) 0%, transparent 70%)' }}
+      />
+      <div
+        className="absolute bottom-0 left-[10%] w-[400px] h-[400px] rounded-full pointer-events-none"
+        style={{ background: 'radial-gradient(circle, rgba(123,147,255,0.05) 0%, transparent 70%)' }}
+      />
 
-      {/* Subtle grid */}
-      <div className="absolute inset-0 pointer-events-none"
-        style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px)', backgroundSize: '60px 60px' }} />
+      {/* Very subtle grid */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
+          backgroundSize: '64px 64px',
+        }}
+      />
 
-      {/* Copy block */}
-      <div className="relative z-10 text-center max-w-[860px] px-6">
+      <div className="max-w-[1120px] mx-auto px-6 w-full relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/25 rounded-full px-4 py-1.5 mb-8">
-          <span className="bg-gradient-to-r from-indigo-500 to-violet-600 rounded-full px-2.5 py-0.5 text-[10px] font-black text-white uppercase tracking-[0.06em]">New</span>
-          <span className="text-[12px] text-slate-400 font-medium">{HERO_BADGE}</span>
+          {/* ── Left: Copy ── */}
+          <div>
+            {/* Pre-headline */}
+            <p className="text-fp-accent text-[11px] font-bold uppercase tracking-[0.2em] mb-5">
+              {HERO_PRE}
+            </p>
+
+            {/* Main headline — two lines, one-two punch */}
+            {/* First line: stated truth. Second line: the problem. */}
+            <h1 className="font-display font-semibold leading-[1.1] tracking-tight mb-6">
+              <span className="text-fp-text-primary block" style={{ fontSize: 'clamp(38px, 5vw, 60px)' }}>
+                {HERO_HEADLINE_1}
+              </span>
+              <span className="text-fp-accent block" style={{ fontSize: 'clamp(38px, 5vw, 60px)' }}>
+                {HERO_HEADLINE_2}
+              </span>
+            </h1>
+
+            {/* Sub-headline */}
+            <p className="text-fp-text-secondary text-[16px] leading-[1.8] mb-8 max-w-[460px]">
+              {HERO_SUB}
+            </p>
+
+            {/* CTAs */}
+            <div className="flex items-center gap-3 flex-wrap mb-5">
+              <PrimaryButton onClick={onCTA}>
+                {HERO_CTA}
+              </PrimaryButton>
+              <SecondaryButton href="#how-it-works">
+                See how it works →
+              </SecondaryButton>
+            </div>
+
+            {/* Trust line */}
+            <p className="text-fp-text-tertiary text-[12px]">
+              {HERO_TRUST}
+            </p>
+          </div>
+
+          {/* ── Right: Product mockup ── */}
+          <div className="relative hidden lg:block">
+            <DashboardMockup />
+          </div>
+
         </div>
-
-        {/* Headline */}
-        <h1 className="text-[clamp(42px,6.5vw,80px)] font-black text-slate-50 leading-[1.08] tracking-[-0.03em] mb-2">
-          {HERO_LINE_1}
-        </h1>
-
-        {/* Typewriter line */}
-        <h1 className="text-[clamp(42px,6.5vw,80px)] font-black leading-[1.08] tracking-[-0.03em] mb-8" style={{ minHeight: '1.2em' }}>
-          <span className="shimmer-text">a {typed}</span>
-          <span className="text-indigo-400 font-normal" style={{ animation: 'blink 1s step-end infinite' }}>|</span>
-        </h1>
-
-        <p className="text-[clamp(15px,1.8vw,19px)] text-slate-500 font-normal leading-[1.75] max-w-[540px] mx-auto mb-10 tracking-[-0.01em]">
-          {HERO_SUBTEXT}
-        </p>
-
-        {/* CTAs */}
-        <div className="flex items-center justify-center gap-3 flex-wrap">
-          <PrimaryButton onClick={onCTA}>Get started free — no card needed</PrimaryButton>
-          <GhostButton>▶ Watch 90-sec demo</GhostButton>
-        </div>
-
-        <p className="mt-4 text-[12px] text-slate-700">{HERO_TRUST}</p>
-      </div>
-
-      {/* Floating dashboard preview */}
-      <div className="relative z-10 w-full max-w-[1000px] mx-auto mt-16 px-6" style={{ animation: 'float 6s ease-in-out infinite' }}>
-        <DashboardMockup />
       </div>
     </section>
   )

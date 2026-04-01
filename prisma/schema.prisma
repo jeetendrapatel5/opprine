@@ -104,7 +104,7 @@ model Milestone {
   project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
   milestoneUpdates MilestoneUpdate[]
   messages         MilestoneMessage[]
-  invoices         Invoice[] 
+  invoices         Invoice[]
 }
 
 model MilestoneUpdate {
