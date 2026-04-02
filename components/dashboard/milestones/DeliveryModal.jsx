@@ -1,28 +1,29 @@
 // components/dashboard/milestones/DeliveryModal.jsx
 // ─────────────────────────────────────────────────────────────────────────────
-// The modal the freelancer fills out before sending a milestone to the client
-// for review. It sets status → IN_REVIEW and populates the delivery card
-// fields: headline, summary, checklist, and an optional file highlight.
+// The modal the freelancer fills out before sending a milestone for review.
 //
-// Design: Dark modal (bg-fp-raised) on a dark backdrop (bg-black/60 blur).
-// This is consistent — we're inside the dark dashboard world.
+// EXTENDED: Now includes the Decision Map annotation editor.
+// When the freelancer selects an image file as the delivery highlight,
+// a new "Decision Notes" section appears below the file picker.
+// They click anywhere on the image to place a numbered pin, then fill in
+// a title and explanation for each pin.
 //
-// The modal header is sticky so the freelancer always sees which milestone
-// they're submitting a review for, even when scrolled down.
-//
-// The checklist is limited to 3 items intentionally. A 10-item checklist
-// overwhelms a non-technical client and gets ignored. Three specific things
-// to check = focused, actionable feedback.
+// Pins are stored as an array of { id, x, y, title, note } objects.
+// x and y are decimal percentages (0.0–1.0) — resolution-independent.
+// They are sent to the API as deliveryAnnotations and stored as JSON in the DB.
 // ─────────────────────────────────────────────────────────────────────────────
 'use client'
 
-import { useState } from 'react'
-import { X, Send, Loader2, ImageIcon, Plus, Trash2 } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { X, Send, Loader2, ImageIcon, Plus, Trash2, Pencil } from 'lucide-react'
 import axios from 'axios'
 
 const MAX_CHECKLIST_ITEMS = 3
+const MAX_PINS            = 8
 
 export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, onClose }) {
+
+  // ── Existing state ─────────────────────────────────────────────────────────
   const [headline,       setHeadline]       = useState(milestone.deliveryHeadline ?? '')
   const [summary,        setSummary]        = useState(milestone.deliverySummary  ?? '')
   const [selectedFileId, setSelectedFileId] = useState(null)
@@ -32,21 +33,94 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
     (milestone.deliveryChecklist ?? []).filter(item => item.trim() !== '')
   )
 
+  // ── New state: annotations ─────────────────────────────────────────────────
+  //
+  // pins: the array of annotation objects for the currently selected image.
+  // Pre-populated from milestone.deliveryAnnotations if they exist — this lets
+  // the freelancer re-open the modal on an already-submitted milestone and see
+  // their previous pins.
+  //
+  // editingPinId: the id of the pin whose inline form is currently open.
+  // null means no form is open.
+  //
+  // isImageLoaded: true after the delivery image fires its onLoad event.
+  // We don't allow clicks (and don't show pins) until the image is loaded,
+  // because getBoundingClientRect() returns wrong values on an unloaded image.
+  const [pins,          setPins]          = useState(
+    Array.isArray(milestone.deliveryAnnotations) ? milestone.deliveryAnnotations : []
+  )
+  const [editingPinId,  setEditingPinId]  = useState(null)
+  const [isImageLoaded, setIsImageLoaded] = useState(false)
+
+  // imageContainerRef — attached to the div wrapping the image.
+  // Used to compute percentage coordinates from a mouse click.
+  const imageContainerRef = useRef(null)
+
+  // Derived: the full file object matching the selected radio button
   const selectedFile = fileOptions.find(f => f.id === selectedFileId) ?? null
 
+  // ── File selection ─────────────────────────────────────────────────────────
+  // Wraps setSelectedFileId to also reset the image-loaded flag.
+  // We reset isImageLoaded because the new image needs to fire onLoad
+  // before we allow clicks.
+  const handleFileSelect = (fileId) => {
+    setSelectedFileId(fileId)
+    setIsImageLoaded(false)
+  }
+
+  // ── Checklist helpers ──────────────────────────────────────────────────────
   const addChecklistItem = () => {
     if (checklist.length >= MAX_CHECKLIST_ITEMS) return
     setChecklist(prev => [...prev, ''])
   }
-
   const updateChecklistItem = (index, value) => {
     setChecklist(prev => prev.map((item, i) => i === index ? value : item))
   }
-
   const removeChecklistItem = (index) => {
     setChecklist(prev => prev.filter((_, i) => i !== index))
   }
 
+  // ── Pin helpers ────────────────────────────────────────────────────────────
+
+  // handleImageClick — fires when the freelancer clicks anywhere on the image.
+  // Calculates the click position as a percentage of the image dimensions.
+  // Clamps to 0.02–0.98 so pins never sit on the very edge.
+  // Creates a new pin and immediately opens its edit form.
+  const handleImageClick = (e) => {
+    if (!isImageLoaded)             return  // image not ready
+    if (pins.length >= MAX_PINS)    return  // at cap
+    if (!imageContainerRef.current) return
+
+    const rect = imageContainerRef.current.getBoundingClientRect()
+    const rawX = (e.clientX - rect.left)  / rect.width
+    const rawY = (e.clientY - rect.top)   / rect.height
+    const x    = Math.max(0.02, Math.min(0.98, rawX))
+    const y    = Math.max(0.02, Math.min(0.98, rawY))
+
+    const newPin = {
+      id:    `ann_${Date.now()}`,
+      x,
+      y,
+      title: '',
+      note:  '',
+    }
+
+    setPins(prev => [...prev, newPin])
+    setEditingPinId(newPin.id)
+  }
+
+  // updatePin — updates a single field on a single pin by its id.
+  const updatePin = (pinId, field, value) => {
+    setPins(prev => prev.map(p => p.id === pinId ? { ...p, [field]: value } : p))
+  }
+
+  // removePin — deletes a pin and closes its edit form if open.
+  const removePin = (pinId) => {
+    setPins(prev => prev.filter(p => p.id !== pinId))
+    if (editingPinId === pinId) setEditingPinId(null)
+  }
+
+  // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!headline.trim()) return
@@ -56,14 +130,20 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
         .map(item => item.trim())
         .filter(item => item !== '')
 
+      // Only send annotations when an image file is selected.
+      // If the freelancer switches to a non-image or no file, clear annotations.
+      const isImageSelected = selectedFile?.fileType?.startsWith('image/')
+      const annotationsToSend = isImageSelected ? pins : null
+
       const response = await axios.patch(`/api/milestones/${milestone.id}`, {
-        status:            'IN_REVIEW',
-        deliveryHeadline:  headline.trim(),
-        deliverySummary:   summary.trim(),
-        deliveryChecklist: cleanedChecklist,
-        deliveryFileUrl:   selectedFile?.fileUrl  ?? null,
-        deliveryFileName:  selectedFile?.fileName ?? null,
-        deliveryFileType:  selectedFile?.fileType ?? null,
+        status:              'IN_REVIEW',
+        deliveryHeadline:    headline.trim(),
+        deliverySummary:     summary.trim(),
+        deliveryChecklist:   cleanedChecklist,
+        deliveryFileUrl:     selectedFile?.fileUrl  ?? null,
+        deliveryFileName:    selectedFile?.fileName ?? null,
+        deliveryFileType:    selectedFile?.fileType ?? null,
+        deliveryAnnotations: annotationsToSend,
       })
 
       onSuccess(response.data)
@@ -75,7 +155,12 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
     }
   }
 
-  // Shared input class — used for all text inputs inside the modal
+  // ── Derived values ─────────────────────────────────────────────────────────
+  // Count pins that have no explanation — shown as a warning (not a blocker).
+  const pinsWithNoNote  = pins.filter(p => !p.note?.trim())
+  const showAnnotations = selectedFile?.fileType?.startsWith('image/')
+
+  // ── Shared input class ─────────────────────────────────────────────────────
   const inputClass = `
     w-full bg-fp-base border border-fp-border text-fp-text-primary
     text-sm rounded-lg px-3 py-2.5
@@ -85,22 +170,19 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
   `
 
   return (
-    // Backdrop — clicking outside (on the backdrop itself) closes the modal
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      {/* Modal box */}
       <div className="
         bg-fp-raised border border-fp-border rounded-xl shadow-2xl
-        w-full max-w-lg max-h-[90vh] overflow-y-auto
+        w-full max-w-xl max-h-[90vh] overflow-y-auto
       ">
 
         {/* ── Sticky header ── */}
-        {/* sticky top-0 so the milestone name stays visible while scrolling */}
         <div className="
           flex items-center justify-between px-5 py-4
-          border-b border-fp-border bg-fp-raised sticky top-0 z-10
+          border-b border-fp-border bg-fp-raised sticky top-0 z-90
         ">
           <div>
             <h2 className="text-fp-text-primary text-sm font-semibold">
@@ -125,7 +207,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
         {/* ── Form ── */}
         <form onSubmit={handleSubmit} className="px-5 py-5 space-y-5">
 
-          {/* Headline — required */}
+          {/* Headline */}
           <div>
             <label className="block text-[10px] font-bold text-fp-text-secondary uppercase tracking-widest mb-1.5">
               Headline <span className="text-fp-danger">*</span>
@@ -143,7 +225,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             </p>
           </div>
 
-          {/* Summary — optional */}
+          {/* Summary */}
           <div>
             <label className="block text-[10px] font-bold text-fp-text-secondary uppercase tracking-widest mb-1.5">
               Summary
@@ -158,7 +240,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             />
           </div>
 
-          {/* Checklist — optional, max 3 items */}
+          {/* Checklist */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-[10px] font-bold text-fp-text-secondary uppercase tracking-widest">
@@ -178,7 +260,6 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             <div className="space-y-2">
               {checklist.map((item, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  {/* Visual checkbox — decorative only, shows client experience */}
                   <div className="w-4 h-4 rounded border-2 border-fp-border shrink-0" />
                   <input
                     type="text"
@@ -219,7 +300,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             )}
           </div>
 
-          {/* File highlight — optional */}
+          {/* File highlight */}
           <div>
             <label className="block text-[10px] font-bold text-fp-text-secondary uppercase tracking-widest mb-1.5">
               <ImageIcon className="w-3.5 h-3.5 inline mr-1" />
@@ -239,7 +320,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
                     name="file"
                     value=""
                     checked={selectedFileId === null}
-                    onChange={() => setSelectedFileId(null)}
+                    onChange={() => handleFileSelect(null)}
                     className="accent-fp-accent"
                   />
                   <span className="text-sm text-fp-text-tertiary">No file highlight</span>
@@ -252,7 +333,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
                       name="file"
                       value={f.id}
                       checked={selectedFileId === f.id}
-                      onChange={() => setSelectedFileId(f.id)}
+                      onChange={() => handleFileSelect(f.id)}
                       className="accent-fp-accent"
                     />
                     <span className="
@@ -270,21 +351,244 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
             )}
           </div>
 
-          {/* Image preview — shown when an image file is selected */}
-          {selectedFile?.fileType?.startsWith('image/') && (
-            <div className="rounded-lg overflow-hidden border border-fp-border">
-              <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest px-3 py-2 bg-fp-surface">
-                Preview
+          {/* ── Decision Notes — only shown when an image file is selected ── */}
+          {showAnnotations && (
+            <div>
+
+              {/* Section heading */}
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-[10px] font-bold text-fp-text-secondary uppercase tracking-widest">
+                  Decision Notes
+                </label>
+                {/* Pin count indicator */}
+                {pins.length > 0 && (
+                  <span className="text-[10px] font-bold text-fp-text-tertiary">
+                    {pins.length} / {MAX_PINS} notes added
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] text-fp-text-tertiary mb-3">
+                Click anywhere on the image to explain a decision
               </p>
-              <img
-                src={selectedFile.fileUrl}
-                alt={selectedFile.fileName}
-                className="w-full max-h-40 object-cover"
-              />
+
+              {/* Annotatable image container
+                  ─────────────────────────────────────────────────────────────
+                  overflow-hidden + rounded-xl clips the image corners cleanly.
+                  Pins near the edges will be partially clipped — acceptable
+                  since we clamp coordinates to 0.02–0.98.
+                  position: relative is essential for absolute pin positioning.
+                  cursor-crosshair signals "you can click here to place pins".
+              */}
+              <div
+                ref={imageContainerRef}
+                className="relative overflow-hidden rounded-xl border border-fp-border cursor-crosshair"
+                onClick={handleImageClick}
+              >
+                {/* Loading placeholder — shown while image loads */}
+                {!isImageLoaded && (
+                  <div className="w-full h-40 flex items-center justify-center bg-fp-surface">
+                    <p className="text-xs text-fp-text-tertiary">Loading image...</p>
+                  </div>
+                )}
+
+                {/* The delivery image */}
+                {/* hidden while loading so the placeholder shows instead */}
+                <img
+                  src={selectedFile.fileUrl}
+                  alt={selectedFile.fileName}
+                  className={`w-full select-none ${isImageLoaded ? '' : 'hidden'}`}
+                  onLoad={() => setIsImageLoaded(true)}
+                  // Prevent browser drag of the image, which would interfere
+                  // with click coordinate calculation
+                  draggable={false}
+                />
+
+                {/* Render pins on top of the image */}
+                {isImageLoaded && pins.map((pin, index) => {
+                  const isActive = editingPinId === pin.id
+                  return (
+                    <div
+                      key={pin.id}
+                      // Positions the pin's anchor point at the exact coordinates
+                      className="absolute"
+                      style={{ left: `${pin.x * 100}%`, top: `${pin.y * 100}%` }}
+                    >
+                      {/* Pulse ring — centered on the anchor point via translate */}
+                      <div
+                        className={`
+                          absolute w-9 h-9 rounded-full border-2 opacity-60 animate-pulse
+                          ${isActive ? 'border-indigo-300' : 'border-indigo-400'}
+                        `}
+                        style={{ transform: 'translate(-50%, -50%)' }}
+                      />
+
+                      {/* Number circle — on top of the ring, z-10 */}
+                      <div
+                        className={`
+                          absolute w-7 h-7 rounded-full flex items-center justify-center
+                          text-xs font-bold text-white cursor-pointer z-10
+                          transition-transform duration-150 hover:scale-110
+                          ${isActive ? 'bg-indigo-700 ring-2 ring-indigo-300' : 'bg-indigo-600'}
+                        `}
+                        style={{ transform: 'translate(-50%, -50%)' }}
+                        onClick={(e) => {
+                          // stopPropagation prevents the image container's onClick
+                          // from firing and creating a new pin at this location
+                          e.stopPropagation()
+                          setEditingPinId(isActive ? null : pin.id)
+                        }}
+                      >
+                        {index + 1}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Instruction text — only shown after image loads */}
+              {isImageLoaded && (
+                <p className="text-[10px] text-fp-text-tertiary mt-1.5">
+                  {pins.length >= MAX_PINS
+                    ? 'Maximum 8 notes reached. Delete one to add another.'
+                    : 'Click on the image to pin a note. Your client will see these as interactive highlights on the delivery.'
+                  }
+                </p>
+              )}
+
+              {/* Pin list — compact rows with edit/delete actions */}
+              {pins.length > 0 && (
+                <div className="mt-3 space-y-1.5">
+                  {pins.map((pin, index) => {
+                    const isEditing = editingPinId === pin.id
+                    return (
+                      <div key={pin.id}>
+
+                        {/* Collapsed pin row */}
+                        <div className="
+                          flex items-center gap-2 p-2 rounded-lg
+                          border border-fp-border bg-fp-raised
+                          text-sm
+                        ">
+                          {/* Pin number badge */}
+                          <span className="
+                            w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px]
+                            font-bold flex items-center justify-center shrink-0
+                          ">
+                            {index + 1}
+                          </span>
+
+                          {/* Pin title — shows "Untitled" if empty */}
+                          <span className="flex-1 text-fp-text-secondary truncate">
+                            {pin.title || <span className="text-fp-text-tertiary italic">Untitled</span>}
+                          </span>
+
+                          {/* Edit button */}
+                          <button
+                            type="button"
+                            onClick={() => setEditingPinId(isEditing ? null : pin.id)}
+                            className="
+                              text-[10px] font-bold text-fp-accent hover:text-fp-accent-hover
+                              transition-colors duration-150 shrink-0
+                            "
+                          >
+                            {isEditing ? 'Close' : 'Edit'}
+                          </button>
+
+                          {/* Delete button */}
+                          <button
+                            type="button"
+                            onClick={() => removePin(pin.id)}
+                            className="
+                              text-fp-text-tertiary hover:text-fp-danger
+                              transition-colors duration-150 shrink-0
+                            "
+                            title="Remove this pin"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Inline edit form — shown when this pin is being edited */}
+                        {isEditing && (
+                          <div className="
+                            bg-fp-accent-muted border border-fp-accent/20
+                            rounded-xl p-4 mt-1 space-y-3
+                          ">
+                            {/* Label input */}
+                            <div>
+                              <label className="
+                                block text-[10px] font-bold text-fp-text-secondary
+                                uppercase tracking-widest mb-1
+                              ">
+                                Label
+                              </label>
+                              <input
+                                type="text"
+                                value={pin.title}
+                                onChange={(e) => updatePin(pin.id, 'title', e.target.value)}
+                                maxLength={40}
+                                placeholder="e.g. Navigation, Color palette, Mobile layout"
+                                className={inputClass}
+                              />
+                              <p className="text-[10px] text-fp-text-tertiary mt-1">
+                                {pin.title.length}/40
+                              </p>
+                            </div>
+
+                            {/* Explanation textarea */}
+                            <div>
+                              <label className="
+                                block text-[10px] font-bold text-fp-text-secondary
+                                uppercase tracking-widest mb-1
+                              ">
+                                Explanation
+                              </label>
+                              <textarea
+                                value={pin.note}
+                                onChange={(e) => updatePin(pin.id, 'note', e.target.value)}
+                                maxLength={220}
+                                rows={3}
+                                placeholder="Why did you make this decision? Write for your client, not for yourself. Plain English only."
+                                className={`${inputClass} resize-none`}
+                              />
+                              <p className="text-[10px] text-fp-text-tertiary mt-1">
+                                {pin.note.length}/220
+                              </p>
+                            </div>
+
+                            {/* Save button — closes the form, pin stays in local state */}
+                            <button
+                              type="button"
+                              onClick={() => setEditingPinId(null)}
+                              className="
+                                text-xs font-bold
+                                bg-fp-accent hover:bg-fp-accent-hover text-fp-base
+                                px-3 py-1.5 rounded-lg transition-colors duration-150
+                              "
+                            >
+                              Save note
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Empty note warning — inline, not blocking submission */}
+              {/* Only shown if at least one pin has no explanation */}
+              {pinsWithNoNote.length > 0 && (
+                <p className="text-xs text-fp-warning mt-2">
+                  {pinsWithNoNote.length} of your notes {pinsWithNoNote.length === 1 ? 'has' : 'have'} no explanation. Your client will see the pin but nothing to read.
+                </p>
+              )}
+
             </div>
           )}
+          {/* ── End Decision Notes ── */}
 
-          {/* ── Actions ── */}
+          {/* Actions */}
           <div className="flex gap-3 pt-1">
             <button
               type="button"

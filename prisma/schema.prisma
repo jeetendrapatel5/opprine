@@ -96,6 +96,7 @@ model Milestone {
   deliveryFileName  String?                        // NEW — original filename shown to client
   deliveryFileType  String?                        // NEW — MIME type e.g. "image/png"
   deliveryChecklist String[]    @default([])       // NEW — checklist items client should verify
+  deliveryAnnotations Json?
          
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt

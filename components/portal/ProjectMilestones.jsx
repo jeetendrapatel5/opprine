@@ -4,21 +4,13 @@
 // Shows every milestone with its status, and when a milestone is IN_REVIEW,
 // replaces the simple row with a full DeliveryCard for approve/reject.
 //
-// Architecture: DeliveryCard is defined in this file, not a separate file.
-// It only exists in this context so keeping it co-located is correct.
-//
-// DESIGN — Portal theme (warm white), NOT dark:
-// Timeline spine: fp-portal-border (subtle warm beige line)
-// Completed node: filled amber circle — "✓ done, paid for, delivered"
-// IN_PROGRESS node: pulsing amber — "being worked on right now"
-// IN_REVIEW node: pulsing accent — "needs your eyes"
-// PENDING node: empty circle — "coming soon"
-//
-// DeliveryCard design:
-// - fp-portal-surface card with an amber top border — premium presentation
-// - Fraunces headline — this is the "cover" of the deliverable
-// - Checklist items are interactive checkboxes — amber when checked
-// - Approve = fp-portal-success (green). Request Changes = ghost danger.
+// EXTENDED: DeliveryCard now includes the Decision Map annotation viewer.
+// When a delivery image has annotations (deliveryAnnotations is a non-empty
+// array), the image renders with interactive numbered pins. Each pin opens
+// a popover showing the decision title and explanation. Viewed pins turn green.
+// When all pins have been viewed, a completion message appears above the
+// approve button — a psychological signal that the client has done due
+// diligence and is ready to approve.
 // ─────────────────────────────────────────────────────────────────────────────
 'use client'
 
@@ -56,7 +48,6 @@ function formatDate(date) {
 }
 
 // ── Timeline nodes ────────────────────────────────────────────────────────────
-// All nodes are w-6 h-6 (24px) — the spine sits at left: 11px (center of 24px)
 
 function CompletedNode() {
   return (
@@ -79,7 +70,6 @@ function InProgressNode() {
 
 function InReviewNode() {
   return (
-    // Faster pulse than IN_PROGRESS — "needs your action NOW"
     <div className="relative w-6 h-6 flex items-center justify-center shrink-0">
       <span className="absolute inline-flex w-full h-full rounded-full bg-fp-portal-accent opacity-30 animate-ping" />
       <span className="relative inline-flex w-3 h-3 rounded-full bg-fp-portal-accent" />
@@ -90,6 +80,226 @@ function InReviewNode() {
 function PendingNode() {
   return (
     <div className="w-6 h-6 rounded-full border-2 border-fp-portal-border bg-fp-portal-bg shrink-0" />
+  )
+}
+
+// ── AnnotationViewer ──────────────────────────────────────────────────────────
+// The read-only pin interface shown on the client portal.
+// Renders an image with interactive numbered pins.
+// Clicking a pin opens a popover. Viewed pins turn green.
+// When all pins have been viewed, shows a completion message.
+//
+// Props:
+//   imageUrl    — string — Cloudinary URL of the delivery image
+//   imageName   — string — shown in the footer caption
+//   annotations — array  — [{ id, x, y, title, note }] — never null here,
+//                          caller guards with `annotations.length > 0` check
+
+function AnnotationViewer({ imageUrl, imageName, annotations }) {
+
+  // viewedPins — Set of pin IDs the client has clicked (opened at least once).
+  // Once a pin ID is in this set, the pin renders green.
+  const [viewedPins,  setViewedPins]  = useState(new Set())
+
+  // activePinId — the pin whose popover is currently open.
+  // null means no popover is showing.
+  // Only one popover can be open at a time.
+  const [activePinId, setActivePinId] = useState(null)
+
+  // When all pins have been viewed, show the completion message.
+  const allViewed = annotations.length > 0
+    && annotations.every(pin => viewedPins.has(pin.id))
+
+  // handlePinClick — marks pin as viewed and toggles its popover.
+  // Clicking the active pin closes it. Clicking a different pin closes
+  // the current one and opens the new one.
+  const handlePinClick = (pinId) => {
+    setViewedPins(prev => new Set([...prev, pinId]))
+    setActivePinId(prev => prev === pinId ? null : pinId)
+  }
+
+  // getPopoverStyle — calculates where the popover should appear relative
+  // to the pin's anchor point.
+  //
+  // Vertical rule:
+  //   pin.y < 0.4 → show BELOW the pin (pin is in the top 40% of image)
+  //   pin.y >= 0.4 → show ABOVE the pin (pin is in the bottom 60% of image)
+  //
+  // Horizontal rule:
+  //   pin.x > 0.75 → align popover's right edge to pin center (avoid right overflow)
+  //   pin.x < 0.25 → align popover's left edge to pin center (avoid left overflow)
+  //   otherwise     → center popover horizontally on pin
+  //
+  // WHY: The popover is position:absolute inside the pin anchor div,
+  // which itself is position:absolute inside the image container.
+  // The image container does NOT have overflow:hidden on the portal side,
+  // so popovers can extend beyond the image boundary freely.
+  const getPopoverStyle = (pin) => {
+    const style = {}
+
+    // Vertical
+    if (pin.y < 0.4) {
+      style.top = 'calc(100% + 10px)'
+    } else {
+      style.bottom = 'calc(100% + 10px)'
+    }
+
+    // Horizontal
+    if (pin.x > 0.75) {
+      style.right = '0'
+    } else if (pin.x < 0.25) {
+      style.left = '0'
+    } else {
+      style.left      = '50%'
+      style.transform = 'translateX(-50%)'
+    }
+
+    return style
+  }
+
+  return (
+    <div>
+
+      {/* Section heading */}
+      <div className="mb-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-fp-portal-text-tertiary">
+          Why we built it this way
+        </p>
+        <p className="text-xs text-fp-portal-text-tertiary mt-0.5">
+          Click any numbered point to read the decision behind it.
+        </p>
+      </div>
+
+      {/* Image container — NO overflow:hidden here.
+          Popovers are absolutely positioned children that need to extend
+          outside the image boundary. The image gets its own rounded corners.
+          position:relative is required for absolute pin positioning.
+      */}
+      <div
+        className="relative rounded-xl border border-fp-portal-border"
+        onClick={() => setActivePinId(null)}
+      >
+        <img
+          src={imageUrl}
+          alt={imageName ?? 'Deliverable'}
+          // rounded-xl on the image itself clips its corners cleanly
+          // since the container doesn't have overflow-hidden
+          className="w-full rounded-xl block"
+          draggable={false}
+        />
+
+        {/* Render all pins */}
+        {annotations.map((pin, index) => {
+          const isActive = activePinId === pin.id
+          const isViewed = viewedPins.has(pin.id)
+
+          return (
+            <div
+              key={pin.id}
+              // Anchor div — positioned at the pin's percentage coordinates
+              className="absolute"
+              style={{ left: `${pin.x * 100}%`, top: `${pin.y * 100}%` }}
+            >
+              {/* Pulse ring — green if viewed, indigo if not */}
+              <div
+                className={`
+                  absolute w-9 h-9 rounded-full border-2 opacity-60 animate-pulse
+                  ${isViewed ? 'border-emerald-300' : 'border-indigo-400'}
+                `}
+                style={{ transform: 'translate(-50%, -50%)' }}
+              />
+
+              {/* Number circle — green if viewed, indigo if not */}
+              <div
+                className={`
+                  absolute w-7 h-7 rounded-full flex items-center justify-center
+                  text-xs font-bold text-white cursor-pointer z-10
+                  transition-transform duration-150 hover:scale-110
+                  ${isViewed ? 'bg-emerald-600' : 'bg-indigo-600'}
+                `}
+                style={{ transform: 'translate(-50%, -50%)' }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handlePinClick(pin.id)
+                }}
+              >
+                {index + 1}
+              </div>
+
+              {/* Popover — only shown when this pin is active */}
+              {isActive && (
+                <div
+                  className="absolute z-50 bg-white rounded-2xl shadow-xl p-4 max-w-[240px] w-max border border-gray-100"
+                  style={getPopoverStyle(pin)}
+                  // Prevent clicks inside the popover from closing it
+                  // (the image container's onClick would otherwise fire)
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Close button */}
+                  <button
+                    className="absolute top-2 right-2.5 text-gray-400 hover:text-gray-700 text-base cursor-pointer leading-none"
+                    onClick={() => setActivePinId(null)}
+                    aria-label="Close"
+                  >
+                    ×
+                  </button>
+
+                  {/* Pin number + title */}
+                  <div className="flex items-center gap-2 mb-1.5 pr-4">
+                    <span className="
+                      w-5 h-5 rounded-full bg-indigo-600 text-white
+                      text-[10px] font-bold flex items-center justify-center shrink-0
+                    ">
+                      {index + 1}
+                    </span>
+                    {pin.title && (
+                      <p className="text-xs font-bold text-indigo-600 uppercase tracking-wide">
+                        {pin.title}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Explanation */}
+                  {pin.note ? (
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      {pin.note}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">
+                      No explanation added.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Caption — filename, same style as before for non-annotated images */}
+      {imageName && (
+        <div className="flex items-center gap-2 mt-1.5 px-1 text-xs text-fp-portal-text-tertiary">
+          <Paperclip className="w-3 h-3 shrink-0" />
+          <span className="truncate">{imageName}</span>
+        </div>
+      )}
+
+      {/* Completion message — shown when all pins have been viewed */}
+      {allViewed && (
+        <div className="flex items-center gap-2 mt-3 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-emerald-700">
+              You've reviewed all {annotations.length}{' '}
+              {annotations.length === 1 ? 'decision note' : 'decision notes'}.
+            </p>
+            <p className="text-xs text-emerald-600 mt-0.5">
+              You're ready to approve.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -107,6 +317,12 @@ function DeliveryCard({ milestone, token }) {
 
   const checklist = milestone.deliveryChecklist ?? []
   const workLog   = milestone.milestoneUpdates  ?? []
+
+  // Normalize annotations — Prisma returns null for old milestones.
+  // Always work with an array, never call .map() on null.
+  const annotations = Array.isArray(milestone.deliveryAnnotations)
+    ? milestone.deliveryAnnotations
+    : []
 
   const toggleCheck = (index) => {
     setCheckedItems(prev => {
@@ -157,47 +373,63 @@ function DeliveryCard({ milestone, token }) {
 
   return (
     <div className="bg-fp-portal-surface border border-fp-portal-accent/25 rounded-xl overflow-hidden">
-      {/* Amber top bar — "this card needs your attention" */}
+      {/* Amber top bar */}
       <div className="h-[2px] w-full bg-fp-portal-accent" />
 
       <div className="p-5">
 
-        {/* Headline — Fraunces, this is the deliverable's "title" */}
+        {/* Headline */}
         <h3 className="font-display text-lg font-medium text-fp-portal-text-primary mb-2 leading-snug">
           {milestone.deliveryHeadline ?? milestone.title}
         </h3>
 
-        {/* Summary — plain language explanation */}
+        {/* Summary */}
         {milestone.deliverySummary && (
           <p className="text-fp-portal-text-secondary text-sm leading-relaxed mb-4">
             {milestone.deliverySummary}
           </p>
         )}
 
-        {/* File — image preview or download chip */}
+        {/* File section ─────────────────────────────────────────────────────
+            Three cases:
+            1. Image with annotations → AnnotationViewer (new)
+            2. Image without annotations → simple link (existing behavior)
+            3. Non-image file → download chip (existing behavior, unchanged)
+        */}
         {milestone.deliveryFileUrl && (
           <div className="mb-4">
             {milestone.deliveryFileType?.startsWith('image/') ? (
-              <a
-                href={milestone.deliveryFileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-xl overflow-hidden border border-fp-portal-border hover:opacity-90 transition-opacity"
-              >
-                <img
-                  src={milestone.deliveryFileUrl}
-                  alt={milestone.deliveryFileName ?? 'Deliverable'}
-                  className="w-full max-h-64 object-cover"
+              annotations.length > 0 ? (
+                // ── Case 1: Image WITH annotations — Decision Map viewer ──────
+                <AnnotationViewer
+                  imageUrl={milestone.deliveryFileUrl}
+                  imageName={milestone.deliveryFileName}
+                  annotations={annotations}
                 />
-                <div className="px-3 py-2 bg-fp-portal-raised flex items-center gap-2 text-xs text-fp-portal-text-tertiary">
-                  <Paperclip className="w-3 h-3" />
-                  {milestone.deliveryFileName}
-                  <span className="ml-auto">Click to view full size ↗</span>
-                </div>
-              </a>
+              ) : (
+                // ── Case 2: Image WITHOUT annotations — link to full size ─────
+                
+                <a href={milestone.deliveryFileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block rounded-xl overflow-hidden border border-fp-portal-border hover:opacity-90 transition-opacity"
+                >
+                  <img
+                    src={milestone.deliveryFileUrl}
+                    alt={milestone.deliveryFileName ?? 'Deliverable'}
+                    className="w-full max-h-64 object-cover"
+                  />
+                  <div className="px-3 py-2 bg-fp-portal-raised flex items-center gap-2 text-xs text-fp-portal-text-tertiary">
+                    <Paperclip className="w-3 h-3" />
+                    {milestone.deliveryFileName}
+                    <span className="ml-auto">Click to view full size ↗</span>
+                  </div>
+                </a>
+              )
             ) : (
-              <a
-                href={milestone.deliveryFileUrl}
+              // ── Case 3: Non-image file — download chip (unchanged) ──────────
+              
+              <a href={milestone.deliveryFileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="
@@ -224,7 +456,7 @@ function DeliveryCard({ milestone, token }) {
           </div>
         )}
 
-        {/* Checklist — interactive amber checkboxes */}
+        {/* Checklist */}
         {checklist.length > 0 && (
           <div className="mb-5">
             <p className="text-[10px] font-bold uppercase tracking-widest text-fp-portal-text-tertiary mb-3">
@@ -240,7 +472,6 @@ function DeliveryCard({ milestone, token }) {
                     onClick={() => toggleCheck(index)}
                     className="w-full flex items-center gap-3 text-left group"
                   >
-                    {/* Checkbox — fills amber when checked */}
                     <div className={`
                       w-5 h-5 rounded border-2 flex items-center justify-center shrink-0
                       transition-all duration-150
@@ -271,7 +502,7 @@ function DeliveryCard({ milestone, token }) {
           </div>
         )}
 
-        {/* Approve / Request Changes buttons */}
+        {/* Approve / Request Changes */}
         {!isRejecting ? (
           <div className="flex gap-3">
             <button
@@ -306,7 +537,6 @@ function DeliveryCard({ milestone, token }) {
             </button>
           </div>
         ) : (
-          // Rejection form — inline
           <div className="bg-fp-portal-raised border border-fp-portal-border rounded-xl p-4">
             <label className="block text-[10px] font-bold uppercase tracking-widest text-fp-portal-text-tertiary mb-2">
               What needs to change?
@@ -354,7 +584,7 @@ function DeliveryCard({ milestone, token }) {
           </div>
         )}
 
-        {/* Work log toggle — collapsed by default, available for curious clients */}
+        {/* Work log toggle */}
         {workLog.length > 0 && (
           <div className="mt-4 pt-4 border-t border-fp-portal-border">
             <button
@@ -383,14 +613,11 @@ function DeliveryCard({ milestone, token }) {
                         {entry.note}
                       </p>
                       {entry.fileUrl && (
-                        <a
-                          href={entry.fileUrl}
+                        
+                        <a href={entry.fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="
-                            inline-flex items-center gap-1.5 mt-1.5 text-xs
-                            text-fp-portal-accent hover:underline
-                          "
+                          className="inline-flex items-center gap-1.5 mt-1.5 text-xs text-fp-portal-accent hover:underline"
                         >
                           <Paperclip className="w-3 h-3" />
                           {entry.fileName}
@@ -445,12 +672,7 @@ export default function ProjectMilestones({ milestones, freelancerName, clientNa
         />
       </div>
 
-      {/* Timeline
-          HOW THE SPINE WORKS:
-          Each row is flex [node 24px][content]. The spine is a single absolute
-          line at left: 11px (center of 24px node). The node wrapper has
-          bg-fp-portal-surface to visually "cut" the spine behind hollow nodes.
-      */}
+      {/* Timeline */}
       <div className="relative">
         {milestones.length > 1 && (
           <div
@@ -469,7 +691,7 @@ export default function ProjectMilestones({ milestones, freelancerName, clientNa
             return (
               <div key={milestone.id} className="relative flex gap-4">
 
-                {/* Node — sits on the spine, bg matches card to clip the line */}
+                {/* Node */}
                 <div className="relative z-10 mt-0.5 shrink-0 bg-fp-portal-surface">
                   {isCompleted  && <CompletedNode  />}
                   {isInProgress && <InProgressNode />}
