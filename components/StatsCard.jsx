@@ -39,11 +39,6 @@ export default function StatsCard({ label, value, variant = 'default' }) {
 
   return (
     <div className="bg-fp-surface border border-fp-border rounded-xl p-5 relative overflow-hidden">
-
-      {/* Thin color bar at the top — the card's "signature" */}
-      {/* h-[2px] instead of h-1 (4px) because we want subtle, not bold */}
-      <div className={`absolute top-0 left-0 right-0 h-[2px] ${styles.bar} opacity-60`} />
-
       {/* Label — small, secondary, uppercase with tracking */}
       {/* Uppercase + letter-spacing = labels feel like labels, not body text */}
       <p className="text-xs font-semibold text-fp-text-secondary uppercase tracking-widest mb-3">
@@ -52,7 +47,7 @@ export default function StatsCard({ label, value, variant = 'default' }) {
 
       {/* Value — Fraunces serif, large, distinctive */}
       {/* The "leading-none" removes default line-height so the number sits flush */}
-      <p className={`font-display text-4xl font-semibold leading-none ${styles.value}`}>
+      <p className={`font-display font-sans text-4xl font-semibold leading-none ${styles.value}`}>
         {value}
       </p>
 
