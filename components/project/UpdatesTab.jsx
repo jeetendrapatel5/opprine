@@ -73,7 +73,7 @@ export default function UpdatesTab({ project }) {
   const onSubmit = async (data) => {
     setIsLoading(true)
     try {
-      await axios.post(`/api/projects/${project.id}/updates`, data)
+      await axios.post('/api/updates', { ...data, projectId: project.id })
       reset()
       // router.refresh() re-runs the Server Component data fetch so the
       // new update appears in the list without a full page reload.

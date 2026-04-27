@@ -32,7 +32,7 @@ export default async function DashboardLayout({ children }) {
       {/* Content area — max-w-5xl (1120px) is the sweet spot for a dashboard.
           Wider than this and the eye travels too far across a row.
           px-6 on mobile, no change on desktop — keeps content breathing. */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {children}
       </main>
 

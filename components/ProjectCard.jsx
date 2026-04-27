@@ -20,7 +20,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Link from 'next/link'
-import { Circle, CheckCircle2, PauseCircle, Clock } from 'lucide-react'
+import { Circle, CheckCircle2, PauseCircle, Clock, ChevronRight} from 'lucide-react'
 
 // Status config maps Prisma enum values to display properties.
 // Using our fp- design tokens, NOT Tailwind defaults.
@@ -79,7 +79,7 @@ export default function ProjectCard({ project }) {
           <div className="flex items-center gap-3 mb-2">
 
             {/* Project name — truncated if long, primary visual weight */}
-            <h3 className="text-fp-text-primary font-semibold text-sm truncate leading-snug">
+            <h3 className="text-fp-text-primary font-medium text-medium truncate leading-snug">
               {project.name}
             </h3>
 
@@ -136,7 +136,7 @@ export default function ProjectCard({ project }) {
         ">
           View
           <span className="group-hover:translate-x-0.5 transition-transform duration-150 inline-block">
-            →
+            <ChevronRight />
           </span>
         </span>
 

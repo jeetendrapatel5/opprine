@@ -75,12 +75,8 @@ export default async function ProjectPage({ params }) {
   return (
     // bg-fp-base is set by the dashboard layout — this div just adds bottom padding
     <div className="pb-24">
-
-      {/* ── Breadcrumb bar ─────────────────────────────────────────────────── */}
-      {/* Sits below the sticky Navbar. Provides spatial context: where am I? */}
-      {/* bg-fp-surface creates a subtle layer above the page base */}
-      <div className="bg-fp-surface border-b border-fp-border -mx-4 sm:-mx-6 px-4 sm:px-6 mb-8">
-        <div className="max-w-5xl mx-auto h-11 flex items-center gap-1.5 text-xs font-medium">
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 mb-8">
+        <div className="max-w-7xl mx-auto h-11 flex items-center gap-1.5 text-xs font-medium">
           <Link
             href="/dashboard"
             className="flex items-center gap-1 text-fp-text-tertiary hover:text-fp-text-secondary transition-colors duration-150"

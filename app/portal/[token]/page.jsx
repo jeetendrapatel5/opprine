@@ -91,7 +91,7 @@ export default async function PortalPage({ params }) {
   return (
     // Portal world: warm paper-white background, generous padding
     <div className="min-h-screen bg-fp-portal-bg font-body">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
 
         {/* ── Zone 1: Progress banner ── */}
         {/* First thing the client sees. Contains the project name, progress bar,
