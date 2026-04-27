@@ -1,21 +1,4 @@
 // components/dashboard/milestones/index.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// MilestoneManager — the orchestrator component for the milestone system.
-// Owns the local milestone list state and all API calls.
-// Renders a list of MilestoneRow components and the "Add milestone" form.
-//
-// Why this component exists:
-//   The project page is a Server Component (fetches data on server).
-//   But the milestone list needs to update without full page reloads
-//   (adding, deleting, status change). So this Client Component receives
-//   `initialMilestones` as a prop from the server, owns the list in local state,
-//   and mutates that state directly after each API call — no router.refresh().
-//
-// nextStatusMap: When the freelancer clicks the status icon, the milestone
-// advances to the next logical status. The exception is IN_REVIEW: clicking
-// it goes back to IN_PROGRESS (meaning "I'm continuing work"). COMPLETED
-// goes back to PENDING as an intentional reset (unlikely to be used often).
-// ─────────────────────────────────────────────────────────────────────────────
 'use client'
 
 import { useState } from 'react'
@@ -42,6 +25,65 @@ export default function MilestoneManager({
   const [updatingId, setUpdatingId] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
 
+  // ── Drag state ────────────────────────────────────────────────────────────
+  // dragId  = the milestone currently being dragged
+  // overId  = the milestone the dragged item is hovering over (drop target)
+  const [dragId, setDragId] = useState(null)
+  const [overId, setOverId] = useState(null)
+
+  // Called when a drag starts on a row
+  const handleDragStart = (id) => {
+    setDragId(id)
+  }
+
+  // Called when the dragged row passes over another row
+  // e.preventDefault() is required — without it the browser blocks the drop
+  const handleDragOver = (e, id) => {
+    e.preventDefault()
+    setOverId(id)
+  }
+
+  // Called when the drag ends without dropping on a valid target
+  // (e.g. user drops outside the list) — clears visual state
+  const handleDragEnd = () => {
+    setDragId(null)
+    setOverId(null)
+  }
+
+  // Called when the dragged row is dropped onto a target row
+  // Steps:
+  //   1. Find the from/to positions in the array
+  //   2. Splice the array to move the item
+  //   3. Update local state immediately (feels instant)
+  //   4. Call API to persist the new order in the database
+  const handleDrop = async (targetId) => {
+    if (!dragId || dragId === targetId) {
+      setDragId(null)
+      setOverId(null)
+      return
+    }
+
+    const from = milestones.findIndex(m => m.id === dragId)
+    const to   = milestones.findIndex(m => m.id === targetId)
+
+    // Build the new order — splice moves the item from its old position to the new one
+    const next = [...milestones]
+    next.splice(to, 0, next.splice(from, 1)[0])
+
+    setMilestones(next)
+    setDragId(null)
+    setOverId(null)
+
+    // Persist to database — send ordered IDs, route assigns order = index
+    try {
+      await axios.patch('/api/milestones/reorder', {
+        orderedIds: next.map(m => m.id),
+      })
+    } catch {
+      alert('Could not save new order. Please refresh.')
+    }
+  }
+
   // ── Status advance ────────────────────────────────────────────────────────
   const handleStatusChange = async (milestoneId, currentStatus) => {
     const nextStatus = nextStatusMap[currentStatus]
@@ -61,9 +103,6 @@ export default function MilestoneManager({
   }
 
   // ── Full milestone replace (after DeliveryModal submit) ───────────────────
-  // The DeliveryModal already called the API. It passes back the full updated
-  // milestone object. We spread existing (keeping relations like milestoneUpdates)
-  // then overwrite with new scalar fields from the API response.
   const handleMilestoneUpdate = (updatedMilestone) => {
     setMilestones(prev =>
       prev.map(m => m.id === updatedMilestone.id ? { ...m, ...updatedMilestone } : m)
@@ -93,9 +132,8 @@ export default function MilestoneManager({
       const response = await axios.post('/api/milestones', {
         projectId,
         title: newTitle.trim(),
+        order: milestones.length, // next position
       })
-      // New milestone starts with empty relations — add them so MilestoneRow
-      // doesn't have to handle undefined milestoneUpdates / messages arrays.
       setMilestones(prev => [...prev, { ...response.data, milestoneUpdates: [], messages: [] }])
       setNewTitle('')
     } catch {
@@ -114,12 +152,17 @@ export default function MilestoneManager({
         <h2 className="text-fp-text-secondary text-xs font-bold uppercase tracking-widest">
           Milestones
         </h2>
+        {/* Hint that rows are draggable — appears as muted helper text */}
+        {milestones.length > 1 && (
+          <span className="ml-auto text-[10px] text-fp-text-tertiary">
+            Drag to reorder
+          </span>
+        )}
       </div>
 
       {/* Milestone list */}
       <div className="space-y-2 mb-5">
         {milestones.length === 0 && (
-          // Empty state — invitation, not error
           <div className="border border-dashed border-fp-border rounded-xl py-8 text-center">
             <p className="text-fp-text-tertiary text-xs">
               No milestones yet. Add the first step below.
@@ -138,6 +181,16 @@ export default function MilestoneManager({
             isDeleting={deletingId === milestone.id}
             freelancerName={freelancerName}
             clientName={clientName}
+            // ── Drag props ──
+            // isDragging   = this row is the one being dragged (make it semi-transparent)
+            // isOver       = this row is the current drop target (show accent border)
+            // These are computed here so MilestoneRow stays a pure display component
+            isDragging={dragId === milestone.id}
+            isOver={overId === milestone.id && dragId !== milestone.id}
+            onDragStart={() => handleDragStart(milestone.id)}
+            onDragOver={(e) => handleDragOver(e, milestone.id)}
+            onDrop={() => handleDrop(milestone.id)}
+            onDragEnd={handleDragEnd}
           />
         ))}
       </div>

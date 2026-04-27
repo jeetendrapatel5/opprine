@@ -38,7 +38,7 @@ export default function StatsCard({ label, value, variant = 'default' }) {
   const styles = variantStyles[variant] ?? variantStyles.default
 
   return (
-    <div className="bg-fp-surface border border-fp-border rounded-xl p-5 relative overflow-hidden">
+    <div className="bg-fp-surface rounded-xl p-5 relative overflow-hidden">
       {/* Label — small, secondary, uppercase with tracking */}
       {/* Uppercase + letter-spacing = labels feel like labels, not body text */}
       <p className="text-xs font-semibold text-fp-text-secondary uppercase tracking-widest mb-3">

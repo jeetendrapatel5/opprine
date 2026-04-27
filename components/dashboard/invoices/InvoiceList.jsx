@@ -9,21 +9,21 @@
 //   onCancel — function(invoiceId) — called when freelancer cancels an invoice
 
 import { useState } from 'react'
-import { ExternalLink, XCircle, Loader2, Copy, CheckCircle2 } from 'lucide-react'
+import { ExternalLink, XCircle, Loader2, Copy, CheckCircle2} from 'lucide-react'
 import axios from 'axios'
 
 const statusConfig = {
   UNPAID: {
     label: 'Unpaid',
-    className: 'bg-amber-50 text-amber-700 border border-amber-200',
+    className: 'bg-amber-50 text-amber-700',
   },
   PAID: {
-    label: 'Paid ✓',
-    className: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    label: 'Paid',
+    className: 'bg-emerald-50 text-emerald-700',
   },
   CANCELLED: {
     label: 'Cancelled',
-    className: 'bg-gray-100 text-gray-500 border border-gray-200',
+    className: 'bg-gray-100 text-gray-500 ',
   },
 }
 
@@ -72,7 +72,7 @@ function InvoiceRow({ invoice, onCancel }) {
   }
 
   return (
-    <div className={`bg-white border border-gray-100 rounded-2xl p-4 ${
+    <div className={`bg-fp-base rounded-2xl p-4 ${
       invoice.status === 'CANCELLED' ? 'opacity-50' : ''
     }`}>
 
@@ -80,8 +80,8 @@ function InvoiceRow({ invoice, onCancel }) {
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-sm font-bold text-gray-900">{invoice.number}</p>
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${status.className}`}>
+            <p className="text-sm font-bold text-gray-400">{invoice.number}</p>
+            <span className={`text-[13px] bg-transparent font-bold px-2 py-0.5 rounded-full ${status.className}`}>
               {status.label}
             </span>
           </div>
@@ -91,10 +91,10 @@ function InvoiceRow({ invoice, onCancel }) {
             </p>
           )}
           {invoice.note && (
-            <p className="text-xs text-gray-500 mt-1 italic">"{invoice.note}"</p>
+            <p className="text-xs text-gray-500 mt-1">"{invoice.note}"</p>
           )}
         </div>
-        <p className="text-base font-bold text-gray-900 shrink-0">
+        <p className="text-base font-bold text-gray-400 shrink-0">
           {formatCurrency(invoice.amount, invoice.currency)}
         </p>
       </div>
@@ -169,7 +169,7 @@ function InvoiceRow({ invoice, onCancel }) {
 export default function InvoiceList({ invoices = [], onCancel }) {
   if (invoices.length === 0) {
     return (
-      <div className="text-center py-10 border-2 border-dashed border-gray-100 rounded-2xl">
+      <div className="text-center py-10 bg-fp-base rounded-2xl">
         <p className="text-sm text-gray-400">No invoices yet.</p>
         <p className="text-xs text-gray-400 mt-1">
           Create your first invoice using the button above.

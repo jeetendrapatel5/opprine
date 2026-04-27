@@ -25,10 +25,10 @@ export default function InvoicesTab({ project }) {
   return (
     <div className="space-y-5">
       {/* Header row — title + create button */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col items-center justify-between">
         <div>
           <h3 className="text-sm font-bold text-gray-900">Invoices</h3>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs pb-10 text-gray-500">
             Payment links are generated automatically via Stripe.
           </p>
         </div>

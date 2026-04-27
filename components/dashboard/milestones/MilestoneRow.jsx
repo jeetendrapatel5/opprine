@@ -1,25 +1,4 @@
 // components/dashboard/milestones/MilestoneRow.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// The most-used component in the entire freelancer experience.
-// Every project has milestones. The freelancer looks at this daily.
-//
-// Anatomy:
-//   Collapsed: [grip] [status icon] [title] [due date] [item count] [action btn] [delete]
-//   Expanded:  Adds due date picker → conversation feed → update form
-//
-// Status visual system (mapped to fp tokens):
-//   PENDING      → neutral (border, tertiary text)
-//   IN_PROGRESS  → accent (indigo tint)
-//   IN_REVIEW    → warning (amber) + animate-pulse on badge to signal urgency
-//   COMPLETED    → success (green) + line-through title
-//
-// The "Send for Review" button only appears when status is IN_PROGRESS.
-// When IN_REVIEW, the badge says "Awaiting Client" with an amber pulse.
-// When COMPLETED, the badge is static green — no further action possible.
-//
-// Rejection note: if a client rejected a milestone and the status is not yet
-// COMPLETED, a red pulsing dot appears on the row — the attention hook.
-// ─────────────────────────────────────────────────────────────────────────────
 'use client'
 
 import { useState } from 'react'
@@ -33,7 +12,6 @@ import MilestoneUpdateForm from './MilestoneUpdateForm'
 import DeliveryModal       from './DeliveryModal'
 import axios from 'axios'
 
-// Status badge styles — collapsed row badge (not the icon)
 const statusBadgeStyles = {
   PENDING:     'bg-fp-border/50 text-fp-text-tertiary border-fp-border',
   IN_PROGRESS: 'bg-fp-accent-muted text-fp-accent border-fp-accent/20',
@@ -41,7 +19,6 @@ const statusBadgeStyles = {
   COMPLETED:   'bg-fp-success/10 text-fp-success border-fp-success/20',
 }
 
-// The icon shown next to or instead of the status badge
 function StatusIcon({ status }) {
   if (status === 'COMPLETED')   return <CheckCircle2     className="w-4 h-4 text-fp-success" />
   if (status === 'IN_PROGRESS') return <ArrowRightCircle className="w-4 h-4 text-fp-accent" />
@@ -49,7 +26,6 @@ function StatusIcon({ status }) {
   return <CircleDashed className="w-4 h-4 text-fp-text-tertiary" />
 }
 
-// Smaller version of StatusIcon used inside the badge pill
 function SmallStatusIcon({ status }) {
   if (status === 'COMPLETED')   return <CheckCircle2     className="w-3 h-3" />
   if (status === 'IN_PROGRESS') return <ArrowRightCircle className="w-3 h-3" />
@@ -57,13 +33,11 @@ function SmallStatusIcon({ status }) {
   return <CircleDashed className="w-3 h-3" />
 }
 
-// Converts a JS Date or ISO string → "YYYY-MM-DD" for <input type="date">
 function toDateInputValue(date) {
   if (!date) return ''
   return new Date(date).toISOString().split('T')[0]
 }
 
-// Returns display label and whether the date is in the past
 function formatDueDateDisplay(date) {
   if (!date) return null
   const d     = new Date(date)
@@ -83,26 +57,31 @@ export default function MilestoneRow({
   isDeleting,
   freelancerName,
   clientName,
+  // ── Drag props from MilestoneManager ──────────────────────────────────────
+  // isDragging: this row is the one being dragged — render semi-transparent
+  // isOver:     a dragged row is hovering over this row — show accent border
+  // onDragStart / onDragOver / onDrop / onDragEnd: forwarded to the DOM element
+  isDragging,
+  isOver,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }) {
-  const [isOpen,          setIsOpen]         = useState(false)
-  const [localUpdates,    setLocalUpdates]   = useState(milestone.milestoneUpdates ?? [])
-  const [isDeliveryOpen,  setIsDeliveryOpen] = useState(false)
-  const [dueDate,         setDueDate]        = useState(milestone.dueDate ?? null)
-  const [isDueSaving,     setIsDueSaving]    = useState(false)
+  const [isOpen,         setIsOpen]        = useState(false)
+  const [localUpdates,   setLocalUpdates]  = useState(milestone.milestoneUpdates ?? [])
+  const [isDeliveryOpen, setIsDeliveryOpen]= useState(false)
+  const [dueDate,        setDueDate]       = useState(milestone.dueDate ?? null)
+  const [isDueSaving,    setIsDueSaving]   = useState(false)
 
-  const messages        = milestone.messages ?? []
-  const totalItems      = localUpdates.length + messages.length
-  const fileOptions     = localUpdates.filter(u => !!u.fileUrl)
-  const dueDateDisplay  = formatDueDateDisplay(dueDate)
-  const hasUnresolved   = !!milestone.rejectionNote && milestone.status !== 'COMPLETED'
+  const messages       = milestone.messages ?? []
+  const totalItems     = localUpdates.length + messages.length
+  const fileOptions    = localUpdates.filter(u => !!u.fileUrl)
+  const dueDateDisplay = formatDueDateDisplay(dueDate)
+  const hasUnresolved  = !!milestone.rejectionNote && milestone.status !== 'COMPLETED'
 
-  const handleNewUpdate = (newUpdate) => {
-    setLocalUpdates(prev => [...prev, newUpdate])
-  }
-
-  const handleDeliverySuccess = (updatedMilestone) => {
-    onMilestoneUpdate(updatedMilestone)
-  }
+  const handleNewUpdate      = (newUpdate)       => setLocalUpdates(prev => [...prev, newUpdate])
+  const handleDeliverySuccess= (updatedMilestone)=> onMilestoneUpdate(updatedMilestone)
 
   const handleDueDateChange = async (e) => {
     const rawValue = e.target.value
@@ -123,7 +102,39 @@ export default function MilestoneRow({
 
   return (
     <>
-      <div className="rounded-xl border border-fp-border overflow-hidden">
+      {/*
+        ── Drag container ──────────────────────────────────────────────────────
+        draggable={true}
+          → Tells the browser this element can be picked up and dragged.
+
+        onDragStart → tells the parent "I started being dragged"
+        onDragOver  → fires repeatedly while another row is dragged over this one.
+                      Must call e.preventDefault() (done in parent) or the
+                      browser won't allow a drop here.
+        onDrop      → fires when the dragged item is released over this row.
+        onDragEnd   → fires when the drag ends anywhere (drop or cancel).
+
+        isDragging:  opacity-40 makes the source row "ghost" while dragging.
+        isOver:      accent border shows where the row will land if released.
+
+        transition-opacity + transition-colors give smooth visual feedback.
+      */}
+      <div
+        draggable
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onDragEnd={onDragEnd}
+        className={`
+          rounded-xl border overflow-hidden
+          transition-opacity duration-150
+          ${isDragging ? 'opacity-40' : 'opacity-100'}
+          ${isOver
+            ? 'border-fp-accent shadow-[0_0_0_2px_var(--color-fp-accent,#7B93FF)]/20'
+            : 'border-fp-border'
+          }
+        `}
+      >
 
         {/* ── Collapsed row ── */}
         <div className={`
@@ -131,8 +142,16 @@ export default function MilestoneRow({
           ${isOpen ? 'border-b border-fp-border' : ''}
         `}>
 
-          {/* Drag handle — visual affordance for future drag-to-reorder */}
-          <GripVertical className="w-4 h-4 text-fp-text-tertiary cursor-grab shrink-0" />
+          {/*
+            Drag handle — the GripVertical icon.
+            cursor-grab signals to the user "this is how you drag me".
+            cursor-grabbing activates while actively dragging.
+            The whole row is draggable, but this icon is the visual affordance
+            that teaches the user it's possible.
+          */}
+          <div className="cursor-grab active:cursor-grabbing shrink-0 touch-none">
+            <GripVertical className="w-4 h-4 text-fp-text-tertiary" />
+          </div>
 
           {/* Status icon — clickable to advance status */}
           <button
@@ -152,7 +171,6 @@ export default function MilestoneRow({
             onClick={() => setIsOpen(v => !v)}
             className="flex-1 text-left flex items-center gap-2 min-w-0"
           >
-            {/* Milestone title */}
             <span className={`
               text-sm font-medium truncate leading-snug
               ${milestone.status === 'COMPLETED'
@@ -163,7 +181,6 @@ export default function MilestoneRow({
               {milestone.title}
             </span>
 
-            {/* Due date badge — only shown when date is set and not completed */}
             {dueDateDisplay && milestone.status !== 'COMPLETED' && (
               <span className={`
                 shrink-0 flex items-center gap-1
@@ -178,7 +195,6 @@ export default function MilestoneRow({
               </span>
             )}
 
-            {/* Item count badge — updates + client messages combined */}
             {totalItems > 0 && (
               <span className="
                 shrink-0 flex items-center gap-1
@@ -190,7 +206,6 @@ export default function MilestoneRow({
               </span>
             )}
 
-            {/* Right cluster: rejection dot + chevron */}
             <span className="ml-auto shrink-0 flex items-center gap-2">
               {hasUnresolved && (
                 <span
@@ -205,7 +220,6 @@ export default function MilestoneRow({
             </span>
           </button>
 
-          {/* "Send for Review" — primary action, only when IN_PROGRESS */}
           {milestone.status === 'IN_PROGRESS' && (
             <button
               onClick={() => setIsDeliveryOpen(true)}
@@ -221,7 +235,6 @@ export default function MilestoneRow({
             </button>
           )}
 
-          {/* Status badge — shown when NOT IN_PROGRESS */}
           {milestone.status !== 'IN_PROGRESS' && (
             <button
               disabled={isUpdating || milestone.status === 'COMPLETED'}
@@ -243,7 +256,6 @@ export default function MilestoneRow({
             </button>
           )}
 
-          {/* Delete — hidden by default, revealed on row hover */}
           <button
             onClick={() => onDelete(milestone.id)}
             disabled={isDeleting}
@@ -266,7 +278,6 @@ export default function MilestoneRow({
         {isOpen && (
           <div className="px-4 py-4 bg-fp-surface space-y-4">
 
-            {/* Due date picker */}
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-fp-text-tertiary shrink-0">
                 <Calendar className="w-3 h-3" />
@@ -303,7 +314,6 @@ export default function MilestoneRow({
 
             <div className="border-t border-fp-border" />
 
-            {/* Conversation feed */}
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-fp-text-tertiary mb-3">
                 Conversation
@@ -316,7 +326,6 @@ export default function MilestoneRow({
               />
             </div>
 
-            {/* Add update form */}
             <div className="border-t border-fp-border pt-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-fp-text-tertiary mb-2">
                 Add Update
@@ -331,7 +340,6 @@ export default function MilestoneRow({
         )}
       </div>
 
-      {/* DeliveryModal — outside the row to avoid overflow:hidden clipping */}
       {isDeliveryOpen && (
         <DeliveryModal
           milestone={milestone}

@@ -76,12 +76,12 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
 
   // Expanded state — the full form
   return (
-    <div className="bg-white border border-indigo-100 rounded-2xl p-5 shadow-sm">
+    <div className="bg-fp-surface border border-fp-border text-gray-600 rounded-2xl p-5 shadow-sm">
       {/* Form header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <FileText className="w-4 h-4 text-indigo-500" />
-          <h3 className="text-sm font-bold text-gray-900">New Invoice</h3>
+          <h3 className="text-sm font-bold">New Invoice</h3>
         </div>
         <button
           type="button"
@@ -97,7 +97,7 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
         {/* Amount + Currency — side by side */}
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1.5">
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">
               Amount <span className="text-red-400">*</span>
             </label>
             <input
@@ -107,7 +107,7 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
               placeholder="2500"
               min="0"
               step="0.01"
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
+              className="w-full text-gray-500 text-sm rounded-xl bg-fp-base px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
               required
             />
           </div>
@@ -119,7 +119,7 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 bg-white"
+              className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 bg-fp-base"
             >
               <option value="USD">USD</option>
               <option value="EUR">EUR</option>
@@ -140,7 +140,7 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
             type="date"
             value={dueDate}
             onChange={(e) => setDueDate(e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
+            className="w-full bg-fp-base text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
           />
         </div>
 
@@ -153,7 +153,7 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
             <select
               value={milestoneId}
               onChange={(e) => setMilestoneId(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 bg-white"
+              className="w-full text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 bg-fp-base"
             >
               <option value="">General project invoice</option>
               {milestones.map((m) => (
@@ -178,14 +178,14 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
             onChange={(e) => setNote(e.target.value)}
             placeholder="e.g. This covers the first phase of development as agreed."
             rows={2}
-            className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 resize-none"
+            className="w-full text-sm bg-fp-base text-gray-500 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 resize-none"
           />
         </div>
 
         {/* Stripe notice — sets expectations before submitting */}
-        <div className="flex items-start gap-2 bg-indigo-50 rounded-xl p-3">
+        <div className="flex items-start gap-2 bg-fp-base rounded-xl p-3">
           <span className="text-base leading-none mt-0.5">💳</span>
-          <p className="text-xs text-indigo-700 leading-relaxed">
+          <p className="text-xs text-gray-600 leading-relaxed">
             A Stripe Payment Link will be generated automatically. Your client can pay
             directly from their portal — no account needed.
           </p>
@@ -196,14 +196,14 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
           <button
             type="button"
             onClick={reset}
-            className="flex-1 border border-gray-200 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+            className="flex-1 bg-fp-base text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting || !amount}
-            className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-2.5 rounded-xl transition-colors disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-bold py-2.5 rounded-xl transition-colors"
           >
             {isSubmitting
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating...</>
