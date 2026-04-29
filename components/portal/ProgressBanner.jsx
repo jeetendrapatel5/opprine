@@ -68,10 +68,6 @@ export default function ProgressBanner({ progress, projectName, clientName, mile
   return (
     <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl overflow-hidden mb-6">
 
-      {/* Amber top accent line — the card's signature color */}
-      {/* 2px, not 4px — structural, not decorative */}
-      <div className="h-[2px] w-full bg-fp-portal-accent opacity-70" />
-
       <div className="px-6 py-7 sm:px-8 sm:py-8">
 
         {/* ── Top row: project name + status badge ── */}

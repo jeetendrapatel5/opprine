@@ -19,7 +19,7 @@ import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import {
   Loader2, XCircle, CheckCircle2,
-  ChevronDown, ChevronUp, Download, Paperclip,
+  ChevronDown, ChevronUp, Download, Paperclip, CheckCheck
 } from 'lucide-react'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -27,15 +27,15 @@ import {
 function timeAgo(date) {
   if (!date) return ''
   const seconds = Math.floor((new Date() - new Date(date)) / 1000)
-  if (seconds < 60)    return 'just now'
-  if (seconds < 3600)  return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 60) return 'just now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
   return `${Math.floor(seconds / 86400)}d ago`
 }
 
 function formatSize(bytes) {
-  if (!bytes)              return ''
-  if (bytes < 1024)        return `${bytes} B`
+  if (!bytes) return ''
+  if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
@@ -99,7 +99,7 @@ function AnnotationViewer({ imageUrl, imageName, annotations }) {
 
   // viewedPins — Set of pin IDs the client has clicked (opened at least once).
   // Once a pin ID is in this set, the pin renders green.
-  const [viewedPins,  setViewedPins]  = useState(new Set())
+  const [viewedPins, setViewedPins] = useState(new Set())
 
   // activePinId — the pin whose popover is currently open.
   // null means no popover is showing.
@@ -150,7 +150,7 @@ function AnnotationViewer({ imageUrl, imageName, annotations }) {
     } else if (pin.x < 0.25) {
       style.left = '0'
     } else {
-      style.left      = '50%'
+      style.left = '50%'
       style.transform = 'translateX(-50%)'
     }
 
@@ -309,14 +309,14 @@ function AnnotationViewer({ imageUrl, imageName, annotations }) {
 function DeliveryCard({ milestone, token }) {
   const router = useRouter()
 
-  const [checkedItems,  setCheckedItems]  = useState(new Set())
+  const [checkedItems, setCheckedItems] = useState(new Set())
   const [isWorkLogOpen, setIsWorkLogOpen] = useState(false)
-  const [isRejecting,   setIsRejecting]   = useState(false)
-  const [rejectReason,  setRejectReason]  = useState('')
-  const [isLoading,     setIsLoading]     = useState(false)
+  const [isRejecting, setIsRejecting] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
   const checklist = milestone.deliveryChecklist ?? []
-  const workLog   = milestone.milestoneUpdates  ?? []
+  const workLog = milestone.milestoneUpdates ?? []
 
   // Normalize annotations — Prisma returns null for old milestones.
   // Always work with an array, never call .map() on null.
@@ -337,7 +337,7 @@ function DeliveryCard({ milestone, token }) {
     try {
       await axios.patch(`/api/portal/${token}/approve`, {
         itemId: milestone.id,
-        type:   'milestone',
+        type: 'milestone',
         action: 'approve',
       })
       router.refresh()
@@ -357,7 +357,7 @@ function DeliveryCard({ milestone, token }) {
     try {
       await axios.patch(`/api/portal/${token}/approve`, {
         itemId: milestone.id,
-        type:   'milestone',
+        type: 'milestone',
         action: 'reject',
         reason: rejectReason.trim(),
       })
@@ -408,7 +408,7 @@ function DeliveryCard({ milestone, token }) {
                 />
               ) : (
                 // ── Case 2: Image WITHOUT annotations — link to full size ─────
-                
+
                 <a href={milestone.deliveryFileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -428,7 +428,7 @@ function DeliveryCard({ milestone, token }) {
               )
             ) : (
               // ── Case 3: Non-image file — download chip (unchanged) ──────────
-              
+
               <a href={milestone.deliveryFileUrl}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -530,7 +530,7 @@ function DeliveryCard({ milestone, token }) {
               "
             >
               {isLoading
-                ? <Loader2     className="w-4 h-4 animate-spin" />
+                ? <Loader2 className="w-4 h-4 animate-spin" />
                 : <CheckCircle2 className="w-4 h-4" />
               }
               {isLoading ? 'Approving...' : 'Approve'}
@@ -597,7 +597,7 @@ function DeliveryCard({ milestone, token }) {
               "
             >
               {isWorkLogOpen
-                ? <ChevronUp   className="w-3.5 h-3.5" />
+                ? <ChevronUp className="w-3.5 h-3.5" />
                 : <ChevronDown className="w-3.5 h-3.5" />
               }
               {isWorkLogOpen ? 'Hide' : 'View'} work log ({workLog.length} {workLog.length === 1 ? 'entry' : 'entries'})
@@ -613,7 +613,7 @@ function DeliveryCard({ milestone, token }) {
                         {entry.note}
                       </p>
                       {entry.fileUrl && (
-                        
+
                         <a href={entry.fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -648,7 +648,7 @@ function DeliveryCard({ milestone, token }) {
 export default function ProjectMilestones({ milestones, freelancerName, clientName, token }) {
   if (!milestones || milestones.length === 0) return null
 
-  const completedCount     = milestones.filter(m => m.status === 'COMPLETED').length
+  const completedCount = milestones.filter(m => m.status === 'COMPLETED').length
   const progressPercentage = Math.round((completedCount / milestones.length) * 100)
 
   return (
@@ -683,20 +683,20 @@ export default function ProjectMilestones({ milestones, freelancerName, clientNa
 
         <div className="space-y-7">
           {milestones.map((milestone) => {
-            const isCompleted  = milestone.status === 'COMPLETED'
+            const isCompleted = milestone.status === 'COMPLETED'
             const isInProgress = milestone.status === 'IN_PROGRESS'
-            const isInReview   = milestone.status === 'IN_REVIEW'
-            const isPending    = milestone.status === 'PENDING'
+            const isInReview = milestone.status === 'IN_REVIEW'
+            const isPending = milestone.status === 'PENDING'
 
             return (
               <div key={milestone.id} className="relative flex gap-4">
 
                 {/* Node */}
                 <div className="relative z-10 mt-0.5 shrink-0 bg-fp-portal-surface">
-                  {isCompleted  && <CompletedNode  />}
+                  {isCompleted && <CompletedNode />}
                   {isInProgress && <InProgressNode />}
-                  {isInReview   && <InReviewNode   />}
-                  {isPending    && <PendingNode     />}
+                  {isInReview && <InReviewNode />}
+                  {isPending && <PendingNode />}
                 </div>
 
                 {/* Content */}
@@ -707,16 +707,16 @@ export default function ProjectMilestones({ milestones, freelancerName, clientNa
                     <div className="pt-0.5">
                       <p className={`
                         text-sm font-medium leading-snug
-                        ${isCompleted  ? 'line-through text-fp-portal-text-tertiary' : ''}
+                        ${isCompleted ? 'line-through text-fp-portal-text-tertiary' : ''}
                         ${isInProgress ? 'text-fp-portal-text-primary' : ''}
-                        ${isPending    ? 'text-fp-portal-text-tertiary' : ''}
+                        ${isPending ? 'text-fp-portal-text-tertiary' : ''}
                       `}>
                         {milestone.title}
                       </p>
 
                       {isCompleted && (
-                        <p className="text-xs text-fp-portal-accent mt-0.5 font-medium">
-                          ✓ Approved
+                        <p className="items-center flex gap-1 text-xs text-fp-portal-accent mt-0.5 font-medium">
+                          <CheckCheck className='h-4 w-4'/> Approved
                           {milestone.completedAt && ` · ${formatDate(milestone.completedAt)}`}
                         </p>
                       )}

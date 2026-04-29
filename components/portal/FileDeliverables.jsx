@@ -6,7 +6,7 @@
 // Design changes: white cards, fp-portal-border dividers, amber icon.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { File, Download } from 'lucide-react'
+import { File, Download, Image, FileBracesCorner, FileSpreadsheet, FileText, FolderArchive } from 'lucide-react'
 
 function formatSize(bytes) {
   if (!bytes)              return ''
@@ -16,13 +16,13 @@ function formatSize(bytes) {
 }
 
 function fileEmoji(fileType) {
-  if (!fileType)                                                       return '📁'
-  if (fileType.startsWith('image/'))                                  return '🖼️'
-  if (fileType === 'application/pdf')                                 return '📄'
-  if (fileType.includes('spreadsheet') || fileType.includes('excel')) return '📊'
-  if (fileType.includes('word') || fileType.includes('document'))     return '📝'
-  if (fileType.includes('zip') || fileType.includes('compressed'))    return '🗜️'
-  return '📁'
+  if (!fileType)                                                       return <File className='text-fp-portal-accent'/>
+  if (fileType.startsWith('image/'))                                  return <Image className='text-fp-portal-accent' />
+  if (fileType === 'application/pdf')                                 return <FileBracesCorner className='text-fp-portal-accent'/>
+  if (fileType.includes('spreadsheet') || fileType.includes('excel')) return <FileSpreadsheet className='text-fp-portal-accent'/>
+  if (fileType.includes('word') || fileType.includes('document'))     return <FileText className='text-fp-portal-accent'/>
+  if (fileType.includes('zip') || fileType.includes('compressed'))    return <FolderArchive className='text-fp-portal-accent'/>
+  return <File className='text-fp-portal-accent'/>
 }
 
 export default function FileDeliverables({ files }) {

@@ -1,22 +1,4 @@
-// components/dashboard/milestones/MilestoneUpdateFeed.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// Renders the chronological conversation thread inside a milestone.
-// Merges two data sources into one sorted feed:
-//   - MilestoneUpdate (freelancer's work updates, with optional file)
-//   - MilestoneMessage (client's text feedback)
-//
-// Visual distinction:
-//   Freelancer entries: accent-colored dot (indigo) — "I made progress"
-//   Client entries:     warning-colored dot (amber) — "needs your attention"
-//
-// Why amber for client messages (not red)?
-// Red = error / destructive. Amber = attention needed. A client message is
-// not an error — it's information that requires a response. Amber communicates
-// the right urgency level without alarming the freelancer.
-//
-// The vertical line between items is created by CSS on the parent container
-// (a combination of relative positioning + the connector div inside each entry).
-// ─────────────────────────────────────────────────────────────────────────────
+import { File, Image, FileBracesCorner, FileSpreadsheet, FileText, FolderArchive } from 'lucide-react'
 
 function formatSize(bytes) {
   if (!bytes)              return ''
@@ -26,13 +8,13 @@ function formatSize(bytes) {
 }
 
 function fileEmoji(fileType) {
-  if (!fileType)                                                       return '📁'
-  if (fileType.startsWith('image/'))                                  return '🖼️'
-  if (fileType === 'application/pdf')                                 return '📄'
-  if (fileType.includes('spreadsheet') || fileType.includes('excel')) return '📊'
-  if (fileType.includes('word') || fileType.includes('document'))     return '📝'
-  if (fileType.includes('zip') || fileType.includes('compressed'))    return '🗜️'
-  return '📁'
+  if (!fileType)                                                       return <File className='text-fp-accent h-3.5 w-3.5'/>
+  if (fileType.startsWith('image/'))                                  return <Image className='text-fp-accent h-3.5 w-3.5'/>
+  if (fileType === 'application/pdf')                                 return <FileBracesCorner className='text-fp-accent h-3.5 w-3.5'/>
+  if (fileType.includes('spreadsheet') || fileType.includes('excel')) return <FileSpreadsheet className='text-fp-accent h-3.5 w-3.5'/>
+  if (fileType.includes('word') || fileType.includes('document'))     return <FileText className='text-fp-accent h-3.5 w-3.5'/>
+  if (fileType.includes('zip') || fileType.includes('compressed'))    return <FolderArchive className='text-fp-accent h-3.5 w-3.5'/>
+  return <File className='text-fp-accent h-3.5 w-3.5'/>
 }
 
 function timeAgo(date) {
