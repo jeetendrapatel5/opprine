@@ -11,7 +11,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ExternalLink, Clock, Loader2, Upload, File } from 'lucide-react'
+import { ExternalLink, Clock, Loader2, Upload, File, Image, FileBracesCorner, FileSpreadsheet, FileText, FolderArchive } from 'lucide-react'
 import axios from 'axios'
 
 function formatSize(bytes) {
@@ -21,13 +21,13 @@ function formatSize(bytes) {
 }
 
 function fileEmoji(fileType) {
-  if (!fileType)                                                  return '📁'
-  if (fileType.startsWith('image/'))                             return '🖼️'
-  if (fileType === 'application/pdf')                            return '📄'
-  if (fileType.includes('spreadsheet') || fileType.includes('excel')) return '📊'
-  if (fileType.includes('word') || fileType.includes('document')) return '📝'
-  if (fileType.includes('zip') || fileType.includes('compressed')) return '🗜️'
-  return '📁'
+  if (!fileType)                                                  return <File className='text-fp-accent'/>
+  if (fileType.startsWith('image/'))                             return <Image className='text-fp-accent' />
+  if (fileType === 'application/pdf')                            return <FileBracesCorner className='text-fp-accent'/>
+  if (fileType.includes('spreadsheet') || fileType.includes('excel')) return <FileSpreadsheet className='text-fp-accent'/>
+  if (fileType.includes('word') || fileType.includes('document')) return <FileText className='text-fp-accent'/>
+  if (fileType.includes('zip') || fileType.includes('compressed')) return <FolderArchive className='text-fp-accent'/>
+  return <File className='text-fp-accent'/>
 }
 
 export default function FilesTab({ project }) {

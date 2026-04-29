@@ -144,7 +144,7 @@ export default function MilestoneManager({
   }
 
   return (
-    <div className="bg-fp-surface border border-fp-border rounded-xl p-5">
+    <div className="bg-fp-surface rounded-xl p-5">
 
       {/* Section heading */}
       <div className="flex items-center gap-2 mb-5">

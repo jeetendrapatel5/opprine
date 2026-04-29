@@ -23,6 +23,9 @@
      Vercel all use #0D1117-range darks, never true #000000. */
   --color-fp-base:    #0D1117;
 
+  /* colour blue-500 */
+  --color-blue-500: #2196F3;
+
   /* Cards and panels sit one level above the page background */
   --color-fp-surface: #161B22;
 

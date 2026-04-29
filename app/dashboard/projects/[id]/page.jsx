@@ -104,10 +104,10 @@ export default async function ProjectPage({ params }) {
           <span className={`
             shrink-0 mt-1 inline-flex items-center gap-1.5
             text-xs font-semibold uppercase tracking-wide
-            px-2.5 py-1 rounded border
+            px-2.5 py-1 bg-transparent
             ${status.class}
           `}>
-            <StatusIcon className="w-3 h-3" />
+            <StatusIcon className="w-3.5 h-3.5" />
             {status.label}
           </span>
         </div>
@@ -134,7 +134,7 @@ export default async function ProjectPage({ params }) {
           />
 
           {/* Tabs: Updates, Files, Invoices */}
-          <div className="bg-fp-surface border border-fp-border rounded-xl overflow-hidden">
+          <div className="bg-fp-surface rounded-xl overflow-hidden">
             <ProjectTabs project={project} />
           </div>
         </div>

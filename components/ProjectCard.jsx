@@ -65,7 +65,7 @@ export default function ProjectCard({ project }) {
     <Link
       href={`/dashboard/projects/${project.id}`}
       className="
-        group block bg-fp-surface border border-fp-border rounded-xl p-5
+        group block bg-fp-surface border-fp-border rounded-xl p-5
         hover:border-fp-accent/50 transition-colors duration-150
         hover:bg-fp-raised
       "
@@ -76,7 +76,7 @@ export default function ProjectCard({ project }) {
         <div className="min-w-0 flex-1">
 
           {/* Row 1: Name + status badge */}
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-5 mb-2">
 
             {/* Project name — truncated if long, primary visual weight */}
             <h3 className="text-fp-text-primary font-medium text-medium truncate leading-snug">
@@ -87,8 +87,8 @@ export default function ProjectCard({ project }) {
             {/* border variant of badge — softer than a solid background */}
             <span className={`
               shrink-0 inline-flex items-center gap-1.5
-              text-[11px] font-semibold uppercase tracking-wide
-              px-2 py-0.5 rounded border
+              text-[12px] font-semibold uppercase tracking-wide
+              px-2 py-0.5 rounded-xl bg-transparent
               ${status.badgeClass}
             `}>
               <StatusIcon className="w-2.5 h-2.5" />
@@ -120,7 +120,7 @@ export default function ProjectCard({ project }) {
                 Updated {timeAgo(lastUpdate.createdAt)}
               </span>
             ) : (
-              <span className="italic text-fp-text-tertiary">No updates yet</span>
+              <span className=" text-fp-text-tertiary">No updates yet</span>
             )}
 
           </div>

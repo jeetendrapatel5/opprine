@@ -33,7 +33,7 @@ export default function ProjectTabs({ project }) {
 
       {/* ── Tab bar ── */}
       {/* border-b separates the nav from content — provides structure */}
-      <div className="flex items-center border-b border-fp-border px-5">
+      <div className="flex items-center px-5">
         {tabs.map((tab) => {
           const Icon     = tab.icon
           const isActive = activeTab === tab.id

@@ -126,7 +126,7 @@ export default function MilestoneRow({
         onDrop={onDrop}
         onDragEnd={onDragEnd}
         className={`
-          rounded-xl border overflow-hidden
+          rounded-xl overflow-hidden
           transition-opacity duration-150
           ${isDragging ? 'opacity-40' : 'opacity-100'}
           ${isOver
@@ -242,7 +242,7 @@ export default function MilestoneRow({
               className={`
                 shrink-0 flex items-center gap-1.5
                 text-[10px] font-bold uppercase tracking-wider
-                px-2.5 py-1.5 rounded-lg border transition-all duration-150
+                px-2.5 py-1.5 rounded-lg  transition-all duration-150
                 disabled:cursor-not-allowed
                 ${statusBadgeStyles[milestone.status]}
                 ${milestone.status === 'IN_REVIEW' ? 'animate-pulse' : ''}

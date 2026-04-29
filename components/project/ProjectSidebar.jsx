@@ -61,14 +61,14 @@ export default function ProjectSidebar({ project, portalLink }) {
   const dotClass         = activityDotClass(project.client?.lastViewedAt)
 
   return (
-    <div className="bg-fp-surface border border-fp-border rounded-xl p-5 space-y-5">
+    <div className="bg-fp-surface rounded-xl p-5 space-y-8">
 
       {/* ── Client info ─────────────────────────────────────────────────── */}
       <div>
         <SectionLabel icon={User}>Client</SectionLabel>
         {project.client ? (
           // Slight surface raise for the client info box — "this is a person"
-          <div className="bg-fp-raised border border-fp-border rounded-lg p-3">
+          <div className="bg-fp-raised rounded-lg p-3">
             <p className="text-fp-text-primary text-sm font-semibold leading-snug">
               {project.client.name}
             </p>
@@ -80,8 +80,6 @@ export default function ProjectSidebar({ project, portalLink }) {
           <p className="text-fp-text-tertiary text-sm italic">No client assigned.</p>
         )}
       </div>
-
-      <div className="border-t border-fp-border" />
 
       {/* ── Client activity ─────────────────────────────────────────────── */}
       {/* Only shown if a client exists — meaningless without one */}
@@ -118,7 +116,6 @@ export default function ProjectSidebar({ project, portalLink }) {
               </div>
             </div>
           </div>
-          <div className="border-t border-fp-border" />
         </>
       )}
 

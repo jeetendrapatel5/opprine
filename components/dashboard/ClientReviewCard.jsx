@@ -75,10 +75,7 @@ export default function ClientReviewCard({ project }) {
   // ── Review card ────────────────────────────────────────────────────────────
   return (
     // Dark surface with a subtle amber top line — premium presentation
-    <div className="bg-fp-surface border border-fp-border rounded-xl overflow-hidden relative">
-
-      {/* Amber top accent line — signals "this is gold, this is an achievement" */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-fp-portal-accent to-transparent opacity-80" />
+    <div className="bg-fp-surface rounded-xl overflow-hidden relative">
 
       {/* ── Card header: badge + share actions ── */}
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-fp-border flex-wrap gap-2">
@@ -114,7 +111,7 @@ export default function ClientReviewCard({ project }) {
               rel="noopener noreferrer"
               className="
                 inline-flex items-center gap-1 text-fp-base text-xs font-semibold
-                bg-[var(--color-fp-portal-accent)] hover:bg-[var(--color-fp-portal-accent-hover)]
+                bg-blue-600 hover:bg-blue-500 hover:text-white text-neutral-300
                 rounded-lg px-2.5 py-1 transition-colors duration-150
               "
             >
@@ -138,11 +135,11 @@ export default function ClientReviewCard({ project }) {
             <Star
               key={star}
               className="w-4 h-4"
-              fill={star <= (project.clientRating ?? 0) ? 'var(--color-fp-portal-accent)' : 'transparent'}
-              color={star <= (project.clientRating ?? 0) ? 'var(--color-fp-portal-accent)' : 'var(--color-fp-border)'}
+              fill={star <= (project.clientRating ?? 0) ? 'var(--color-blue-500)' : 'transparent'}
+              color={star <= (project.clientRating ?? 0) ? 'var(--color-blue-500)' : 'var(--color-fp-border)'}
             />
           ))}
-          <span className="text-xs font-bold ml-1.5" style={{ color: 'var(--color-fp-portal-accent)' }}>
+          <span className="text-xs font-bold ml-1.5" style={{ color: 'var(--color-blue-500)' }}>
             {project.clientRating}.0 / 5
           </span>
         </div>
