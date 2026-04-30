@@ -1,19 +1,3 @@
-// components/project/ProjectSidebar.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// The right-column sidebar. Three jobs:
-//   1. Show client details (who is this project for?)
-//   2. Show client portal activity (did they open it? when?)
-//   3. Provide the portal magic link copy button
-//
-// Psychology:
-// - Client activity ("viewed 2h ago" vs "never opened") is the variable
-//   reward signal. The freelancer checks this like email. Green dot = engaged
-//   client. Amber = need to follow up. Gray = link hasn't been shared yet.
-// - The "Copy Magic Link" button is the most important action in the sidebar.
-//   It's the primary button spec: bg-fp-accent, full width, prominent.
-// - Client name in its own box with a slightly raised surface signals
-//   "this is a person, not just data".
-// ─────────────────────────────────────────────────────────────────────────────
 'use client'
 
 import { useState } from 'react'
@@ -68,7 +52,7 @@ export default function ProjectSidebar({ project, portalLink }) {
         <SectionLabel icon={User}>Client</SectionLabel>
         {project.client ? (
           // Slight surface raise for the client info box — "this is a person"
-          <div className="bg-fp-raised rounded-lg p-3">
+          <div className="rounded-lg p-3">
             <p className="text-fp-text-primary text-sm font-semibold leading-snug">
               {project.client.name}
             </p>

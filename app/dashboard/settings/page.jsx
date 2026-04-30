@@ -46,8 +46,8 @@ export default async function SettingsPage() {
     <div className="pb-24">
 
       {/* ── Breadcrumb bar ── same pattern as project page ── */}
-      <div className="bg-fp-surface border-b border-fp-border -mx-4 sm:-mx-6 px-4 sm:px-6 mb-8">
-        <div className="max-w-5xl mx-auto h-11 flex items-center gap-1.5 text-xs font-medium">
+      <div className="bg-transparent -mx-4 sm:-mx-6 px-4 sm:px-6 mb-8">
+        <div className="max-w-7xl mx-auto h-11 flex items-center gap-1.5 text-xs font-medium">
           <Link
             href="/dashboard"
             className="flex items-center gap-1 text-fp-text-tertiary hover:text-fp-text-secondary transition-colors duration-150"
@@ -64,8 +64,8 @@ export default async function SettingsPage() {
       <div className="max-w-xl mx-auto">
 
         {/* Page title */}
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-medium text-fp-text-primary tracking-tight leading-tight">
+        <div className="mb-10">
+          <h1 className="font-display text-center text-3xl font-medium text-fp-text-primary tracking-tight leading-tight">
             Your Profile
           </h1>
           {/* Possessive language — this is YOURS, not a system configuration */}

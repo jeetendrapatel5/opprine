@@ -20,25 +20,26 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Link from 'next/link'
-import { Circle, CheckCircle2, PauseCircle, Clock, ChevronRight} from 'lucide-react'
+import { Circle, CheckCircle2, PauseCircle, Clock, ChevronRight } from 'lucide-react'
+import DeleteProjectButton from '@/components/DeleteProjectButton'
 
 // Status config maps Prisma enum values to display properties.
 // Using our fp- design tokens, NOT Tailwind defaults.
 const statusConfig = {
   ACTIVE: {
-    label:      'Active',
+    label: 'Active',
     badgeClass: 'bg-fp-accent-muted text-fp-accent border-fp-accent/20',
-    Icon:       Circle,
+    Icon: Circle,
   },
   COMPLETED: {
-    label:      'Completed',
+    label: 'Completed',
     badgeClass: 'bg-fp-success/10 text-fp-success border-fp-success/20',
-    Icon:       CheckCircle2,
+    Icon: CheckCircle2,
   },
   ON_HOLD: {
-    label:      'On Hold',
+    label: 'On Hold',
     badgeClass: 'bg-fp-warning/10 text-fp-warning border-fp-warning/20',
-    Icon:       PauseCircle,
+    Icon: PauseCircle,
   },
 }
 
@@ -46,16 +47,16 @@ const statusConfig = {
 // Used for "Last update: 2h ago" — the variable reward signal.
 function timeAgo(date) {
   const seconds = Math.floor((new Date() - new Date(date)) / 1000)
-  if (seconds < 60)     return 'just now'
-  if (seconds < 3600)   return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400)  return `${Math.floor(seconds / 3600)}h ago`
+  if (seconds < 60) return 'just now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
   // Older than a week — show the date rather than "14d ago" which loses meaning
   return new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 export default function ProjectCard({ project }) {
-  const status     = statusConfig[project.status] ?? statusConfig.ACTIVE
+  const status = statusConfig[project.status] ?? statusConfig.ACTIVE
   const StatusIcon = status.Icon
   const lastUpdate = project.updates?.[0]
 
@@ -91,7 +92,7 @@ export default function ProjectCard({ project }) {
               px-2 py-0.5 rounded-xl bg-transparent
               ${status.badgeClass}
             `}>
-              <StatusIcon className="w-2.5 h-2.5" />
+              <StatusIcon className="w-3.5 h-3.5" />
               {status.label}
             </span>
 
@@ -127,18 +128,33 @@ export default function ProjectCard({ project }) {
 
         </div>
 
-        {/* ── Right: View arrow ── */}
-        {/* Shifts color on card hover — a motion cue that "this goes somewhere" */}
-        <span className="
-          shrink-0 text-fp-text-tertiary text-sm font-medium
-          group-hover:text-fp-accent transition-colors duration-150
-          flex items-center gap-1
-        ">
-          View
-          <span className="group-hover:translate-x-0.5 transition-transform duration-150 inline-block">
-            <ChevronRight />
+        {/* ── Right: Actions area ── */}
+        {/* DeleteProjectButton is a Client Component rendered inside this
+            Server Component. The delete button is invisible by default
+            (opacity-0) and appears on card hover via the `group` class. */}
+        <div className="flex items-center gap-2 shrink-0">
+
+          {/* Delete button — appears on hover, stops click propagation internally */}
+          <DeleteProjectButton
+            projectId={project.id}
+            projectName={project.name}
+          />
+
+          {/* View arrow — shifts color on card hover */}
+          {/* Wrapped in a span so DeleteProjectButton can replace it visually
+              when in 'confirm' state without displacing the layout */}
+          <span className="
+            shrink-0 text-fp-text-tertiary text-sm font-medium
+            group-hover:text-fp-accent transition-colors duration-150
+            flex items-center gap-1
+          ">
+            View
+            <span className="group-hover:translate-x-0.5 transition-transform duration-150 inline-block">
+              <ChevronRight />
+            </span>
           </span>
-        </span>
+
+        </div>
 
       </div>
     </Link>

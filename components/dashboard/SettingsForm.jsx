@@ -1,30 +1,3 @@
-// components/dashboard/SettingsForm.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// The settings form. Two card sections:
-//   1. Profile Photo — avatar upload with instant preview
-//   2. Profile Info — name, email (read-only), bio, portfolio URL
-//
-// Followed by a live portal preview strip showing exactly what the client will
-// see on the FreelancerCard — making the "endowment effect" concrete and tangible.
-//
-// Design decisions:
-// - Two separate card sections instead of one long form. Each section has ONE
-//   job. This reduces cognitive load — the freelancer knows exactly where to
-//   look for each thing.
-// - The avatar section is visual-first: the photo is the dominant element,
-//   the upload button is secondary. The freelancer should think "my face is
-//   the thing" not "the button is the thing."
-// - The bio char counter (X/120) is inline below the input — live feedback
-//   prevents the frustration of hitting a limit mid-sentence.
-// - The portfolio URL input has a live external link icon — appears the moment
-//   a URL is typed, lets the freelancer preview without leaving the page.
-// - The portal preview strip at the bottom uses portal tokens (fp-portal-*)
-//   inside the dark dashboard. This creates a "window into the other world"
-//   effect — the freelancer can see exactly what the client sees.
-// - Save button: fp-accent (indigo), primary spec. On success a brief
-//   "Saved" confirmation appears — green, then fades. This is the completion
-//   moment. It should feel satisfying.
-// ─────────────────────────────────────────────────────────────────────────────
 'use client'
 
 import { useState, useRef } from 'react'
@@ -100,7 +73,7 @@ export default function SettingsForm({ user }) {
     <form onSubmit={handleSubmit} className="space-y-5">
 
       {/* ── Section 1: Profile Photo ──────────────────────────────────────── */}
-      <div className="bg-fp-surface border border-fp-border rounded-xl p-5">
+      <div className="bg-fp-surface border-fp-border rounded-xl px-10 py-6">
         <p className="text-fp-text-secondary text-[10px] font-bold uppercase tracking-widest mb-5">
           Profile Photo
         </p>
@@ -157,7 +130,7 @@ export default function SettingsForm({ user }) {
       </div>
 
       {/* ── Section 2: Profile Info ───────────────────────────────────────── */}
-      <div className="bg-fp-surface border border-fp-border rounded-xl p-5 space-y-5">
+      <div className="bg-fp-surface border-fp-border rounded-xl p-5 space-y-5">
         <p className="text-fp-text-secondary text-[10px] font-bold uppercase tracking-widest">
           Profile Info
         </p>
@@ -280,15 +253,15 @@ export default function SettingsForm({ user }) {
           renders in the portal, using portal tokens inside the dark dashboard.
           Psychology: the freelancer sees their own face from the client's perspective.
           This makes the form feel meaningful, not administrative. */}
-      <div className="bg-fp-surface border border-fp-border rounded-xl p-5">
+      <div className="bg-fp-surface rounded-xl p-5">
         <p className="text-fp-text-tertiary text-[10px] font-bold uppercase tracking-widest mb-4">
           Client Portal Preview
         </p>
 
         {/* Simulated FreelancerCard — uses portal tokens deliberately */}
-        <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl p-4">
+        <div className="rounded-xl p-4">
 
-          <p className="text-[10px] font-bold uppercase tracking-widest text-fp-portal-text-tertiary mb-3">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400 mb-3">
             Your Developer
           </p>
 
@@ -299,7 +272,7 @@ export default function SettingsForm({ user }) {
               <img
                 src={avatarPreview}
                 alt={name}
-                className="w-10 h-10 rounded-full object-cover border border-fp-portal-border shrink-0"
+                className="w-10 h-10 rounded-full object-cover shrink-0"
               />
             ) : (
               <div className="
@@ -312,7 +285,7 @@ export default function SettingsForm({ user }) {
             )}
 
             <div className="flex-1 min-w-0">
-              <p className="text-fp-portal-text-primary text-sm font-semibold leading-snug truncate">
+              <p className="text-fp-portal-text-tertiary text-sm font-semibold leading-snug truncate">
                 {name || 'Your name'}
               </p>
               {bio && (
