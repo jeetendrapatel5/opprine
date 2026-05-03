@@ -22,17 +22,17 @@ import ClientReviewCard from '@/components/dashboard/ClientReviewCard'
 const statusConfig = {
   ACTIVE: {
     label: 'Active',
-    class: 'bg-fp-success/10 text-fp-success border border-fp-success/20',
+    class: 'bg-fp-success/10 text-fp-success',
     Icon: Circle,
   },
   COMPLETED: {
     label: 'Completed',
-    class: 'bg-fp-accent-muted text-fp-accent border border-fp-accent/20',
+    class: 'bg-fp-accent-muted text-fp-accent',
     Icon: CheckCircle2,
   },
   ON_HOLD: {
     label: 'On Hold',
-    class: 'bg-fp-warning/10 text-fp-warning border border-fp-warning/20',
+    class: 'bg-fp-warning/10 text-fp-warning',
     Icon: PauseCircle,
   },
 }
@@ -47,9 +47,9 @@ function timeAgoShort(date) {
   if (Number.isNaN(diffMs)) return null
 
   const seconds = Math.floor(diffMs / 1000)
-  if (seconds < 60) return 'just now'
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+  if (seconds < 60) return 'Just now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hr ago`
   return `${Math.floor(seconds / 86400)}d ago`
 }
 
@@ -155,9 +155,9 @@ export default async function ProjectPage({ params }) {
             {project.name}
           </h1>
           <span
-            className={`shrink-0 mt-1 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md ${status.class}`}
+            className={`shrink-0 mt-1 inline-flex items-center bg-transparent gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md ${status.class}`}
           >
-            <StatusIcon className="w-3 h-3" />
+            <StatusIcon className="w-3.5 h-3.5" />
             {status.label}
           </span>
         </div>
@@ -169,9 +169,9 @@ export default async function ProjectPage({ params }) {
       </div>
 
       {/* ── STATS STRIP ────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-1 rounded overflow-hidden mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 rounded-xl overflow-hidden mb-8">
         {/* Progress */}
-        <div className="bg-fp-surface px-4 py-3.5 space-y-1.5 rounded">
+        <div className="bg-fp-surface px-4 py-3.5 space-y-1.5 rounded-xl">
           <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest">
             Progress
           </p>
@@ -198,7 +198,7 @@ export default async function ProjectPage({ params }) {
         </div>
 
         {/* Timeline */}
-        <div className="bg-fp-surface px-4 py-3.5 space-y-1.5 rounded">
+        <div className="bg-fp-surface px-4 py-3.5 space-y-1.5 rounded-xl">
           <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest">
             Timeline
           </p>
@@ -220,7 +220,7 @@ export default async function ProjectPage({ params }) {
         </div>
 
         {/* Client activity */}
-        <div className="bg-fp-surface px-4 py-3.5 space-y-1.5 rounded">
+        <div className="bg-fp-surface px-4 py-3.5 space-y-1.5 rounded-xl">
           <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest">
             Client
           </p>
@@ -249,7 +249,7 @@ export default async function ProjectPage({ params }) {
         </div>
 
         {/* Invoices */}
-        <div className="bg-fp-surface px-4 py-3.5 space-y-1.5 rounded">
+        <div className="bg-fp-surface px-4 py-3.5 space-y-1.5 rounded-xl">
           <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest">
             Invoices
           </p>
@@ -262,13 +262,13 @@ export default async function ProjectPage({ params }) {
               </span>
             </p>
           ) : (
-            <p className="text-normal font-bold text-fp-success leading-none">
-              No active invoices
+            <p className="text-normal font-bold text-fp-text-primary leading-none">
+              No Active Invoices
             </p>
           )}
           <p className="text-[10px] text-fp-text-tertiary">
-            {activeInvoices.length} active invoice
-            {activeInvoices.length !== 1 ? 's' : ''} total
+            {activeInvoices.length} Active Invoice
+            {activeInvoices.length !== 1 ? 's' : ''} Total
           </p>
         </div>
       </div>

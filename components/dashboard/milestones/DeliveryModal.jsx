@@ -254,7 +254,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
               )}
             </div>
             <p className="text-[10px] text-fp-text-tertiary mb-3">
-              Give the client specific things to verify. 3 items max — keep it focused.
+              Give the client specific things to verify. 3 items max keep it focused.
             </p>
 
             <div className="space-y-2">

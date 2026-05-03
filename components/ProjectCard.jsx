@@ -77,7 +77,7 @@ export default function ProjectCard({ project }) {
         <div className="min-w-0 flex-1">
 
           {/* Row 1: Name + status badge */}
-          <div className="flex items-center gap-5 mb-2">
+          <div className="flex gap-5 mb-2">
 
             {/* Project name — truncated if long, primary visual weight */}
             <h3 className="text-fp-text-primary font-medium text-medium truncate leading-snug">
@@ -87,7 +87,7 @@ export default function ProjectCard({ project }) {
             {/* Status badge — small pill with icon + label */}
             {/* border variant of badge — softer than a solid background */}
             <span className={`
-              shrink-0 inline-flex items-center gap-1.5
+              shrink-0 flex items-center gap-1.5
               text-[12px] font-semibold uppercase tracking-wide
               px-2 py-0.5 rounded-xl bg-transparent
               ${status.badgeClass}

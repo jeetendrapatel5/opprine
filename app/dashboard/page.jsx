@@ -1,28 +1,3 @@
-// app/dashboard/page.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// Main dashboard — the freelancer's home base.
-//
-// PSYCHOLOGICAL GOAL: The freelancer opens this page and within 3 seconds
-// feels "I am a professional running a real business. Everything is under
-// control." They see their numbers, their projects, and know exactly what
-// needs attention.
-//
-// LAYOUT (2-zone vertical):
-//   Zone 1 (full-width): Greeting + contextual summary line
-//   Zone 2 (full-width): Stats row (3 cards)
-//   Zone 3 (full-width): Attention banner (if projects in IN_REVIEW)
-//   Zone 4 (full-width): Projects list header + cards
-//
-// HIERARCHY:
-//   1. Greeting (most important — sets emotional tone for the session)
-//   2. Stats (numbers = immediate orientation)
-//   3. Attention items (variable reward — "something needs you")
-//   4. Project list (the workspace)
-//
-// This is a SERVER COMPONENT — data fetching happens here, on the server.
-// No useEffect, no loading spinners on the dashboard itself.
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { redirect } from 'next/navigation'
@@ -36,10 +11,6 @@ export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/signin')
 
-  // ── Data fetching ──────────────────────────────────────────────────────────
-  // We include 'milestones' in the query to show the attention banner
-  // when any milestone is IN_REVIEW (client waiting for response).
-  // We only take the most recent update for the "last updated" display.
   const projects = await prisma.project.findMany({
     where: { userId: session.user.id },
     include: {
@@ -57,25 +28,18 @@ export default async function DashboardPage() {
     orderBy: { createdAt: 'desc' },
   })
 
-  // ── Derived stats ─────────────────────────────────────────────────────────
   const totalProjects     = projects.length
   const activeProjects    = projects.filter(p => p.status === 'ACTIVE').length
   const completedProjects = projects.filter(p => p.status === 'COMPLETED').length
 
-  // Projects that have at least one milestone currently awaiting client review
-  // This powers the attention banner — the "variable reward" hook
   const projectsNeedingAttention = projects.filter(
     p => p.milestones && p.milestones.length > 0
   )
 
-  // ── Greeting ─────────────────────────────────────────────────────────────
   const firstName = session.user.name?.split(' ')[0] ?? 'there'
   const hour      = new Date().getHours()
   const greeting  = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
-  // ── Contextual subtitle ───────────────────────────────────────────────────
-  // Changes based on state — not a static "here is your overview" line.
-  // Language that responds to context makes the app feel alive and aware.
   let subtitle
   if (totalProjects === 0) {
     subtitle = "Let's get your first project set up."
@@ -89,15 +53,9 @@ export default async function DashboardPage() {
 
   return (
     <div>
-
-      {/* ── Zone 1: Greeting ─────────────────────────────────────────────── */}
-      {/* font-display (Fraunces) for the name — it's a headline, not a label */}
-      {/* The greeting is the emotional entry point. Every morning this is the
-          first thing the freelancer reads. It should feel warm and personal. */}
       <div className="mb-8 pt-2">
         <h1 className="font-display text-3xl sm:text-4xl font-medium text-fp-text-primary tracking-tight leading-tight">
           {greeting},{' '}
-          {/* First name gets the accent color — it's personal, not generic */}
           <span className="text-fp-accent">{firstName}</span>.
         </h1>
         <p className="text-fp-text-secondary text-sm mt-2">
@@ -185,7 +143,7 @@ export default async function DashboardPage() {
 
           // Project card list — stacked vertically with a small gap
           // Each card is its own Link (see ProjectCard.jsx)
-          <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {projects.map(project => (
               <ProjectCard key={project.id} project={project} />
             ))}

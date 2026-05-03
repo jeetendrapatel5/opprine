@@ -27,10 +27,10 @@ function StatusIcon({ status }) {
 }
 
 function SmallStatusIcon({ status }) {
-  if (status === 'COMPLETED')   return <CheckCircle2     className="w-3 h-3" />
-  if (status === 'IN_PROGRESS') return <ArrowRightCircle className="w-3 h-3" />
-  if (status === 'IN_REVIEW')   return <Eye              className="w-3 h-3" />
-  return <CircleDashed className="w-3 h-3" />
+  if (status === 'COMPLETED')   return <CheckCircle2     className="w-3.5 h-3.5" />
+  if (status === 'IN_PROGRESS') return <ArrowRightCircle className="w-3.5 h-3.5" />
+  if (status === 'IN_REVIEW')   return <Eye              className="w-3.5 h-3.5" />
+  return <CircleDashed className="w-3.5 h-3.5" />
 }
 
 function toDateInputValue(date) {
@@ -230,7 +230,7 @@ export default function MilestoneRow({
                 px-2.5 py-1.5 rounded-lg transition-colors duration-150
               "
             >
-              <Send className="w-3 h-3" />
+              <Send className="w-3.5 h-3.5" />
               Send for Review
             </button>
           )}

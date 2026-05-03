@@ -47,15 +47,15 @@ function getLastUpdatedDate(milestones) {
 const statusConfig = {
   ON_TRACK: {
     label:     'On Track',
-    className: 'bg-fp-portal-success/10 text-fp-portal-success border border-fp-portal-success/20',
+    className: 'bg-fp-portal-success/10 text-fp-portal-success',
   },
   AWAITING_REVIEW: {
     label:     'Awaiting Your Review',
-    className: 'bg-fp-portal-accent/10 text-fp-portal-accent border border-fp-portal-accent/20',
+    className: 'bg-fp-portal-accent/10 text-fp-portal-accent',
   },
   COMPLETED: {
     label:     'Project Complete',
-    className: 'bg-fp-portal-success/10 text-fp-portal-success border border-fp-portal-success/20',
+    className: 'bg-fp-portal-success/10 text-fp-portal-success',
   },
 }
 
