@@ -28,7 +28,7 @@
 import { useState, useRef } from 'react'
 import {
   Loader2, CheckCircle2, Copy, Check, ExternalLink,
-  Upload, X, Plus, Star, ImageIcon, Globe, Eye, EyeOff,
+  Upload, X, Plus, Star, ImageIcon, Globe, Eye, EyeOff, ChevronRight
 } from 'lucide-react'
 import axios from 'axios'
 
@@ -54,7 +54,7 @@ const INDUSTRY_OPTIONS = [
 // The title is in the fp- uppercase tracking style used throughout the dashboard.
 function SectionCard({ title, children }) {
   return (
-    <div className="bg-fp-surface border border-fp-border rounded-xl p-5 space-y-4">
+    <div className="bg-fp-surface rounded-xl p-5 space-y-4">
       <p className="text-fp-text-secondary text-[10px] font-bold uppercase tracking-widest">
         {title}
       </p>
@@ -339,7 +339,7 @@ function LivePreview({ data, project }) {
 
           {/* Testimonial */}
           {project.testimonial && (
-            <div className="bg-amber-50/60 border border-amber-100 rounded-lg p-3">
+            <div className=" rounded-lg p-3">
               <div className="flex gap-0.5 mb-1.5">
                 {[1,2,3,4,5].map(s => (
                   <Star
@@ -354,7 +354,7 @@ function LivePreview({ data, project }) {
                 "{project.testimonial}"
               </p>
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mt-1.5">
-                — {clientName}
+                 {clientName}
               </p>
             </div>
           )}
@@ -868,7 +868,7 @@ export default function StoryEditor({ project }) {
       <div className="lg:sticky lg:top-6">
 
         {/* Panel header */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-5">
           <p className="text-fp-text-secondary text-[10px] font-bold uppercase tracking-widest">
             Live Preview
           </p>
@@ -878,11 +878,12 @@ export default function StoryEditor({ project }) {
               target="_blank"
               rel="noopener noreferrer"
               className="
-                flex items-center gap-1 text-xs text-fp-accent
+                flex items-center text-xs text-fp-accent
                 hover:text-fp-accent-hover transition-colors duration-150
               "
             >
-              Open →
+              Open
+              <ChevronRight className="w-5 h-5" />
             </a>
           )}
         </div>

@@ -67,8 +67,8 @@ export default async function ProjectStoryPage({ params }) {
     <div className="pb-24">
 
       {/* ── Breadcrumb bar ── */}
-      <div className="bg-fp-surface border-b border-fp-border -mx-4 sm:-mx-6 px-4 sm:px-6 mb-8">
-        <div className="max-w-7xl mx-auto h-11 flex items-center gap-1.5 text-xs font-medium">
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 mb-6">
+        <div className="max-w-7xl mx-auto flex items-center gap-1.5 text-xs font-medium">
           <Link
             href="/dashboard"
             className="flex items-center gap-1 text-fp-text-tertiary hover:text-fp-text-secondary transition-colors duration-150"
@@ -100,7 +100,7 @@ export default async function ProjectStoryPage({ params }) {
 
       {/* ── Story editor — full width ── */}
       <div className="max-w-7xl mx-auto">
-        <StoryEditor project={project} />
+        <StoryEditor project={project}/>
       </div>
 
     </div>

@@ -19,7 +19,6 @@ import ProjectSidebar from '@/components/project/ProjectSidebar'
 import ProjectTabs from '@/components/project/ProjectTabs'
 import MilestoneManager from '@/components/dashboard/milestones'
 import ClientReviewCard from '@/components/dashboard/ClientReviewCard'
-import DockWrapper from '@/components/DockWrapper'
 
 const statusConfig = {
   ACTIVE: {
@@ -311,10 +310,6 @@ export default async function ProjectPage({ params }) {
           <ClientReviewCard project={project} />
         </div>
 
-      </div>
-
-      <div className='fixed inset-x-0 bottom-0 z-50 opacity-15 hover:opacity-100 transition-opacity duration-300'>
-        <DockWrapper />
       </div>
     </div>
   )
