@@ -12,12 +12,14 @@ import {
   Circle,
   CheckCircle2,
   PauseCircle,
+  BookOpen,
 } from 'lucide-react'
 
 import ProjectSidebar from '@/components/project/ProjectSidebar'
 import ProjectTabs from '@/components/project/ProjectTabs'
 import MilestoneManager from '@/components/dashboard/milestones'
 import ClientReviewCard from '@/components/dashboard/ClientReviewCard'
+import DockWrapper from '@/components/DockWrapper'
 
 const statusConfig = {
   ACTIVE: {
@@ -131,8 +133,8 @@ export default async function ProjectPage({ params }) {
   return (
     <div className="pb-24">
       {/* Breadcrumb */}
-      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 mb-6">
-        <div className="max-w-7xl mx-auto h-11 flex items-center gap-1.5 text-xs font-medium">
+      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 mb-8">
+        <div className="max-w-7xl mx-auto flex items-center gap-1.5 text-xs font-medium">
           <Link
             href="/dashboard"
             className="flex items-center gap-1 text-fp-text-tertiary hover:text-fp-text-secondary transition-colors duration-150"
@@ -226,11 +228,10 @@ export default async function ProjectPage({ params }) {
           </p>
           <div className="flex items-center gap-2">
             <span
-              className={`w-2 h-2 rounded-full shrink-0 ${
-                clientViewedText
+              className={`w-2 h-2 rounded-full shrink-0 ${clientViewedText
                   ? 'bg-fp-success ring-2 ring-fp-success/20'
                   : 'bg-fp-border'
-              }`}
+                }`}
             />
             <p className="text-base font-bold text-fp-text-primary leading-none tabular-nums">
               {clientViewedText ?? 'Not opened'}
@@ -239,11 +240,11 @@ export default async function ProjectPage({ params }) {
           <p className="text-[10px] text-fp-text-tertiary">
             {clientViewedText
               ? `last portal view · ${new Date(
-                  project.client.lastViewedAt
-                ).toLocaleDateString('en-GB', {
-                  day: 'numeric',
-                  month: 'short',
-                })}`
+                project.client.lastViewedAt
+              ).toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+              })}`
               : 'share the magic link below'}
           </p>
         </div>
@@ -289,8 +290,31 @@ export default async function ProjectPage({ params }) {
 
         <div className="lg:col-span-4 space-y-4">
           <ProjectSidebar project={project} portalLink={portalLink} />
+          <Link
+            href={`/dashboard/projects/${project.id}/story`}
+            className="
+    flex items-center gap-2 w-full
+    bg-fp-surface hover:border-fp-border rounded-xl px-4 py-3
+    text-fp-text-secondary text-sm font-medium
+    hover:border-fp-accent/30 hover:text-fp-accent
+    transition-colors duration-150
+  "
+          >
+            <BookOpen className="w-4 h-4 shrink-0" />
+            <div>
+              <p className="font-semibold">Project Story</p>
+              <p className="text-fp-text-tertiary text-xs">
+                {project.caseStudyEnabled ? 'Story is live' : 'Turn this project into a case study'}
+              </p>
+            </div>
+          </Link>
           <ClientReviewCard project={project} />
         </div>
+
+      </div>
+
+      <div className='fixed inset-x-0 bottom-0 z-50 opacity-15 hover:opacity-100 transition-opacity duration-300'>
+        <DockWrapper />
       </div>
     </div>
   )

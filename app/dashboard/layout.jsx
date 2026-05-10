@@ -1,18 +1,8 @@
-// app/dashboard/layout.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// This is a Server Component — it runs on the server, checks auth, and wraps
-// all /dashboard/* pages. The Navbar itself is a Client Component (needs
-// signOut interactivity), but this layout shell is server-rendered.
-//
-// Psychology: The dark bg-fp-base background is set HERE, not in globals.css,
-// because only the dashboard is dark. The portal (/portal/*) will be light.
-// Keeping themes scoped to their layout prevents bleed.
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/app/api/auth/[...nextauth]/route'
 import { redirect } from 'next/navigation'
 import Navbar from '@/components/Navbar'
+import { VscHome, VscArchive, VscAccount, VscSettingsGear } from 'react-icons/vsc'
 
 export default async function DashboardLayout({ children }) {
 

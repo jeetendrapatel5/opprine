@@ -39,6 +39,9 @@ export default async function SettingsPage() {
       bio:          true,
       avatarUrl:    true,
       portfolioUrl: true,
+      username:     true,
+      profileEnabled: true,
+      profileTagline: true,
     },
   })
 

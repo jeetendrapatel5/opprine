@@ -20,6 +20,21 @@ model User {
   bio          String?   // one-line summary e.g. "Full-stack developer based in Goa"
   avatarUrl    String?   // Cloudinary URL of profile photo
   portfolioUrl String?   // e.g. "https://jeetu.dev"
+
+  // ── Public portfolio fields ───────────────────────────────────────────────
+  // username powers the /u/[username] route.
+  // Must be lowercase, alphanumeric, hyphens only. Null = not set up yet.
+  // @unique enforces no two freelancers share the same username.
+  username       String?  @unique
+
+  // profileEnabled gates /u/[username]. When false, the page returns 404.
+  // Default false — freelancer opts in deliberately.
+  profileEnabled Boolean  @default(false)
+
+  // profileTagline — marketing-facing one-liner, distinct from bio.
+  // bio: "Full-stack dev based in Goa" (factual, casual)
+  // profileTagline: "I build fast, conversion-focused SaaS products." (sells)
+  profileTagline String?
 }
 
 model Project {
@@ -41,6 +56,38 @@ model Project {
   testimonial   String?   @db.Text
   inquiries     Inquiry[]
   invoices      Invoice[]
+
+  // ── Project Story / Case Study fields ─────────────────────────────────────
+  // caseStudyEnabled gates the full story view on /showcase/[slug].
+  // When false, the page renders the MVP layout (testimonial + files only).
+  // When true, the full case study layout renders.
+  caseStudyEnabled    Boolean  @default(false)
+
+  // caseStudyProblem + caseStudyOutcome are the two narrative paragraphs.
+  // Written by the freelancer for prospective clients, not for the project client.
+  caseStudyProblem    String?  @db.Text
+  caseStudyOutcome    String?  @db.Text
+
+  // caseStudyTechStack — array of technology name strings.
+  // e.g. ["Next.js", "PostgreSQL", "Stripe"]
+  // @default([]) means existing rows get an empty array, not null.
+  // Safe to .map() without a null check.
+  caseStudyTechStack  String[] @default([])
+
+  // caseStudyHideClient — privacy toggle, default true.
+  // When true: render "A satisfied client" instead of client.name.
+  // Freelancer explicitly opts in to showing the real name.
+  caseStudyHideClient Boolean  @default(true)
+
+  // caseStudyCoverImage — Cloudinary URL for the hero image.
+  // If null, the showcase page auto-selects the first completed milestone's
+  // deliveryFileUrl that is an image type.
+  caseStudyCoverImage String?
+
+  // caseStudyIndustry — single-select label.
+  // e.g. "E-commerce", "SaaS", "Healthcare"
+  // Shown as a badge on the showcase page.
+  caseStudyIndustry   String?
 }
 
 model File {

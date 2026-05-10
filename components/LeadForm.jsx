@@ -7,6 +7,7 @@ export default function LeadForm({ projectId, freelancerName }) {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSent, setIsSent] = useState(false)
+  const [error, setError] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -45,6 +46,11 @@ export default function LeadForm({ projectId, freelancerName }) {
         <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Project Details</label>
         <textarea rows="3" required value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})} placeholder="What do you need built?" className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500" />
       </div>
+
+      { error && (
+        <p className='text-red-400 text-sm mb-4'>{error}</p>
+      )}
+
       <button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl transition-colors flex justify-center items-center gap-2">
         {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Send Inquiry to {freelancerName} <ArrowRight className="w-4 h-4" /></>}
       </button>
