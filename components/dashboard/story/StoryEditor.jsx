@@ -28,7 +28,8 @@
 import { useState, useRef } from 'react'
 import {
   Loader2, CheckCircle2, Copy, Check, ExternalLink,
-  Upload, X, Plus, Star, ImageIcon, Globe, Eye, EyeOff, ChevronRight
+  Upload, X, Plus, Star, ImageIcon, Globe, Eye, EyeOff, ChevronRight,
+  CheckIcon
 } from 'lucide-react'
 import axios from 'axios'
 
@@ -306,8 +307,9 @@ function LivePreview({ data, project }) {
           {/* Project name + badges */}
           <div>
             <div className="flex flex-wrap gap-1.5 mb-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-green-50 text-green-700">
-                ✓ Completed Project
+              <span className="text-[10px] font-bold uppercase flex tracking-wider px-2 py-0.5 rounded-full bg-green-50 text-green-700">
+                <CheckIcon className="w-3 h-3 mr-1" />
+                Completed Project
               </span>
               {caseStudyIndustry && (
                 <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
@@ -431,7 +433,7 @@ function LivePreview({ data, project }) {
         }
       `}>
         {caseStudyEnabled
-          ? '✓ This story is public'
+          ? 'This story is public'
           : 'Enable the toggle to publish this story'
         }
       </div>
