@@ -154,9 +154,7 @@ export default function SettingsForm({ user }) {
           Public Portfolio
         </p>
         <p className="text-fp-text-tertiary text-xs leading-relaxed -mt-2">
-          Set up your public profile at{' '}
-          <span className="font-mono text-fp-text-secondary">/u/[username]</span>{' '}
-          to showcase all your published case studies in one place.
+          Set up your public profile to showcase all your published case studies in one place.
         </p>
 
         {/* Enable portfolio toggle */}
@@ -200,9 +198,6 @@ export default function SettingsForm({ user }) {
           </label>
           {/* Prefix + input side by side — same pattern as StoryEditor slug */}
           <div className="flex rounded-lg overflow-hidden border border-fp-border focus-within:ring-2 focus-within:ring-fp-accent/30 focus-within:border-fp-accent/50 transition-colors duration-150">
-            <span className="flex items-center px-3 bg-fp-raised text-fp-text-tertiary text-xs font-mono border-r border-fp-border whitespace-nowrap shrink-0">
-              /u/
-            </span>
             <input
               type="text"
               value={username}
@@ -217,7 +212,7 @@ export default function SettingsForm({ user }) {
           )}
 
           {/* Live URL + copy — shown when username is valid and profile is enabled */}
-          {profileEnabled && username && !usernameError && (
+          {/* {profileEnabled && username && !usernameError && (
             <div className="flex items-center gap-2 mt-2 p-2 bg-fp-raised border border-fp-border rounded-lg">
               <Globe className="w-3 h-3 text-fp-accent shrink-0" />
               <span className="text-[10px] text-fp-text-secondary font-mono truncate flex-1">
@@ -242,7 +237,7 @@ export default function SettingsForm({ user }) {
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Tagline input */}
