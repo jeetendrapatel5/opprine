@@ -201,7 +201,7 @@ export default function MilestoneManager({
           type="text"
           value={newTitle}
           onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Add a milestone — e.g. Homepage design, Final handoff..."
+          placeholder="Add a milestone - e.g. Homepage design, Final handoff..."
           disabled={isAdding}
           className="
             flex-1 bg-fp-raised border border-fp-border text-fp-text-primary

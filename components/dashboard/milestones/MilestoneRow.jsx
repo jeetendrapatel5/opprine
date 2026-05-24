@@ -276,7 +276,7 @@ export default function MilestoneRow({
 
         {/* ── Expanded panel ── */}
         {isOpen && (
-          <div className="px-4 py-4 bg-fp-surface space-y-4">
+          <div className="px-4 py-4 bg-fp-base space-y-4">
 
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-fp-text-tertiary shrink-0">
@@ -290,7 +290,7 @@ export default function MilestoneRow({
                   onChange={handleDueDateChange}
                   disabled={isDueSaving}
                   className="
-                    text-xs bg-fp-raised border border-fp-border text-fp-text-secondary
+                    text-xs bg-fp-raised text-fp-text-secondary
                     rounded-lg px-2.5 py-1.5
                     focus:outline-none focus:ring-2 focus:ring-fp-accent/30 focus:border-fp-accent/50
                     disabled:opacity-50 cursor-pointer
@@ -312,7 +312,7 @@ export default function MilestoneRow({
               </div>
             </div>
 
-            <div className="border-t border-fp-border" />
+            <div className="mb-7" />
 
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-fp-text-tertiary mb-3">
@@ -326,7 +326,7 @@ export default function MilestoneRow({
               />
             </div>
 
-            <div className="border-t border-fp-border pt-4">
+            <div className="pt-4">
               <p className="text-[10px] font-bold uppercase tracking-widest text-fp-text-tertiary mb-2">
                 Add Update
               </p>
