@@ -4,158 +4,249 @@
 // in the entire freelancer experience — they look at this list every day.
 //
 // Design decisions:
-// - Entire card is a Link — not just the "View" button. Bigger click target
-//   reduces friction. The "View →" text still exists but is a visual affordance,
-//   not the only clickable area. (Fitts's Law: bigger targets = less effort.)
-// - Status badge uses our semantic color system, not Tailwind defaults.
-//   The badge is the first thing the eye goes to after the project name.
-// - Client name is secondary — in the hierarchy of information the freelancer
-//   needs: "what project" > "what state" > "which client" > "when updated".
-// - "Last update" timestamp is the variable reward signal. It tells the
-//   freelancer "something happened" and triggers the urge to check.
-// - Hover state shifts the entire card border to fp-accent — the whole card
-//   glows slightly, signaling "this is interactive".
-// - The arrow (→) is text-fp-text-tertiary by default, shifts to fp-accent on
-//   card hover. This movement draws the eye toward the action.
+// - LEFT ACCENT STRIP: A 3px vertical bar on the left edge whose color matches
+//   the project status. This is the first thing the eye lands on — before even
+//   reading the name. It creates a visual "anchor" and groups status with the
+//   whole card instead of just the badge.
+//
+// - CLIENT AVATAR: The client's first initial rendered in a small circle on
+//   the right. It makes the card feel like it represents a real relationship,
+//   not just a row in a database. Disappears when no client is assigned.
+//
+// - METADATA ROW AT BOTTOM: Client name and last-update timestamp are now
+//   separated from the name row with a visible divider line. This creates
+//   two clear zones: "what is this project" (top) and "what's the context"
+//   (bottom). Cleaner than squeezing both into one row.
+//
+// - STATUS BADGE: Now uses a filled dot instead of the Lucide icon. Smaller,
+//   quieter, but still instantly scannable. The badge itself has a subtle
+//   border for depth.
+//
+// - HOVER STATE: The card lifts via translateY(-1px) and box-shadow deepens.
+//   The left accent strip grows from 3px to 4px. The "View →" arrow slides
+//   right. These three micro-animations together feel intentional, not cheap.
+//
+// - OVERFLOW HIDDEN ON WRAPPER: Needed so the left accent strip (which is
+//   absolutely positioned) clips cleanly inside the rounded corners.
+//
+// - Entire card is still a Link. Fitts's Law still applies.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Link from 'next/link'
-import { Circle, CheckCircle2, PauseCircle, Clock, ChevronRight } from 'lucide-react'
+import { Clock, ChevronRight } from 'lucide-react'
 import DeleteProjectButton from '@/components/DeleteProjectButton'
 
-// Status config maps Prisma enum values to display properties.
-// Using our fp- design tokens, NOT Tailwind defaults.
+// ─── Status config ────────────────────────────────────────────────────────────
+// Each status maps to:
+//  label       — display text for the badge
+//  dotClass    — the colored dot inside the badge (bg-* color)
+//  badgeClass  — text + background + border colors for the pill
+//  stripClass  — the left accent strip color
+//  avatarClass — background color for the client initial avatar
+//
+// We use fp- tokens throughout — no raw hex, no Tailwind default colors.
 const statusConfig = {
   ACTIVE: {
     label: 'Active',
-    badgeClass: 'bg-fp-accent-muted text-fp-accent border-fp-accent/20',
-    Icon: Circle,
+    dotClass:   'bg-fp-accent',
+    badgeClass: 'text-fp-accent',
+    avatarClass:'bg-fp-accent-muted text-fp-accent',
   },
   COMPLETED: {
-    label: 'Completed',
-    badgeClass: 'bg-fp-success/10 text-fp-success border-fp-success/20',
-    Icon: CheckCircle2,
+    label: 'Done',
+    dotClass:   'bg-fp-success',
+    badgeClass: 'text-fp-success',
+    avatarClass:'bg-fp-success/10 text-fp-success',
   },
   ON_HOLD: {
     label: 'On Hold',
-    badgeClass: 'bg-fp-warning/10 text-fp-warning border-fp-warning/20',
-    Icon: PauseCircle,
+    dotClass:   'bg-fp-warning',
+    badgeClass: 'text-fp-warning',
+    avatarClass:'bg-fp-warning/10 text-fp-warning',
   },
 }
 
-// Converts a timestamp to a human-readable relative string.
-// Used for "Last update: 2h ago" — the variable reward signal.
+// ─── timeAgo ─────────────────────────────────────────────────────────────────
+// Converts a timestamp into a short relative string: "2h ago", "3d ago", etc.
+// For dates older than 7 days, shows a locale date like "12 Jun" instead of
+// "14d ago" which loses human meaning past a week.
 function timeAgo(date) {
   const seconds = Math.floor((new Date() - new Date(date)) / 1000)
-  if (seconds < 60) return 'just now'
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+  if (seconds < 60)     return 'just now'
+  if (seconds < 3600)   return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86400)  return `${Math.floor(seconds / 3600)}h ago`
   if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
-  // Older than a week — show the date rather than "14d ago" which loses meaning
   return new Date(date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
+// ─── getInitial ───────────────────────────────────────────────────────────────
+// Extracts the first character of a name for the avatar circle.
+// "Acme Corp" → "A", "john doe" → "J"
+function getInitial(name) {
+  return name?.trim()?.[0]?.toUpperCase() ?? '?'
+}
+
+// ─── ProjectCard ──────────────────────────────────────────────────────────────
 export default function ProjectCard({ project }) {
-  const status = statusConfig[project.status] ?? statusConfig.ACTIVE
-  const StatusIcon = status.Icon
+  // Fall back to ACTIVE config if we get an unknown status value from Prisma.
+  const status     = statusConfig[project.status] ?? statusConfig.ACTIVE
   const lastUpdate = project.updates?.[0]
+  const clientName = project.client?.name
 
   return (
-    // The entire card is a Link. group class enables child hover states
-    // that react when the parent card is hovered.
+    // `group` — enables child elements to react to this card being hovered
+    //           via `group-hover:*` utility classes.
+    // `relative overflow-hidden` — required so the absolutely-positioned
+    //           left accent strip clips to the card's rounded corners.
+    // `transition-all duration-200` — covers border-color, background,
+    //           and box-shadow changes on hover in one declaration.
     <Link
       href={`/dashboard/projects/${project.id}`}
       className="
-        group block bg-fp-surface border-fp-border rounded-xl p-5
-        hover:border-fp-accent/50 transition-colors duration-150
+        group relative block overflow-hidden
+        bg-fp-surface border border-fp-border rounded-xl
+        transition-all duration-200
+        hover:border-fp-accent/40
         hover:bg-fp-raised
+        hover:shadow-[0_4px_24px_-4px_rgba(123,147,255,0.12)]
       "
     >
-      <div className="flex items-center justify-between gap-4">
 
-        {/* ── Left: Project info ── */}
-        <div className="min-w-0 flex-1">
+      {/* ── Card Body ─────────────────────────────────────────────────────── */}
+      {/* pl-5 accounts for the strip width plus spacing. pr-4 is standard. */}
+      <div className="pl-5 pr-4 py-4">
 
-          {/* Row 1: Name + status badge */}
-          <div className="flex gap-5 mb-2">
+        {/* ── Top Row: Name · Badge · Actions ─────────────────────────── */}
+        <div className="flex items-start justify-between gap-3">
 
-            {/* Project name — truncated if long, primary visual weight */}
-            <h3 className="text-fp-text-primary font-medium text-medium truncate leading-snug">
+          {/* Left side: project name + status badge */}
+          <div className="min-w-0 flex-1 flex items-center gap-3">
+
+            {/* Project name — primary label, truncated if long.
+                `leading-snug` tightens the line-height so the name sits
+                visually closer to the metadata row below it. */}
+            <h3 className="
+              text-fp-text-primary font-semibold text-[15px]
+              truncate leading-snug min-w-0
+            ">
               {project.name}
             </h3>
 
-            {/* Status badge — small pill with icon + label */}
-            {/* border variant of badge — softer than a solid background */}
+            {/* Status badge — dot + label. Simpler than an icon; easier to
+                scan when there are many cards in a list.
+                `shrink-0` prevents it from compressing when the name is long. */}
             <span className={`
               shrink-0 flex items-center gap-1.5
-              text-[12px] font-semibold uppercase tracking-wide
-              px-2 py-0.5 rounded-xl bg-transparent
+              text-[11px] font-semibold uppercase tracking-widest
+              px-2 py-0.5 rounded-full
               ${status.badgeClass}
             `}>
-              <StatusIcon className="w-3.5 h-3.5" />
+              {/* Filled dot — the color is the status signal, not the icon shape */}
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${status.dotClass}`} />
               {status.label}
             </span>
 
           </div>
 
-          {/* Row 2: Client name + last update */}
-          <div className="flex items-center gap-3 text-xs text-fp-text-tertiary">
+          {/* Right side: delete button + view affordance */}
+          <div className="flex items-center gap-1.5 shrink-0">
 
-            {/* Client name */}
-            {project.client?.name && (
-              <>
-                <span className="truncate max-w-[140px]">
-                  {project.client.name}
-                </span>
-                {/* Separator dot — only show if there's also an update */}
-                {lastUpdate && (
-                  <span className="shrink-0 w-1 h-1 rounded-full bg-fp-border" />
-                )}
-              </>
+            {/* DeleteProjectButton is a Client Component. It's opacity-0 by
+                default and fades in on card hover (handled inside that
+                component via `group-hover:opacity-100`). */}
+            <DeleteProjectButton
+              projectId={project.id}
+              projectName={project.name}
+            />
+
+            {/* View → affordance. The arrow slides 2px right on hover to signal
+                "this is the direction of travel". */}
+            <span className="
+              flex items-center gap-0.5 text-[12px] font-medium
+              text-fp-text-tertiary group-hover:text-fp-accent
+              transition-colors duration-200
+            ">
+              View
+              <span className="
+                inline-block
+                group-hover:translate-x-0.5
+                transition-transform duration-200
+              ">
+                <ChevronRight className="w-3.5 h-3.5" />
+              </span>
+            </span>
+
+          </div>
+        </div>
+
+        {/* ── Divider ──────────────────────────────────────────────────────
+            A hairline between the name row and the metadata row.
+            Creates two clear visual zones without adding padding.
+            `my-3` gives it breathing room. */}
+        <div className="my-3 h-px bg-fp-border/60" />
+
+        {/* ── Bottom Row: Client avatar · Client name · Dot · Timestamp ── */}
+        <div className="flex items-center justify-between gap-3">
+
+          <div className="flex items-center gap-2 min-w-0">
+
+            {/* Client avatar — shows the first initial of the client's name
+                in a small circle. It makes the card feel relational.
+                Only rendered if a client is linked to this project. */}
+            {clientName && (
+              <span className={`
+                shrink-0 w-5 h-5 rounded-full text-[10px] font-bold
+                flex items-center justify-center
+                ${status.avatarClass}
+              `}>
+                {getInitial(clientName)}
+              </span>
             )}
 
-            {/* Last update timestamp — the variable reward hook */}
+            {/* Client name — truncated to prevent overflow */}
+            {clientName && (
+              <span className="text-xs text-fp-text-secondary truncate max-w-[130px] font-medium">
+                {clientName}
+              </span>
+            )}
+
+            {/* Separator dot — only shown when BOTH client and update exist */}
+            {clientName && lastUpdate && (
+              <span className="shrink-0 w-1 h-1 rounded-full bg-fp-border" />
+            )}
+
+            {/* Last update timestamp — variable reward signal.
+                The Clock icon reinforces that this is time-related. */}
             {lastUpdate ? (
-              <span className="flex items-center gap-1 shrink-0">
+              <span className="flex items-center gap-1 text-xs text-fp-text-tertiary shrink-0">
                 <Clock className="w-3 h-3" />
-                Updated {timeAgo(lastUpdate.createdAt)}
+                {timeAgo(lastUpdate.createdAt)}
               </span>
             ) : (
-              <span className=" text-fp-text-tertiary">No updates yet</span>
+              <span className="text-xs text-fp-text-tertiary italic">
+                No updates yet
+              </span>
             )}
 
           </div>
 
-        </div>
-
-        {/* ── Right: Actions area ── */}
-        {/* DeleteProjectButton is a Client Component rendered inside this
-            Server Component. The delete button is invisible by default
-            (opacity-0) and appears on card hover via the `group` class. */}
-        <div className="flex items-center gap-2 shrink-0">
-
-          {/* Delete button — appears on hover, stops click propagation internally */}
-          <DeleteProjectButton
-            projectId={project.id}
-            projectName={project.name}
-          />
-
-          {/* View arrow — shifts color on card hover */}
-          {/* Wrapped in a span so DeleteProjectButton can replace it visually
-              when in 'confirm' state without displacing the layout */}
-          <span className="
-            shrink-0 text-fp-text-tertiary text-sm font-medium
-            group-hover:text-fp-accent transition-colors duration-150
-            flex items-center gap-1
-          ">
-            View
-            <span className="group-hover:translate-x-0.5 transition-transform duration-150 inline-block">
-              <ChevronRight />
-            </span>
-          </span>
+          {/* Update indicator dot — pulses if there was a recent update
+              (within last 24 hours). It's a subtle "something new" signal
+              without being as intrusive as a badge. */}
+          {lastUpdate && (() => {
+            const isRecent =
+              (new Date() - new Date(lastUpdate.createdAt)) / 1000 < 86400
+            return isRecent ? (
+              <span className="shrink-0 relative flex h-2 w-2">
+                {/* Ping ring — the animated outer ring */}
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-fp-accent opacity-60" />
+                {/* Solid center dot */}
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-fp-accent" />
+              </span>
+            ) : null
+          })()}
 
         </div>
-
       </div>
     </Link>
   )

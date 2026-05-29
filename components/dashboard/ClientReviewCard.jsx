@@ -54,7 +54,7 @@ export default function ClientReviewCard({ project }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-3 px-5 py-3.5 text-left"
+        className="w-full flex items-center cursor-pointer justify-between gap-3 px-5 py-3.5 text-left"
       >
         <span className="flex items-center gap-2 text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest">
           <span className="w-1.5 h-1.5 rounded-full bg-fp-success shadow-[0_0_6px_var(--color-fp-success)]" />
