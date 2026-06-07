@@ -102,7 +102,7 @@ export default function ProjectSidebar({ project, portalLink }) {
 
           <div className="mt-3 min-w-0">
             {hasClient ? (
-              <p className="truncate text-sm font-semibold text-fp-text-primary">
+              <p className="truncate text-sm font-[poppins] text-fp-text-primary">
                 {project.client.name}
               </p>
             ) : (

@@ -1,7 +1,7 @@
 // app/dashboard/projects/[id]/page.jsx
 
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from "@/lib/auth"
 import { redirect, notFound } from 'next/navigation'
 import prisma from '@/lib/prisma'
 import Link from 'next/link'
@@ -152,7 +152,7 @@ export default async function ProjectPage({ params }) {
       {/* Title + badge */}
       <div className="mb-5">
         <div className="flex items-start gap-4 flex-wrap">
-          <h1 className="font-display text-3xl font-medium text-fp-text-primary tracking-tight leading-tight flex-1 min-w-0">
+          <h1 className="font-[poppins] text-3xl font-medium text-fp-text-primary tracking-tight leading-tight flex-1 min-w-0">
             {project.name}
           </h1>
           <span

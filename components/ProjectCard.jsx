@@ -136,13 +136,13 @@ export default function ProjectCard({ project }) {
                 scan when there are many cards in a list.
                 `shrink-0` prevents it from compressing when the name is long. */}
             <span className={`
-              shrink-0 flex items-center gap-1.5
-              text-[11px] font-semibold uppercase tracking-widest
+              shrink-0 flex items-center gap-1
+              text-[8px] font-semibold uppercase tracking-widest
               px-2 py-0.5 rounded-full
               ${status.badgeClass}
             `}>
               {/* Filled dot — the color is the status signal, not the icon shape */}
-              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${status.dotClass}`} />
+              <span className={`w-1 h-1 rounded-full shrink-0 ${status.dotClass}`} />
               {status.label}
             </span>
 

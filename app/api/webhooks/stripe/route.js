@@ -24,15 +24,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-04-10',
 })
 
-// This tells Next.js NOT to parse the body automatically.
-// Without this, Stripe's signature verification will always fail because
-// the body bytes will have been transformed during parsing.
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
-
 export async function POST(request) {
   let event
 

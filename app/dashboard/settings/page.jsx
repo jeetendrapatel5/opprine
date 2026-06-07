@@ -1,23 +1,5 @@
-// app/dashboard/settings/page.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// PSYCHOLOGICAL GOAL: The freelancer opens this page and feels like they are
-// "making Freeport theirs" — not configuring a system. The copy, layout, and
-// visual weight all reinforce: this is your brand, your portal, your identity.
-//
-// This is the Endowment Effect in practice: possessive language ("your portal",
-// "your clients see this") increases the psychological switching cost.
-//
-// LAYOUT:
-//   Full-width breadcrumb bar (same pattern as project page)
-//   Narrow content column (max-w-xl) — settings should never feel overwhelming
-//   Page title + subtitle (sets expectation before the form)
-//   SettingsForm (the actual work)
-//
-// Server Component — fetches user data, passes to SettingsForm (Client Component).
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { getServerSession } from 'next-auth'
-import { authOptions }      from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from "@/lib/auth"
 import { redirect }         from 'next/navigation'
 import prisma               from '@/lib/prisma'
 import Link                 from 'next/link'
