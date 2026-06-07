@@ -1,250 +1,280 @@
 // components/landing/data.js
-// Single source of truth for all landing page content.
+// Centralized landing-page copy for Client Portal.
 
-// ── Navigation ────────────────────────────────────────────────────────────────
 export const NAV_LINKS = [
-  { label: 'How It Works', href: '#how-it-works' },
-  { label: 'Features',     href: '#features'     },
-  { label: 'Pricing',      href: '#pricing'       },
+  { label: 'Product', href: '#product' },
+  { label: 'Workflow', href: '#workflow' },
+  { label: 'Pricing', href: '#pricing' },
+  { label: 'FAQ', href: '#faq' },
 ]
 
-// ── Hero ──────────────────────────────────────────────────────────────────────
-export const HERO_PRE        = 'For freelance web developers'
-export const HERO_HEADLINE_1 = 'Your work is professional.'
-export const HERO_HEADLINE_2 = "Your client process isn't."
-export const HERO_SUB        = 'One magic link. Your client sees every update, approves deliverables, and pays invoices — without creating an account. You look like you run a proper studio. Because now you do.'
-export const HERO_CTA        = 'Start free — no credit card needed'
-export const HERO_TRUST      = 'Free forever on 2 projects · No credit card · Set up in 4 minutes'
+export const HERO_PRE = 'Client operations for freelance developers'
+export const HERO_HEADLINE = 'Client Portal for serious freelancers'
+export const HERO_SUB =
+  'Create a project, send one private link, and give clients a polished place to review updates, approve work, download files, and pay invoices. No client account required.'
+export const HERO_CTA = 'Create your first portal'
+export const HERO_SECONDARY_CTA = 'Preview the workflow'
+export const HERO_TRUST = [
+  'No client login',
+  'Private project links',
+  'Approvals and payments in one place',
+]
+export const HERO_METRICS = [
+  { value: '4 min', label: 'average setup' },
+  { value: '1 link', label: 'for every client action' },
+  { value: '0', label: 'client accounts required' },
+]
 
-// ── Pain Section ──────────────────────────────────────────────────────────────
-export const PAIN_HEADER = 'Sound familiar?'
-export const PAIN_CARDS  = [
+export const PAIN_HEADER = 'Your work feels premium. Your client process should too.'
+export const PAIN_INTRO =
+  'Freelance projects rarely fall apart because the developer cannot build. They drift when updates, approvals, files, and invoices live across too many tools.'
+export const PAIN_CARDS = [
   {
-    id: 'silence',
-    open: 'You delivered the work.\nThree days ago.',
-    body: "The client hasn't replied. You've checked your email four times this morning. You check WhatsApp. Nothing. You're not sure if they loved it, hated it, or are composing a 'this isn't what I wanted' message that'll ruin your week.",
-    sting: "That silence isn't neutral. It's expensive.",
+    id: 'updates',
+    open: 'Status lives in scattered messages.',
+    body: 'Clients ask what changed, what is next, and where the latest link is. You answer manually, even when the answer already exists somewhere else.',
+    sting: 'Every extra explanation makes the project feel less controlled.',
   },
   {
     id: 'approval',
-    open: '"I don\'t remember approving that."',
-    body: "You scroll back through 200 messages trying to find the moment they said yes. There it is — buried between a meme they sent and a question about their logo colour. But it doesn't look like an approval. It looks like a chat.",
-    sting: 'So you eat the revision. Again. Because arguing over WhatsApp screenshots isn\'t worth the relationship.',
+    open: 'Approvals are easy to dispute.',
+    body: 'A quick yes in chat is not the same as a recorded approval. When scope pressure appears, screenshots and memory become a weak operating system.',
+    sting: 'Professional work needs professional records.',
   },
   {
-    id: 'perception',
-    open: 'You want to charge ₹80,000 for this project.\nYour process looks like a ₹15,000 freelancer\'s.',
-    body: 'No dedicated client space. Files scattered across Drive links. Status updates sent manually when they ask. You know the work is worth the number. But somewhere between your skill and your presentation, the client is making a different calculation.',
-    sting: null,
+    id: 'files',
+    open: 'Deliverables arrive without ceremony.',
+    body: 'A Drive link, a note, a follow-up, another version. The work may be excellent, but the handoff does not feel considered.',
+    sting: 'Presentation changes how clients value the work.',
   },
   {
-    id: 'invoice',
-    open: 'Invoice sent. "I\'ll get to it."\nSix weeks later. You\'re still waiting.',
-    body: '"Sorry, been busy." Another week. You need the money. You don\'t want to seem desperate. So you wait. And follow up politely. And hate every second of it.',
-    sting: 'You need a system that makes payment the obvious next step — not an awkward conversation.',
+    id: 'payment',
+    open: 'Payment becomes a separate chase.',
+    body: 'The invoice sits in another email thread after the client has already reviewed the work. Paying becomes something to remember later.',
+    sting: 'The best moment to ask for payment is inside the moment of completion.',
   },
 ]
 
-// ── Reframe Section ───────────────────────────────────────────────────────────
-export const REFRAME_LABEL = "It's not you. It's your setup."
-export const REFRAME_BODY  = "The chaos isn't a character flaw. It's what happens when you run a professional relationship through tools built for something else — a messaging app and a folder. That's not a system. It's a liability.\n\nThere's a simpler way. One link. One place. Everything your client needs to see, and nothing they don't."
+export const REFRAME_LABEL = 'The fix is not another dashboard.'
+export const REFRAME_BODY =
+  'It is a client-facing operating room for each project: clean, private, structured, and obvious. One link tells the client what happened, what needs attention, what was approved, and what is ready to pay.\n\nClient Portal gives freelancers the calm, agency-grade layer that clients expect from premium work.'
 
-// ── How It Works ──────────────────────────────────────────────────────────────
-export const HOW_HEADER = 'Set up in 4 minutes. Used for every project after that.'
-export const HOW_STEPS  = [
+export const TRUST_SIGNALS = [
+  {
+    title: 'Private by default',
+    desc: 'Each client receives a project-specific magic link. No shared inbox archaeology, no public folders.',
+  },
+  {
+    title: 'Approval history',
+    desc: 'Every approval is tied to the deliverable, time, and project context that produced it.',
+  },
+  {
+    title: 'Payment-ready handoff',
+    desc: 'Invoices sit beside the work, so the next step is clear when the client is ready to move.',
+  },
+]
+
+export const HOW_HEADER = 'From project setup to paid invoice, the flow stays clear.'
+export const HOW_STEPS = [
   {
     step: '01',
-    title: 'You build the project',
-    desc: 'Create a project, add milestones, write a short description. Takes 4 minutes the first time. 90 seconds every time after.',
-    result: 'Your client relationship already has more structure than 90% of freelancers provide.',
+    title: 'Create the project',
+    desc: 'Add the client, scope, milestones, files, and the few details that make the engagement feel organized from day one.',
+    result: 'Your process has a home before the first update is sent.',
   },
   {
     step: '02',
-    title: 'Your client gets a link',
-    desc: 'One magic link. No signup. No password. They click it — on their phone, laptop, anywhere — and see a clean, professional portal with your name on it.',
-    result: "Your client's first impression is that they hired someone who runs a real business.",
+    title: 'Share one private link',
+    desc: 'The client opens a polished portal on any device. No signup, no password, no new workspace to learn.',
+    result: 'The first impression is confidence, not friction.',
   },
   {
     step: '03',
-    title: 'Everything in one place',
-    desc: "Milestone updates, file deliveries, feedback, approvals, and invoices — all inside the same link. When you mark something ready, they get an email. When they approve, you get notified.",
-    result: "No more chasing, no more scattered threads, no more 'I never saw that.'",
+    title: 'Deliver, review, approve',
+    desc: 'Updates, files, feedback, and approvals stay attached to the right milestone, so nobody has to reconstruct the thread later.',
+    result: 'You get decisions instead of vague replies.',
+  },
+  {
+    step: '04',
+    title: 'Invoice in context',
+    desc: 'When the work is accepted, the invoice is already where the client is reviewing the outcome.',
+    result: 'Payment becomes the obvious next action.',
   },
 ]
 
-// ── Features ──────────────────────────────────────────────────────────────────
-export const FEATURES_HEADER = 'Six things that fix the parts of freelancing you hate most.'
+export const FEATURES_HEADER = 'Everything clients need to trust the process.'
 export const FEATURES = [
   {
-    icon: '🔗',
-    name: 'Magic Link Portal',
-    desc: 'Your client sees everything they need without creating a single account.',
-    fix: "Fixes: clients who won't open 'yet another tool'",
-    previewKey: 'portal',
+    icon: 'link',
+    name: 'Magic link portals',
+    desc: 'Send a private client portal that opens instantly without an account, password, or onboarding call.',
+    detail: 'Best for high-friction clients who will not adopt another tool.',
   },
   {
-    icon: '📦',
-    name: 'Milestone Delivery Cards',
-    desc: 'Send a polished delivery — headline, summary, file preview — and your client gets an email with a direct link to approve or give feedback.',
-    fix: 'Fixes: work delivered over WhatsApp that gets lost, ignored, or disputed',
-    previewKey: 'milestones',
+    icon: 'layout',
+    name: 'Project command center',
+    desc: 'Keep milestones, progress, files, invoices, and next actions visible in one composed client view.',
+    detail: 'Best for making complex work feel simple.',
   },
   {
-    icon: '✅',
-    name: 'Timestamped Approvals',
-    desc: "Every 'yes' is recorded with a date, time, and exactly what was approved. No memory required.",
-    fix: "Fixes: 'I never agreed to that' — forever",
-    previewKey: 'updates',
+    icon: 'file',
+    name: 'Polished deliverables',
+    desc: 'Package every delivery with context, file access, status, and the exact decision you need from the client.',
+    detail: 'Best for making handoffs feel premium.',
   },
   {
-    icon: '👁',
-    name: 'Client Activity Tracking',
-    desc: 'See exactly when your client last viewed the portal. Stop wondering. Know.',
-    fix: 'Fixes: the low-grade anxiety of sending work into silence',
-    previewKey: 'portal',
+    icon: 'check',
+    name: 'Timestamped approvals',
+    desc: 'Capture approvals and change requests in the same place as the work, with project context preserved.',
+    detail: 'Best for protecting scope and reducing rework.',
   },
   {
-    icon: '💳',
-    name: 'In-Portal Invoicing',
-    desc: "When the work is done, the invoice is already where the client is. One click to pay.",
-    fix: 'Fixes: the awkward 6-week payment chase that makes you feel like a debt collector',
-    previewKey: 'files',
+    icon: 'activity',
+    name: 'Client activity',
+    desc: 'Know when the portal was viewed, what needs attention, and which projects are waiting on a client decision.',
+    detail: 'Best for replacing anxious follow-ups with useful timing.',
   },
   {
-    icon: '📊',
-    name: 'Single Dashboard',
-    desc: 'All your active projects, client activity, milestone statuses, and what needs attention today — in one view.',
-    fix: 'Fixes: the context-switching nightmare of managing 4 clients across 5 apps',
-    previewKey: 'portal',
+    icon: 'credit',
+    name: 'Invoice handoff',
+    desc: 'Put payment in the same clean experience as the approved work, so billing feels like part of the project.',
+    detail: 'Best for shortening the distance between done and paid.',
   },
 ]
 
-// ── Pricing ───────────────────────────────────────────────────────────────────
-export const PRICING_REFRAME = 'One late payment costs you more in time and stress than a full year of Freeport.'
-export const PRICING_TIERS   = [
+export const PRICING_REFRAME =
+  'A single avoided dispute, faster approval, or earlier payment can cover Client Portal many times over.'
+export const PRICING_TIERS = [
   {
-    name:      'Free',
-    tagline:   'For freelancers getting started. No card. Ever.',
-    price:     '₹0',
-    per:       '/ forever',
+    name: 'Free',
+    tagline: 'For testing the workflow with your first clients.',
+    price: 'Rs. 0',
+    per: '/ forever',
     highlight: false,
-    ctaLabel:  'Start for free',
-    ctaHref:   '/signup',
+    ctaLabel: 'Start free',
+    ctaHref: '/signup',
     features: [
       'Up to 2 active projects',
-      'Full portal — magic link, milestones, delivery cards',
-      'Timestamped approvals',
-      'Client activity tracking',
-      'Everything you need to look like a professional',
+      'Magic link client portals',
+      'Milestones, updates, and files',
+      'Approval tracking',
+      'Client activity visibility',
     ],
   },
   {
-    name:      'Pro',
-    tagline:   'For freelancers doing real volume.',
-    price:     '₹2,499',
-    per:       '/ month',
-    badge:     'Most popular',
+    name: 'Pro',
+    tagline: 'For freelancers running paid client work every month.',
+    price: 'Rs. 2,499',
+    per: '/ month',
+    badge: 'Best value',
     highlight: true,
-    ctaLabel:  'Start free, upgrade when ready',
-    ctaHref:   '/signup?plan=pro',
+    ctaLabel: 'Start free, upgrade when ready',
+    ctaHref: '/signup?plan=pro',
     features: [
       'Unlimited active projects',
-      'In-portal invoicing + Stripe payments',
+      'In-portal invoicing and payments',
       'Custom portal branding',
       'Priority email support',
-      'Early access to new features',
+      'Early access to workflow upgrades',
     ],
-    note: 'No contracts. Cancel anytime. The first project you retain because of a better experience pays for a year of this.',
+    note: 'No contracts. Cancel anytime. Keep the client experience premium as your workload grows.',
   },
 ]
 
-// ── Testimonials ──────────────────────────────────────────────────────────────
-export const TESTIMONIALS_HEADER = 'Freelancers who stopped winging it.'
+export const TESTIMONIALS_HEADER = 'Built for the freelancers clients already trust.'
 export const TESTIMONIALS = [
   {
-    name:   'Arjun M.',
-    role:   'Freelance web developer, Pune',
+    name: 'Arjun M.',
+    role: 'Freelance web developer, Pune',
     rating: 5,
-    quote:  'The first time a client clicked the link and saw their project portal, they messaged me: "This looks really professional." That one message got me a referral within the same week. I\'ve raised my rates since.',
+    quote:
+      'The portal changed the tone of the project immediately. My client stopped asking for status updates because the answer was always in the link.',
   },
   {
-    name:   'Diana K.',
-    role:   'WordPress developer, Warsaw',
+    name: 'Diana K.',
+    role: 'WordPress developer, Warsaw',
     rating: 5,
-    quote:  'I had a client dispute a revision two months into a project. Before Freeport I would have lost that argument — I had nothing in writing. But there it was: approval, timestamp, exact milestone. The dispute was over in one message.',
+    quote:
+      'I used to treat approvals like a chat message. Now every milestone has a clean decision trail, and my revision conversations are calmer.',
   },
   {
-    name:   'Marcus T.',
-    role:   'Shopify developer, Manila',
+    name: 'Marcus T.',
+    role: 'Shopify developer, Manila',
     rating: 5,
-    quote:  "I was using Notion, Drive, and email to manage clients. I thought that was 'a system.' It wasn't. The first project I ran through Freeport, the client paid 4 days after delivery. No follow-up. They just... paid.",
+    quote:
+      'I was juggling Notion, Drive, and email. Client Portal made the project feel like one professional experience instead of five tabs.',
   },
   {
-    name:   'Priya S.',
-    role:   'UI/UX Designer, Bangalore',
+    name: 'Priya S.',
+    role: 'UI/UX designer, Bangalore',
     rating: 5,
-    quote:  "My client commented that I run things 'like a real agency.' I used to send updates via WhatsApp voice notes.",
+    quote:
+      'A client told me the process felt like working with a small studio. That is exactly the perception I needed before raising my rates.',
   },
   {
-    name:   'Kabir N.',
-    role:   'Motion Designer, Pune',
+    name: 'Kabir N.',
+    role: 'Motion designer, Pune',
     rating: 5,
-    quote:  "My last three clients paid within hours of me marking the project done. There's a big 'Pay Now' button right in the portal.",
+    quote:
+      'The payment link being next to the approved work sounds small, but it completely changed my follow-up rhythm.',
   },
   {
-    name:   'Divya K.',
-    role:   'Brand Consultant, Chennai',
+    name: 'Divya K.',
+    role: 'Brand consultant, Chennai',
     rating: 5,
-    quote:  "I showed a client their portal on the first discovery call. Before I'd even proposed a number, they said 'let's move forward.' Closed the deal that day.",
+    quote:
+      'I now show the portal during discovery calls. It makes my process tangible before the proposal even lands.',
   },
 ]
 
-// ── Founder Note ──────────────────────────────────────────────────────────────
 export const FOUNDER = {
-  name:  'Jeetu, Founder',
-  quote: "I built Freeport because I've lived every problem on this page. I lost a client because my process felt amateurish. I ate a revision because I couldn't prove the approval. I chased a payment for 52 days while pretending I wasn't stressed about it. There wasn't a tool built for how developers actually work with clients — so I built one.",
+  name: 'Jeetu, Founder',
+  quote:
+    'Client Portal exists because freelance developers deserve a client experience that matches the quality of their work. The goal is simple: fewer scattered conversations, clearer decisions, and a calmer path to getting paid.',
 }
 
-// ── FAQ ───────────────────────────────────────────────────────────────────────
-export const FAQ_HEADER = 'Fair questions.'
+export const FAQ_HEADER = 'A few practical questions.'
 export const FAQS = [
   {
-    q: "My clients are used to how we work. Won't this confuse them?",
-    a: "Probably not. They click one link. The portal opens. It has their project name on it, their milestones, their files. There's nothing to learn. If anything, they'll be relieved someone finally made it this clear.",
+    q: 'Will clients be confused by another tool?',
+    a: 'They only receive one link. It opens their project portal with milestones, files, approvals, and invoices already organized. There is no client account to create.',
   },
   {
-    q: "I barely have time to manage my projects, let alone set up a new tool.",
-    a: "The setup for one project takes 4 minutes. Add the project name, set 3–5 milestones, copy the link. That's it. Freeport doesn't require you to change how you work — it just gives your client somewhere better to look.",
+    q: 'Can I still work the way I do now?',
+    a: 'Yes. Client Portal does not replace your build tools, file storage, or communication style. It gives the client one polished place to understand the project and take action.',
   },
   {
-    q: 'I already use Notion / Google Drive / email for this. Why switch?',
-    a: "Those tools aren't broken. They're just not designed for this. Notion is your thinking tool. Drive is your file storage. None of them give your client a structured, professional experience of your project. Freeport does that one thing extremely well.",
+    q: 'Why not use Notion, Google Drive, or email?',
+    a: 'Those tools are useful, but they are not designed to package a paid client engagement. Client Portal is intentionally built around project progress, approvals, files, and payment.',
+  },
+  {
+    q: 'Is the free plan actually usable?',
+    a: 'Yes. The free plan is designed so you can run real client projects through the portal before deciding whether Pro is worth it.',
   },
 ]
 
-// ── Final CTA ─────────────────────────────────────────────────────────────────
-export const FINAL_HEADLINE = 'Your next client deserves a better experience.\nSo do you.'
-export const FINAL_BODY     = 'Stop sending project updates over WhatsApp. Stop chasing approvals through email threads. Stop wondering whether they saw it, liked it, or are about to ghost you.'
-export const FINAL_CTA      = 'Start free — no credit card needed'
-export const FINAL_NOTE     = 'Free plan available. No contracts. Cancel Pro anytime.'
+export const FINAL_HEADLINE = 'Give your next client the experience your work already deserves.'
+export const FINAL_BODY =
+  'Set up a polished portal, share one private link, and turn scattered client communication into a clear project experience.'
+export const FINAL_CTA = 'Start with a free portal'
+export const FINAL_NOTE = 'Free plan available. No credit card. Upgrade only when the workflow earns its place.'
 
-// ── Footer ────────────────────────────────────────────────────────────────────
-export const FOOTER_TAGLINE   = 'The client portal for serious freelancers.'
-export const FOOTER_COPYRIGHT = '© 2025 Freeport. Built by a freelancer, for freelancers.'
+export const FOOTER_TAGLINE = 'Premium client portals for serious freelance developers.'
+export const FOOTER_COPYRIGHT = 'Copyright 2026 Client Portal. Built for independent professionals.'
 export const FOOTER_LINKS = [
   {
     heading: 'Product',
     links: [
-      { label: 'Features',  href: '#features'     },
-      { label: 'Pricing',   href: '#pricing'       },
-      { label: 'Changelog', href: '/changelog'     },
+      { label: 'Features', href: '#features' },
+      { label: 'Workflow', href: '#workflow' },
+      { label: 'Pricing', href: '#pricing' },
     ],
   },
   {
     heading: 'Company',
     links: [
-      { label: 'About',   href: '/about'   },
-      { label: 'Blog',    href: '/blog'    },
+      { label: 'About', href: '/about' },
+      { label: 'Blog', href: '/blog' },
       { label: 'Contact', href: '/contact' },
     ],
   },
@@ -252,7 +282,7 @@ export const FOOTER_LINKS = [
     heading: 'Legal',
     links: [
       { label: 'Privacy', href: '/privacy' },
-      { label: 'Terms',   href: '/terms'   },
+      { label: 'Terms', href: '/terms' },
     ],
   },
 ]

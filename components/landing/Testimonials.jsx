@@ -1,90 +1,78 @@
 'use client'
-// components/landing/Testimonials.jsx
-import { TESTIMONIALS_HEADER, TESTIMONIALS, FOUNDER, FAQ_HEADER, FAQS } from './data'
-import { SectionLabel, SectionHeading, Stars } from './ui'
 
-function avatarGradient(name) {
-  const h1 = (name.charCodeAt(0) * 11) % 360
-  const h2 = (name.charCodeAt(1) * 13) % 360
-  return `linear-gradient(135deg, hsl(${h1},45%,35%), hsl(${h2},55%,50%))`
+// components/landing/Testimonials.jsx
+
+import { ChevronDown, Quote } from 'lucide-react'
+import { FAQ_HEADER, FAQS, FOUNDER, TESTIMONIALS, TESTIMONIALS_HEADER } from './data'
+import { CARD, MUTED_TEXT, PAGE_MAX, SectionHeader, Stars } from './ui'
+
+function initials(name) {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
 }
 
-// ── TESTIMONIALS ──────────────────────────────────────────────────────────────
 export function Testimonials() {
   return (
-    <section id="testimonials" className="py-20 px-6 max-w-[1120px] mx-auto">
-      <div className="reveal text-center mb-14">
-        <SectionLabel>Testimonials</SectionLabel>
-        <SectionHeading>{TESTIMONIALS_HEADER}</SectionHeading>
-      </div>
+    <section className="py-20 sm:py-24">
+      <div className={PAGE_MAX}>
+        <SectionHeader label="Proof" title={TESTIMONIALS_HEADER} className="mx-auto max-w-3xl">
+          The product is designed around the exact moments that make freelance work feel calm, credible, and worth the rate.
+        </SectionHeader>
 
-      {/* 3-column testimonial grid */}
-      <div className="stagger grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-        {TESTIMONIALS.map(({ name, role, rating, quote }) => (
-          <div
-            key={name}
-            className="bg-fp-surface border border-fp-border rounded-xl p-5 flex flex-col hover:border-fp-border/60 transition-colors duration-200"
-          >
-            <Stars count={rating} />
-
-            <p className="mt-4 mb-5 text-fp-text-secondary text-[13px] italic leading-[1.85] flex-1">
-              "{quote}"
-            </p>
-
-            <div className="flex items-center gap-3 border-t border-fp-border pt-4">
-              <div
-                className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-[12px] font-bold text-white"
-                style={{ background: avatarGradient(name) }}
-              >
-                {name[0]}
+        <div className="stagger mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {TESTIMONIALS.map(({ name, role, rating, quote }) => (
+            <article key={name} className={`${CARD} flex flex-col p-5`}>
+              <div className="flex items-center justify-between">
+                <Stars count={rating} />
+                <Quote aria-hidden="true" className="h-4 w-4 text-neutral-400 dark:text-neutral-600" />
               </div>
-              <div>
-                <p className="text-fp-text-primary font-semibold text-[12px]">{name}</p>
-                <p className="text-fp-text-tertiary text-[11px] mt-0.5">{role}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
 
-      {/* Founder note — personal, vulnerable, trust-building */}
-      <div className="reveal max-w-[640px] mx-auto bg-fp-surface border border-fp-border rounded-xl p-6">
-        <p className="text-fp-text-secondary text-[13px] italic leading-[1.9] mb-4">
-          "{FOUNDER.quote}"
-        </p>
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-fp-accent-muted border border-fp-accent/20 flex items-center justify-center flex-shrink-0">
-            <span className="text-fp-accent font-bold text-[12px]">J</span>
-          </div>
-          <p className="text-fp-text-primary font-semibold text-[12px]">{FOUNDER.name}</p>
+              <p className={`mt-5 flex-1 text-[14px] leading-7 ${MUTED_TEXT}`}>&quot;{quote}&quot;</p>
+
+              <div className="mt-6 flex items-center gap-3 border-t border-neutral-200 pt-4 dark:border-white/10">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-950 text-[12px] font-semibold text-white dark:bg-white dark:text-neutral-950">
+                  {initials(name)}
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-neutral-950 dark:text-white">{name}</p>
+                  <p className={`mt-0.5 text-[12px] ${MUTED_TEXT}`}>{role}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="reveal mx-auto mt-8 max-w-3xl rounded-lg border border-neutral-200 bg-neutral-950 p-6 text-white dark:border-white/10 dark:bg-white dark:text-neutral-950 sm:p-8">
+          <p className="font-display text-2xl font-semibold leading-tight">A note from the founder</p>
+          <p className="mt-4 text-[15px] leading-8 text-neutral-300 dark:text-neutral-700">&quot;{FOUNDER.quote}&quot;</p>
+          <p className="mt-5 text-[13px] font-semibold">{FOUNDER.name}</p>
         </div>
       </div>
     </section>
   )
 }
 
-// ── FAQ ───────────────────────────────────────────────────────────────────────
 export function FAQ() {
   return (
-    <section className="py-16 px-6 border-t border-fp-border">
-      <div className="max-w-[680px] mx-auto">
-        <div className="reveal text-center mb-12">
-          <SectionLabel>Objections</SectionLabel>
-          <SectionHeading>{FAQ_HEADER}</SectionHeading>
-        </div>
+    <section id="faq" className="py-20 sm:py-24">
+      <div className="mx-auto max-w-[860px] px-5 sm:px-6 lg:px-8">
+        <SectionHeader label="FAQ" title={FAQ_HEADER} className="mx-auto max-w-2xl" />
 
-        {/* Stacked Q&A — no accordion, just plain prose */}
-        {/* No accordion = less friction, all answers visible = more persuasion */}
-        <div className="stagger space-y-8">
-          {FAQS.map(({ q, a }) => (
-            <div key={q}>
-              <p className="text-fp-text-primary font-semibold text-[15px] mb-2 leading-snug">
+        <div className="reveal mt-10 divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white/75 dark:divide-white/10 dark:border-white/10 dark:bg-white/[0.03]">
+          {FAQS.map(({ q, a }, index) => (
+            <details key={q} className="group" open={index === 0}>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-5 text-left text-[15px] font-semibold text-neutral-950 outline-none transition hover:bg-neutral-50 focus-visible:bg-neutral-50 dark:text-white dark:hover:bg-white/[0.04] dark:focus-visible:bg-white/[0.04]">
                 {q}
-              </p>
-              <p className="text-fp-text-secondary text-[14px] leading-[1.8]">
-                {a}
-              </p>
-            </div>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="h-4 w-4 shrink-0 text-neutral-500 transition-transform duration-200 group-open:rotate-180 dark:text-neutral-400"
+                />
+              </summary>
+              <div className={`px-5 pb-5 pr-10 text-[14px] leading-7 ${MUTED_TEXT}`}>{a}</div>
+            </details>
           ))}
         </div>
       </div>

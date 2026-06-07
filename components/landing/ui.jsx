@@ -1,116 +1,187 @@
 // components/landing/ui.jsx
-// Atomic components for the landing page.
-// Uses Fraunces (--font-display) and DM Sans (--font-body) from the design system.
+// Shared primitives for the landing page.
 
-// ── SectionLabel ──────────────────────────────────────────────────────────────
+import { ArrowRight, Check, Star } from 'lucide-react'
+
+export const PAGE_MAX = 'max-w-[1180px] mx-auto px-5 sm:px-6 lg:px-8'
+export const CARD =
+  'rounded-lg border border-neutral-200/80 bg-white/80 shadow-[0_1px_0_rgba(15,23,42,0.04)] dark:border-white/10 dark:bg-white/[0.04]'
+export const MUTED_TEXT = 'text-neutral-600 dark:text-neutral-400'
+
 export function SectionLabel({ children }) {
   return (
-    <span className="block text-[11px] font-bold text-fp-accent uppercase tracking-[0.18em] mb-3">
+    <span className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-neutral-400">
       {children}
     </span>
   )
 }
 
-// ── SectionHeading ────────────────────────────────────────────────────────────
-// Wrap words in <em> for the accent italic treatment.
 export function SectionHeading({ children, className = '' }) {
   return (
-    <h2 className={`
-      font-display text-[clamp(28px,3.8vw,48px)] font-semibold
-      text-fp-text-primary leading-[1.15] tracking-tight
-      [&>em]:not-italic [&>em]:text-fp-accent
-      ${className}
-    `}>
+    <h2
+      className={`font-display text-3xl font-semibold leading-[1.08] text-neutral-950 sm:text-4xl lg:text-5xl dark:text-white ${className}`}
+    >
       {children}
     </h2>
   )
 }
 
-// ── PrimaryButton ─────────────────────────────────────────────────────────────
-export function PrimaryButton({ children, onClick, href, className = '' }) {
-  const base = `
-    lp-btn-shimmer relative overflow-hidden inline-flex items-center justify-center gap-2
-    px-7 py-3.5 rounded-xl font-semibold text-[14px] text-fp-base
-    bg-fp-accent hover:bg-fp-accent-hover
-    shadow-[0_8px_28px_rgba(123,147,255,0.35)]
-    hover:shadow-[0_12px_40px_rgba(123,147,255,0.5)]
-    hover:-translate-y-0.5 transition-all duration-200
-    cursor-pointer border-none select-none
-    ${className}
-  `
-  if (href) return <a href={href} className={base}>{children}</a>
-  return <button onClick={onClick} className={base}>{children}</button>
+export function SectionHeader({ label, title, children, align = 'center', className = '' }) {
+  const alignment = align === 'left' ? 'text-left items-start' : 'text-center items-center'
+
+  return (
+    <div className={`reveal flex flex-col ${alignment} ${className}`}>
+      {label ? <SectionLabel>{label}</SectionLabel> : null}
+      <SectionHeading>{title}</SectionHeading>
+      {children ? (
+        <p className={`mt-5 max-w-2xl text-[15px] leading-7 ${MUTED_TEXT}`}>
+          {children}
+        </p>
+      ) : null}
+    </div>
+  )
 }
 
-// ── SecondaryButton ───────────────────────────────────────────────────────────
+export function PrimaryButton({ children, onClick, href, className = '', icon = true }) {
+  const base = `
+    group inline-flex min-h-11 items-center justify-center gap-2 rounded-lg
+    bg-neutral-950 px-5 py-3 text-[14px] font-semibold text-white
+    shadow-[0_18px_44px_rgba(10,10,10,0.18)]
+    transition duration-200 hover:-translate-y-0.5 hover:bg-neutral-800
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950
+    focus-visible:ring-offset-2 focus-visible:ring-offset-white
+    dark:bg-white dark:text-neutral-950 dark:shadow-[0_18px_44px_rgba(255,255,255,0.08)]
+    dark:hover:bg-neutral-200 dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950
+    ${className}
+  `
+  const content = (
+    <>
+      <span>{children}</span>
+      {icon ? (
+        <ArrowRight
+          aria-hidden="true"
+          className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5"
+        />
+      ) : null}
+    </>
+  )
+
+  if (href) {
+    return (
+      <a href={href} className={base}>
+        {content}
+      </a>
+    )
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={base}>
+      {content}
+    </button>
+  )
+}
+
 export function SecondaryButton({ children, onClick, href, className = '' }) {
   const base = `
-    inline-flex items-center justify-center gap-2
-    px-6 py-3.5 rounded-xl font-medium text-[14px]
-    text-fp-text-secondary hover:text-fp-text-primary
-    bg-transparent border border-fp-border hover:border-fp-accent/30
-    transition-all duration-150 cursor-pointer
+    inline-flex min-h-11 items-center justify-center gap-2 rounded-lg
+    border border-neutral-300 bg-white/70 px-5 py-3 text-[14px] font-semibold
+    text-neutral-800 transition duration-200 hover:-translate-y-0.5 hover:border-neutral-950
+    hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950
+    focus-visible:ring-offset-2 focus-visible:ring-offset-white
+    dark:border-white/15 dark:bg-white/[0.03] dark:text-neutral-200 dark:hover:border-white/35
+    dark:hover:bg-white/[0.06] dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950
     ${className}
   `
-  if (href) return <a href={href} className={base}>{children}</a>
-  return <button onClick={onClick} className={base}>{children}</button>
+
+  if (href) {
+    return (
+      <a href={href} className={base}>
+        {children}
+      </a>
+    )
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={base}>
+      {children}
+    </button>
+  )
 }
 
-// ── CheckItem ─────────────────────────────────────────────────────────────────
 export function CheckItem({ children, muted = false }) {
   return (
-    <div className="flex items-start gap-2.5">
-      <div className="w-[18px] h-[18px] rounded flex-shrink-0 flex items-center justify-center bg-fp-accent/15 mt-0.5">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path d="M1 5L3.5 7.5L9 2" stroke="var(--color-fp-accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
-      <span className={`text-[13px] font-medium leading-snug ${muted ? 'text-fp-text-tertiary' : 'text-fp-text-secondary'}`}>
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-neutral-950 text-white dark:bg-white dark:text-neutral-950">
+        <Check aria-hidden="true" className="h-3.5 w-3.5" />
+      </span>
+      <span
+        className={`text-[13px] font-medium leading-6 ${
+          muted ? 'text-neutral-500 dark:text-neutral-500' : MUTED_TEXT
+        }`}
+      >
         {children}
       </span>
     </div>
   )
 }
 
-// ── Stars ─────────────────────────────────────────────────────────────────────
 export function Stars({ count = 5 }) {
   return (
-    <div className="flex gap-[3px]">
+    <div className="flex gap-1" aria-label={`${count} star rating`}>
       {Array.from({ length: count }).map((_, i) => (
-        <svg key={i} width="13" height="13" viewBox="0 0 12 12" fill="var(--color-fp-warning)">
-          <path d="M6 1l1.4 2.9 3.1.4-2.3 2.2.6 3.1L6 8.2l-2.8 1.4.6-3.1L1.5 4.3l3.1-.4L6 1z" />
-        </svg>
+        <Star
+          key={i}
+          aria-hidden="true"
+          className="h-3.5 w-3.5 fill-neutral-950 text-neutral-950 dark:fill-white dark:text-white"
+        />
       ))}
     </div>
   )
 }
 
-// ── WindowChrome ──────────────────────────────────────────────────────────────
-export function WindowChrome({ url = 'app.freeport.dev', dark = true }) {
+export function WindowChrome({ url = 'clientportal.app', dark = false }) {
   return (
-    <div className={`flex items-center gap-2 px-4 py-3 border-b ${dark ? 'bg-fp-surface border-fp-border' : 'bg-fp-portal-raised border-fp-portal-border'}`}>
-      <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
-      <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
-      <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
-      <div className={`flex-1 ml-2 rounded-md h-[22px] flex items-center px-2.5 ${dark ? 'bg-fp-raised' : 'bg-fp-portal-surface border border-fp-portal-border'}`}>
-        <span className={`font-mono text-[11px] ${dark ? 'text-fp-text-tertiary' : 'text-fp-portal-text-tertiary'}`}>{url}</span>
+    <div
+      className={`flex items-center gap-2 border-b px-3 py-3 ${
+        dark
+          ? 'border-white/10 bg-neutral-950'
+          : 'border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-neutral-900'
+      }`}
+    >
+      <span className="h-2.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+      <span className="h-2.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+      <span className="h-2.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+      <div
+        className={`ml-2 flex h-7 flex-1 items-center rounded-md border px-3 ${
+          dark
+            ? 'border-white/10 bg-white/[0.04]'
+            : 'border-neutral-200 bg-white dark:border-white/10 dark:bg-white/[0.04]'
+        }`}
+      >
+        <span className="truncate font-mono text-[11px] text-neutral-500 dark:text-neutral-400">
+          {url}
+        </span>
       </div>
     </div>
   )
 }
 
-// ── LogoMark ──────────────────────────────────────────────────────────────────
-export function LogoMark({ size = 30 }) {
+export function LogoMark({ size = 32 }) {
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex items-center gap-3">
       <div
-        className="rounded-lg flex-shrink-0 bg-fp-accent flex items-center justify-center"
+        className="flex shrink-0 items-center justify-center rounded-lg bg-neutral-950 text-white shadow-sm dark:bg-white dark:text-neutral-950"
         style={{ width: size, height: size }}
       >
-        <span className="font-bold text-fp-base" style={{ fontSize: size * 0.37, lineHeight: 1, letterSpacing: '-0.03em' }}>FP</span>
+        <span className="font-semibold leading-none" style={{ fontSize: size * 0.34 }}>
+          CP
+        </span>
       </div>
-      <span className="font-display font-medium text-fp-text-primary tracking-tight" style={{ fontSize: size * 0.57 }}>
-        Freeport
+      <span
+        className="font-display font-semibold leading-none text-neutral-950 dark:text-white"
+        style={{ fontSize: size * 0.56 }}
+      >
+        Client Portal
       </span>
     </div>
   )

@@ -1,189 +1,227 @@
 'use client'
+
 // components/landing/Hero.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// Two-column hero: copy left, product visual right.
-// WHY two-column: Centered single-column heroes feel like presentations.
-// Two-column heroes feel like products — the visual is already there, already
-// real. The visitor registers product AND copy simultaneously, which reduces
-// time-to-comprehension and increases conversion.
-//
-// The dashboard mockup shows the freelancer's world (dark, indigo accents).
-// Below it: a small portal notification chip showing "client viewed portal"
-// — the specific moment the freelancer most wants to see.
-// ─────────────────────────────────────────────────────────────────────────────
-import { HERO_PRE, HERO_HEADLINE_1, HERO_HEADLINE_2, HERO_SUB, HERO_CTA, HERO_TRUST } from './data'
-import { PrimaryButton, SecondaryButton, WindowChrome } from './ui'
 
-// ── Dashboard Mockup ──────────────────────────────────────────────────────────
-function DashboardMockup() {
+import {
+  CheckCircle2,
+  Clock3,
+  CreditCard,
+  FileCheck2,
+  FileText,
+  Link2,
+  MessageSquareText,
+  ShieldCheck,
+} from 'lucide-react'
+import {
+  HERO_CTA,
+  HERO_HEADLINE,
+  HERO_METRICS,
+  HERO_PRE,
+  HERO_SECONDARY_CTA,
+  HERO_SUB,
+  HERO_TRUST,
+} from './data'
+import { MUTED_TEXT, PAGE_MAX, PrimaryButton, SecondaryButton, WindowChrome } from './ui'
+
+const timeline = [
+  { label: 'Discovery notes uploaded', meta: 'Approved May 28', done: true },
+  { label: 'Homepage build ready', meta: 'Awaiting client review', active: true },
+  { label: 'Final QA and handoff', meta: 'Scheduled Friday', done: false },
+]
+
+function PortalPreview() {
   return (
-    <div className="relative">
+    <div className="reveal mx-auto mt-14 max-w-6xl">
+      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-[0_32px_120px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-neutral-950 dark:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
+        <WindowChrome url="clientportal.app/p/luminary-website" />
 
-      {/* Main dashboard window */}
-      <div className="
-        rounded-[18px] overflow-hidden border border-fp-border
-        shadow-[0_40px_100px_rgba(0,0,0,0.8),0_0_0_1px_rgba(123,147,255,0.06)]
-        bg-fp-base
-      ">
-        <WindowChrome url="app.freeport.dev/dashboard" dark={true} />
-
-        {/* Dashboard content */}
-        <div className="p-5">
-
-          {/* Greeting */}
-          <div className="mb-5">
-            <div className="h-3 w-52 rounded-sm bg-fp-text-primary/10 mb-1.5" />
-            <div className="h-2 w-36 rounded-sm bg-fp-text-tertiary/20" />
-          </div>
-
-          {/* Stats row */}
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            {[
-              { n: '4', label: 'Projects', color: 'text-fp-accent' },
-              { n: '2', label: 'Active',   color: 'text-fp-success' },
-              { n: '1', label: 'Done',     color: 'text-fp-text-secondary' },
-            ].map(s => (
-              <div key={s.label} className="bg-fp-surface border border-fp-border rounded-xl p-3">
-                <div className={`font-display text-2xl font-semibold ${s.color} leading-none mb-1`}>{s.n}</div>
-                <div className="text-[10px] text-fp-text-tertiary uppercase tracking-wide font-semibold">{s.label}</div>
+        <div className="grid bg-white dark:bg-neutral-950 lg:grid-cols-[286px_1fr]">
+          <aside className="border-b border-neutral-200 bg-neutral-50/70 p-5 dark:border-white/10 dark:bg-white/[0.03] lg:border-b-0 lg:border-r">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-950 text-white dark:bg-white dark:text-neutral-950">
+                <FileText aria-hidden="true" className="h-5 w-5" />
               </div>
-            ))}
-          </div>
+              <div>
+                <p className="text-[13px] font-semibold text-neutral-950 dark:text-white">Luminary Website</p>
+                <p className={`text-[12px] ${MUTED_TEXT}`}>Client portal</p>
+              </div>
+            </div>
 
-          {/* Project rows */}
-          {[
-            { name: 'Luminary Co. Website', pct: 85, status: 'Active',    statusClass: 'text-fp-accent bg-fp-accent-muted' },
-            { name: 'Mehta & Sons Rebrand', pct: 62, status: 'Active',    statusClass: 'text-fp-accent bg-fp-accent-muted' },
-            { name: 'Kiran\'s Portfolio',   pct: 100, status: 'Complete', statusClass: 'text-fp-success bg-fp-success/10' },
-          ].map((p, i) => (
-            <div key={i} className="bg-fp-surface border border-fp-border rounded-xl p-3 mb-2 flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[12px] font-medium text-fp-text-primary truncate">{p.name}</span>
-                  <span className={`text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${p.statusClass}`}>{p.status}</span>
+            <div className="mt-6 space-y-2">
+              {[
+                { icon: Clock3, label: 'Progress', active: true },
+                { icon: FileCheck2, label: 'Approvals' },
+                { icon: CreditCard, label: 'Invoice' },
+                { icon: MessageSquareText, label: 'Feedback' },
+              ].map(({ icon: Icon, label, active }) => (
+                <div
+                  key={label}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-semibold ${
+                    active
+                      ? 'bg-white text-neutral-950 shadow-sm dark:bg-white/[0.08] dark:text-white'
+                      : 'text-neutral-500 dark:text-neutral-400'
+                  }`}
+                >
+                  <Icon aria-hidden="true" className="h-4 w-4" />
+                  {label}
                 </div>
-                <div className="h-1.5 bg-fp-border rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full"
-                    style={{ width: `${p.pct}%`, background: p.pct === 100 ? 'var(--color-fp-success)' : 'var(--color-fp-accent)' }}
-                  />
+              ))}
+            </div>
+
+            <div className="mt-8 rounded-lg border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-neutral-950">
+              <div className="flex items-center gap-2 text-[12px] font-semibold text-neutral-950 dark:text-white">
+                <ShieldCheck aria-hidden="true" className="h-4 w-4" />
+                Secure handoff
+              </div>
+              <p className={`mt-2 text-[12px] leading-5 ${MUTED_TEXT}`}>
+                Private project link, structured approvals, and client-ready payment context.
+              </p>
+            </div>
+          </aside>
+
+          <div className="p-5 sm:p-7">
+            <div className="flex flex-col gap-5 border-b border-neutral-200 pb-6 dark:border-white/10 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-neutral-400">
+                  Client view
+                </p>
+                <h2 className="mt-2 font-display text-2xl font-semibold leading-tight text-neutral-950 sm:text-3xl dark:text-white">
+                  Homepage build is ready for review
+                </h2>
+                <p className={`mt-3 max-w-xl text-[14px] leading-6 ${MUTED_TEXT}`}>
+                  The client sees the current milestone, recent files, approval controls, and invoice status in one place.
+                </p>
+              </div>
+
+              <div className="w-full rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-white/10 dark:bg-white/[0.04] md:w-[220px]">
+                <div className="flex items-center justify-between text-[12px]">
+                  <span className="font-semibold text-neutral-950 dark:text-white">Project health</span>
+                  <span className="rounded-md bg-neutral-950 px-2 py-1 text-[11px] font-semibold text-white dark:bg-white dark:text-neutral-950">
+                    On track
+                  </span>
+                </div>
+                <div className="mt-4 h-2 rounded-full bg-neutral-200 dark:bg-white/10">
+                  <div className="h-2 w-[72%] rounded-full bg-neutral-950 dark:bg-white" />
+                </div>
+                <p className={`mt-2 text-[12px] ${MUTED_TEXT}`}>3 of 4 milestones complete</p>
+              </div>
+            </div>
+
+            <div className="grid gap-5 pt-6 lg:grid-cols-[1fr_280px]">
+              <div className="space-y-4">
+                {timeline.map((item, index) => (
+                  <div key={item.label} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <span
+                        className={`flex h-6 w-6 items-center justify-center rounded-full border ${
+                          item.done
+                            ? 'border-neutral-950 bg-neutral-950 text-white dark:border-white dark:bg-white dark:text-neutral-950'
+                            : item.active
+                              ? 'border-neutral-950 bg-white text-neutral-950 dark:border-white dark:bg-neutral-950 dark:text-white'
+                              : 'border-neutral-300 bg-white text-neutral-400 dark:border-white/20 dark:bg-neutral-950'
+                        }`}
+                      >
+                        {item.done ? <CheckCircle2 aria-hidden="true" className="h-4 w-4" /> : null}
+                      </span>
+                      {index < timeline.length - 1 ? (
+                        <span className="mt-2 h-12 w-px bg-neutral-200 dark:bg-white/10" />
+                      ) : null}
+                    </div>
+                    <div className="pb-2">
+                      <p className="text-[14px] font-semibold text-neutral-950 dark:text-white">{item.label}</p>
+                      <p className={`mt-1 text-[12px] ${MUTED_TEXT}`}>{item.meta}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:text-neutral-400">
+                  Decision needed
+                </p>
+                <h3 className="mt-3 text-[15px] font-semibold leading-6 text-neutral-950 dark:text-white">
+                  Approve the homepage build
+                </h3>
+                <p className={`mt-2 text-[12px] leading-5 ${MUTED_TEXT}`}>
+                  Includes responsive layout, CMS wiring, and the updated contact form.
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-[12px] font-semibold text-neutral-700 dark:border-white/15 dark:bg-neutral-950 dark:text-neutral-300"
+                  >
+                    Request changes
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-neutral-950 px-3 py-2 text-[12px] font-semibold text-white dark:bg-white dark:text-neutral-950"
+                  >
+                    Approve
+                  </button>
+                </div>
+                <div className="mt-4 flex items-center gap-2 border-t border-neutral-200 pt-4 text-[12px] font-semibold text-neutral-950 dark:border-white/10 dark:text-white">
+                  <CreditCard aria-hidden="true" className="h-4 w-4" />
+                  Invoice ready after approval
                 </div>
               </div>
             </div>
-          ))}
+          </div>
         </div>
       </div>
-
-      {/* Floating notification chip — the money moment */}
-      {/* Shows exactly what the freelancer most wants to see */}
-      <div className="
-        absolute -bottom-4 -right-4 sm:-bottom-5 sm:-right-6
-        bg-fp-surface border border-fp-border rounded-xl px-4 py-3
-        shadow-[0_12px_40px_rgba(0,0,0,0.6)]
-        flex items-center gap-3
-        animate-float-chip
-      ">
-        <div className="w-2 h-2 rounded-full bg-fp-success flex-shrink-0" />
-        <div>
-          <p className="text-fp-text-primary text-[11px] font-semibold leading-none mb-0.5">
-            Client viewed the portal
-          </p>
-          <p className="text-fp-text-tertiary text-[10px]">2 hours ago · Luminary Co.</p>
-        </div>
-      </div>
-
-      {/* Second floating chip — approval */}
-      <div className="
-        absolute -top-4 -left-4 sm:-top-5 sm:-left-6
-        bg-fp-surface border border-fp-success/20 rounded-xl px-4 py-3
-        shadow-[0_12px_40px_rgba(0,0,0,0.6)]
-        flex items-center gap-3
-        animate-float-chip-2
-      ">
-        <div className="w-2 h-2 rounded-full bg-fp-success flex-shrink-0 animate-pulse" />
-        <div>
-          <p className="text-fp-success text-[11px] font-semibold leading-none mb-0.5">
-            Milestone approved
-          </p>
-          <p className="text-fp-text-tertiary text-[10px]">Homepage Design · just now</p>
-        </div>
-      </div>
-
     </div>
   )
 }
 
-// ── Hero ──────────────────────────────────────────────────────────────────────
 export default function Hero({ onCTA }) {
   return (
-    <section className="min-h-screen flex items-center relative overflow-hidden pt-24 pb-16">
+    <section id="product" className="px-0 pb-16 pt-28 sm:pt-32 lg:pb-20 lg:pt-36">
+      <div className={PAGE_MAX}>
+        <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
+          <div className="reveal inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white/80 px-3.5 py-2 text-[12px] font-semibold text-neutral-700 shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-neutral-300">
+            <ShieldCheck aria-hidden="true" className="h-4 w-4" />
+            {HERO_PRE}
+          </div>
 
-      {/* Background glow */}
-      <div
-        className="absolute top-0 right-[20%] w-[600px] h-[600px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(123,147,255,0.08) 0%, transparent 70%)' }}
-      />
-      <div
-        className="absolute bottom-0 left-[10%] w-[400px] h-[400px] rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(123,147,255,0.05) 0%, transparent 70%)' }}
-      />
+          <h1 className="reveal mt-6 font-display text-4xl font-semibold leading-[0.98] text-neutral-950 sm:text-5xl lg:text-6xl xl:text-7xl dark:text-white">
+            {HERO_HEADLINE}
+          </h1>
 
-      {/* Very subtle grid */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
-          backgroundSize: '64px 64px',
-        }}
-      />
+          <p className={`reveal mt-6 max-w-2xl text-base leading-8 sm:text-lg ${MUTED_TEXT}`}>
+            {HERO_SUB}
+          </p>
 
-      <div className="max-w-[1120px] mx-auto px-6 w-full relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <div className="reveal mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center">
+            <PrimaryButton onClick={onCTA} className="px-6">
+              {HERO_CTA}
+            </PrimaryButton>
+            <SecondaryButton href="#workflow">
+              <Link2 aria-hidden="true" className="h-4 w-4" />
+              {HERO_SECONDARY_CTA}
+            </SecondaryButton>
+          </div>
 
-          {/* ── Left: Copy ── */}
-          <div>
-            {/* Pre-headline */}
-            <p className="text-fp-accent text-[11px] font-bold uppercase tracking-[0.2em] mb-5">
-              {HERO_PRE}
-            </p>
+          <div className="reveal mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+            {HERO_TRUST.map((item) => (
+              <div key={item} className={`flex items-center gap-2 text-[12px] font-semibold ${MUTED_TEXT}`}>
+                <CheckCircle2 aria-hidden="true" className="h-4 w-4 text-neutral-950 dark:text-white" />
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
 
-            {/* Main headline — two lines, one-two punch */}
-            {/* First line: stated truth. Second line: the problem. */}
-            <h1 className="font-display font-semibold leading-[1.1] tracking-tight mb-6">
-              <span className="text-fp-text-primary block" style={{ fontSize: 'clamp(38px, 5vw, 60px)' }}>
-                {HERO_HEADLINE_1}
-              </span>
-              <span className="text-fp-accent block" style={{ fontSize: 'clamp(38px, 5vw, 60px)' }}>
-                {HERO_HEADLINE_2}
-              </span>
-            </h1>
+        <PortalPreview />
 
-            {/* Sub-headline */}
-            <p className="text-fp-text-secondary text-[16px] leading-[1.8] mb-8 max-w-[460px]">
-              {HERO_SUB}
-            </p>
-
-            {/* CTAs */}
-            <div className="flex items-center gap-3 flex-wrap mb-5">
-              <PrimaryButton onClick={onCTA}>
-                {HERO_CTA}
-              </PrimaryButton>
-              <SecondaryButton href="#how-it-works">
-                See how it works →
-              </SecondaryButton>
+        <div className="stagger mx-auto mt-6 grid max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
+          {HERO_METRICS.map(({ value, label }) => (
+            <div
+              key={label}
+              className="rounded-lg border border-neutral-200 bg-white/70 px-5 py-4 text-center dark:border-white/10 dark:bg-white/[0.03]"
+            >
+              <p className="font-display text-2xl font-semibold text-neutral-950 dark:text-white">{value}</p>
+              <p className={`mt-1 text-[12px] font-medium ${MUTED_TEXT}`}>{label}</p>
             </div>
-
-            {/* Trust line */}
-            <p className="text-fp-text-tertiary text-[12px]">
-              {HERO_TRUST}
-            </p>
-          </div>
-
-          {/* ── Right: Product mockup ── */}
-          <div className="relative hidden lg:block">
-            <DashboardMockup />
-          </div>
-
+          ))}
         </div>
       </div>
     </section>

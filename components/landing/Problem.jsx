@@ -1,98 +1,118 @@
 'use client'
+
 // components/landing/Problem.jsx
-// Contains: Problem, Reframe, HowItWorks, Features sections
 
-import { useState } from 'react'
 import {
-  PAIN_HEADER, PAIN_CARDS,
-  REFRAME_LABEL, REFRAME_BODY,
-  HOW_HEADER, HOW_STEPS,
-  FEATURES_HEADER, FEATURES,
+  Activity,
+  CheckCircle2,
+  CreditCard,
+  Eye,
+  FileCheck2,
+  FileText,
+  LayoutDashboard,
+  Link2,
+  LockKeyhole,
+  MessageSquareText,
+  ShieldCheck,
+  UploadCloud,
+} from 'lucide-react'
+import {
+  FEATURES,
+  FEATURES_HEADER,
+  HOW_HEADER,
+  HOW_STEPS,
+  PAIN_CARDS,
+  PAIN_HEADER,
+  PAIN_INTRO,
+  REFRAME_BODY,
+  REFRAME_LABEL,
+  TRUST_SIGNALS,
 } from './data'
-import { SectionLabel, SectionHeading, CheckItem, WindowChrome } from './ui'
+import { CARD, MUTED_TEXT, PAGE_MAX, SectionHeader, SectionLabel, WindowChrome } from './ui'
 
-// ── PROBLEM ───────────────────────────────────────────────────────────────────
+const painIcons = {
+  updates: MessageSquareText,
+  approval: CheckCircle2,
+  files: UploadCloud,
+  payment: CreditCard,
+}
+
+const stepIcons = [LayoutDashboard, Link2, FileCheck2, CreditCard]
+
+const featureIcons = {
+  link: Link2,
+  layout: LayoutDashboard,
+  file: FileText,
+  check: CheckCircle2,
+  activity: Activity,
+  credit: CreditCard,
+}
+
 export function Problem() {
   return (
-    <section className="py-20 px-6 max-w-[1120px] mx-auto">
-      <div className="reveal text-center mb-14">
-        <SectionLabel>The Problem</SectionLabel>
-        <SectionHeading>{PAIN_HEADER}</SectionHeading>
-      </div>
+    <section className="py-20 sm:py-24">
+      <div className={`${PAGE_MAX} grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start`}>
+        <SectionHeader label="The client gap" title={PAIN_HEADER} align="left" className="lg:sticky lg:top-28">
+          {PAIN_INTRO}
+        </SectionHeader>
 
-      {/* 2×2 grid of pain cards */}
-      <div className="stagger grid grid-cols-1 md:grid-cols-2 gap-4">
-        {PAIN_CARDS.map(({ id, open, body, sting }) => (
-          <div
-            key={id}
-            className="bg-fp-surface border border-fp-border rounded-xl p-6 hover:border-fp-border/60 transition-colors duration-200"
-          >
-            {/* Opening — larger, heavier, the hook */}
-            <p className="font-semibold text-fp-text-primary text-[15px] leading-snug mb-3 whitespace-pre-line">
-              {open}
-            </p>
-            {/* Story — regular weight, the scenario */}
-            <p className="text-fp-text-secondary text-[13px] leading-[1.8] mb-3">
-              {body}
-            </p>
-            {/* Emotional consequence — the sting */}
-            {sting && (
-              <p className="text-fp-text-tertiary text-[12px] leading-relaxed italic border-t border-fp-border pt-3">
-                {sting}
-              </p>
-            )}
-          </div>
-        ))}
+        <div className="stagger grid gap-4 sm:grid-cols-2">
+          {PAIN_CARDS.map(({ id, open, body, sting }) => {
+            const Icon = painIcons[id] || MessageSquareText
+
+            return (
+              <article key={id} className={`${CARD} p-5 transition duration-200 hover:-translate-y-0.5 hover:border-neutral-300 dark:hover:border-white/20`}>
+                <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-950 text-white dark:bg-white dark:text-neutral-950">
+                  <Icon aria-hidden="true" className="h-5 w-5" />
+                </div>
+                <h3 className="text-[16px] font-semibold leading-6 text-neutral-950 dark:text-white">{open}</h3>
+                <p className={`mt-3 text-[13px] leading-6 ${MUTED_TEXT}`}>{body}</p>
+                {sting ? (
+                  <p className="mt-5 border-t border-neutral-200 pt-4 text-[12px] font-semibold leading-5 text-neutral-950 dark:border-white/10 dark:text-white">
+                    {sting}
+                  </p>
+                ) : null}
+              </article>
+            )
+          })}
+        </div>
       </div>
     </section>
   )
 }
 
-// ── REFRAME ───────────────────────────────────────────────────────────────────
 export function Reframe() {
   const [line1, line2] = REFRAME_BODY.split('\n\n')
-  return (
-    <section className="py-16 px-6 border-t border-fp-border">
-      <div className="max-w-[640px] mx-auto text-center reveal">
-        <SectionHeading className="mb-6">{REFRAME_LABEL}</SectionHeading>
-        <p className="text-fp-text-secondary text-[15px] leading-[1.85] mb-4">{line1}</p>
-        <p className="text-fp-text-primary text-[15px] leading-[1.85] font-medium">{line2}</p>
-      </div>
-    </section>
-  )
-}
 
-// ── HOW IT WORKS ──────────────────────────────────────────────────────────────
-export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-20 px-6 bg-fp-surface/40 border-t border-b border-fp-border">
-      <div className="max-w-[1120px] mx-auto">
-        <div className="reveal text-center mb-14">
-          <SectionLabel>How it works</SectionLabel>
-          <SectionHeading>{HOW_HEADER}</SectionHeading>
+    <section className="border-y border-neutral-200 bg-neutral-950 py-20 text-white dark:border-white/10 dark:bg-white dark:text-neutral-950 sm:py-24">
+      <div className={`${PAGE_MAX} grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center`}>
+        <div className="reveal">
+          <span className="mb-3 block text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400 dark:text-neutral-500">
+            The operating layer
+          </span>
+          <h2 className="font-display text-3xl font-semibold leading-[1.08] sm:text-4xl lg:text-5xl">
+            {REFRAME_LABEL}
+          </h2>
+          <p className="mt-6 text-[15px] leading-8 text-neutral-300 dark:text-neutral-700">{line1}</p>
+          <p className="mt-4 text-[15px] font-medium leading-8 text-white dark:text-neutral-950">{line2}</p>
         </div>
 
-        <div className="stagger grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-          {/* Connector line */}
-          <div className="hidden md:block absolute top-8 left-[22%] right-[22%] h-px bg-gradient-to-r from-fp-accent/20 via-fp-accent/40 to-fp-accent/20 z-0" />
-
-          {HOW_STEPS.map(({ step, title, desc, result }) => (
-            <div key={step} className="relative z-10">
-              {/* Step number */}
-              <div className="
-                w-16 h-16 rounded-xl bg-fp-accent-muted border border-fp-accent/20
-                flex items-center justify-center mb-5
-              ">
-                <span className="font-mono text-fp-accent text-[13px] font-bold tracking-[0.1em]">{step}</span>
+        <div className="stagger grid gap-3">
+          {TRUST_SIGNALS.map(({ title, desc }) => (
+            <div
+              key={title}
+              className="rounded-lg border border-white/12 bg-white/[0.06] p-5 dark:border-neutral-200 dark:bg-neutral-50"
+            >
+              <div className="flex items-start gap-4">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-neutral-950 dark:bg-neutral-950 dark:text-white">
+                  <ShieldCheck aria-hidden="true" className="h-4.5 w-4.5" />
+                </span>
+                <div>
+                  <h3 className="text-[14px] font-semibold">{title}</h3>
+                  <p className="mt-2 text-[13px] leading-6 text-neutral-300 dark:text-neutral-600">{desc}</p>
+                </div>
               </div>
-
-              <h3 className="text-fp-text-primary font-semibold text-[17px] mb-2 tracking-tight">
-                {title}
-              </h3>
-              <p className="text-fp-text-secondary text-[13px] leading-[1.8] mb-3">{desc}</p>
-              <p className="text-fp-accent text-[12px] font-medium italic leading-snug">
-                → {result}
-              </p>
             </div>
           ))}
         </div>
@@ -101,169 +121,185 @@ export function HowItWorks() {
   )
 }
 
-// ── FEATURES ──────────────────────────────────────────────────────────────────
-export function Features() {
+export function HowItWorks() {
   return (
-    <section id="features" className="py-20 px-6 max-w-[1120px] mx-auto">
-      <div className="reveal text-center mb-14">
-        <SectionLabel>Features</SectionLabel>
-        <SectionHeading>{FEATURES_HEADER}</SectionHeading>
-      </div>
+    <section id="workflow" className="py-20 sm:py-24">
+      <div className={PAGE_MAX}>
+        <SectionHeader label="Workflow" title={HOW_HEADER} className="mx-auto max-w-3xl" />
 
-      {/* 2×3 grid */}
-      <div className="stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {FEATURES.map(({ icon, name, desc, fix }) => (
-          <div
-            key={name}
-            className="bg-fp-surface border border-fp-border rounded-xl p-5 hover:border-fp-accent/20 transition-colors duration-200 group"
-          >
-            <div className="text-2xl mb-4 leading-none">{icon}</div>
-            <h3 className="text-fp-text-primary font-semibold text-[14px] mb-2 leading-snug">
-              {name}
-            </h3>
-            <p className="text-fp-text-secondary text-[13px] leading-[1.75] mb-4">
-              {desc}
-            </p>
-            {/* "Fixes:" tag — callback to pain section */}
-            <p className="text-fp-text-tertiary text-[11px] font-medium border-t border-fp-border pt-3">
-              {fix}
-            </p>
-          </div>
-        ))}
+        <div className="stagger mt-14 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {HOW_STEPS.map(({ step, title, desc, result }, index) => {
+            const Icon = stepIcons[index] || LayoutDashboard
+
+            return (
+              <article key={step} className={`${CARD} relative overflow-hidden p-5`}>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[12px] font-semibold text-neutral-500 dark:text-neutral-400">
+                    {step}
+                  </span>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 text-neutral-950 dark:border-white/10 dark:bg-white/[0.04] dark:text-white">
+                    <Icon aria-hidden="true" className="h-4.5 w-4.5" />
+                  </span>
+                </div>
+                <h3 className="mt-8 text-[17px] font-semibold leading-6 text-neutral-950 dark:text-white">{title}</h3>
+                <p className={`mt-3 text-[13px] leading-6 ${MUTED_TEXT}`}>{desc}</p>
+                <p className="mt-5 border-t border-neutral-200 pt-4 text-[12px] font-semibold leading-5 text-neutral-950 dark:border-white/10 dark:text-white">
+                  {result}
+                </p>
+              </article>
+            )
+          })}
+        </div>
       </div>
     </section>
   )
 }
 
-// ── PORTAL MOMENT ─────────────────────────────────────────────────────────────
-// The aspirational money shot. Shows the client portal (warm world).
-// Full-width section with maximum contrast — dark page, warm portal card.
-export function PortalMoment({ onCTA }) {
+export function Features() {
   return (
-    <section className="py-20 px-6 border-t border-fp-border">
-      <div className="max-w-[1120px] mx-auto">
+    <section id="features" className="border-y border-neutral-200 bg-neutral-50/70 py-20 dark:border-white/10 dark:bg-white/[0.03] sm:py-24">
+      <div className={PAGE_MAX}>
+        <div className="grid gap-12 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
+          <SectionHeader label="Features" title={FEATURES_HEADER} align="left" className="lg:sticky lg:top-28">
+            Private portals, structured handoffs, approvals, activity, and invoice context without turning your client into a software user.
+          </SectionHeader>
 
-        {/* Copy above */}
-        <div className="reveal text-center mb-12">
-          <SectionLabel>The Portal</SectionLabel>
-          <SectionHeading className="mb-6">
-            Not a forwarded email.<br />
-            Not a Notion doc. <em>This.</em>
-          </SectionHeading>
-          <p className="text-fp-text-secondary text-[15px] leading-[1.8] max-w-[520px] mx-auto">
-            A clean, professional portal. Their project. Their milestones. What's done, what's in progress, what's coming next. And a clear prompt for what they need to do right now.
-          </p>
-        </div>
+          <div className="stagger grid gap-4 sm:grid-cols-2">
+            {FEATURES.map(({ icon, name, desc, detail }) => {
+              const Icon = featureIcons[icon] || FileText
 
-        {/* Portal mockup — warm white world */}
-        <div className="reveal max-w-[720px] mx-auto rounded-2xl overflow-hidden border border-fp-border shadow-[0_40px_100px_rgba(0,0,0,0.6)]">
-          <WindowChrome url="portal.freeport.dev/p/luminary" dark={false} />
-
-          {/* Portal content — deliberately using portal colors */}
-          <div className="bg-fp-portal-bg p-6">
-
-            {/* Progress banner */}
-            <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl overflow-hidden mb-4">
-              <div className="h-[2px] bg-fp-portal-accent opacity-70" />
-              <div className="px-5 py-5">
-                <p className="text-fp-portal-text-tertiary text-[10px] font-bold uppercase tracking-widest mb-1">
-                  Rahul's Portal
-                </p>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-fp-portal-text-primary font-medium text-xl">
-                    Luminary Co. Website
-                  </h2>
-                  <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-fp-portal-success/10 text-fp-portal-success">
-                    On Track
-                  </span>
-                </div>
-                <div className="bg-fp-portal-raised h-2 rounded-full mb-2">
-                  <div className="h-2 rounded-full bg-fp-portal-accent" style={{ width: '70%' }} />
-                </div>
-                <div className="flex justify-between text-[11px] text-fp-portal-text-tertiary">
-                  <span><span className="text-fp-portal-text-primary font-semibold">3</span> of <span className="text-fp-portal-text-primary font-semibold">4</span> milestones complete</span>
-                  <span>Last update 2h ago</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Timeline */}
-            <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl p-5">
-              <h3 className="text-fp-portal-text-secondary text-[10px] font-bold uppercase tracking-widest mb-4">Project Timeline</h3>
-
-              {[
-                { title: 'Discovery & Strategy',   status: 'COMPLETED', note: '✓ Approved · 3 Mar 2025' },
-                { title: 'Design & Wireframes',    status: 'COMPLETED', note: '✓ Approved · 15 Mar 2025' },
-                { title: 'Homepage Development',   status: 'IN_REVIEW', note: null },
-                { title: 'Final QA & Handoff',     status: 'PENDING',   note: 'Not started yet' },
-              ].map((m, i) => (
-                <div key={i} className="flex gap-3 mb-4 last:mb-0">
-                  {/* Node */}
-                  <div className="flex flex-col items-center">
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                      m.status === 'COMPLETED' ? 'bg-fp-portal-accent' :
-                      m.status === 'IN_REVIEW' ? 'ring-2 ring-fp-portal-accent ring-offset-1 ring-offset-fp-portal-surface' :
-                      'border-2 border-fp-portal-border'
-                    }`}>
-                      {m.status === 'COMPLETED' && (
-                        <svg width="9" height="9" fill="none" viewBox="0 0 9 9"><path d="M1 4.5L3.2 7L8 2" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      )}
-                    </div>
-                    {i < 3 && <div className="w-px flex-1 bg-fp-portal-border mt-1" />}
+              return (
+                <article key={name} className={`${CARD} bg-white p-5 dark:bg-neutral-950/40`}>
+                  <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 text-neutral-950 dark:border-white/10 dark:bg-white/[0.04] dark:text-white">
+                    <Icon aria-hidden="true" className="h-5 w-5" />
                   </div>
+                  <h3 className="text-[15px] font-semibold leading-6 text-neutral-950 dark:text-white">{name}</h3>
+                  <p className={`mt-3 text-[13px] leading-6 ${MUTED_TEXT}`}>{desc}</p>
+                  <p className="mt-5 border-t border-neutral-200 pt-4 text-[12px] font-medium leading-5 text-neutral-500 dark:border-white/10 dark:text-neutral-400">
+                    {detail}
+                  </p>
+                </article>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
 
-                  {/* Content */}
-                  <div className="flex-1 pb-1">
-                    {m.status === 'IN_REVIEW' ? (
-                      // Delivery card
-                      <div className="bg-fp-portal-surface border border-fp-portal-accent/25 rounded-xl overflow-hidden">
-                        <div className="h-[2px] bg-fp-portal-accent" />
-                        <div className="p-4">
-                          <p className="font-display text-fp-portal-text-primary font-medium text-[15px] mb-1">
-                            Homepage is ready for your review
-                          </p>
-                          <p className="text-fp-portal-text-secondary text-[12px] mb-4 leading-relaxed">
-                            All sections are complete — hero, features, pricing. Please check that the contact form works correctly.
-                          </p>
-                          <div className="flex gap-2">
-                            <button className="flex-1 text-[12px] font-semibold py-2 rounded-lg border border-fp-portal-border text-fp-portal-text-secondary">
-                              Request Changes
-                            </button>
-                            <button className="flex-1 text-[12px] font-bold py-2 rounded-lg bg-fp-portal-success text-white">
-                              Approve
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="pt-0.5">
-                        <p className={`text-[13px] font-medium ${m.status === 'COMPLETED' ? 'line-through text-fp-portal-text-tertiary' : 'text-fp-portal-text-secondary'}`}>
-                          {m.title}
-                        </p>
-                        {m.note && (
-                          <p className={`text-[11px] mt-0.5 ${m.status === 'COMPLETED' ? 'text-fp-portal-accent' : 'text-fp-portal-text-tertiary'}`}>
-                            {m.note}
-                          </p>
-                        )}
-                      </div>
-                    )}
+export function PortalMoment() {
+  return (
+    <section className="py-20 sm:py-24">
+      <div className={PAGE_MAX}>
+        <div className="grid gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
+          <div className="reveal">
+            <SectionLabel>The client view</SectionLabel>
+            <h2 className="font-display text-3xl font-semibold leading-[1.08] text-neutral-950 sm:text-4xl lg:text-5xl dark:text-white">
+              The portal turns progress into a premium client experience.
+            </h2>
+            <p className={`mt-6 text-[15px] leading-8 ${MUTED_TEXT}`}>
+              Clients do not need a project-management tool. They need clarity. What changed, what needs review, what is approved, what files are ready, and what happens next.
+            </p>
+
+            <div className="mt-8 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              {[
+                { icon: Eye, label: 'Viewed today', value: '2:14 PM' },
+                { icon: FileCheck2, label: 'Open approval', value: 'Homepage' },
+                { icon: LockKeyhole, label: 'Access', value: 'Private link' },
+              ].map(({ icon: Icon, label, value }) => (
+                <div key={label} className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white/70 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-neutral-950 text-white dark:bg-white dark:text-neutral-950">
+                    <Icon aria-hidden="true" className="h-4.5 w-4.5" />
+                  </span>
+                  <div>
+                    <p className="text-[12px] font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
+                    <p className="text-[13px] font-semibold text-neutral-950 dark:text-white">{value}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
 
-        {/* Copy below */}
-        <div className="reveal text-center mt-10">
-          <p className="text-fp-text-secondary text-[15px] leading-[1.85] max-w-[520px] mx-auto mb-2">
-            Imagine your best client opening this instead of a WhatsApp thread.
-          </p>
-          <p className="text-fp-text-primary text-[15px] font-medium">
-            That's the difference between a client who trusts you and one who questions every decision.
-          </p>
-        </div>
+          <div className="reveal overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-neutral-950 dark:shadow-[0_28px_90px_rgba(0,0,0,0.48)]">
+            <WindowChrome url="clientportal.app/p/rahul/luminary" />
 
+            <div className="p-5 sm:p-6">
+              <div className="border-b border-neutral-200 pb-5 dark:border-white/10">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-neutral-400">
+                  Rahul&apos;s project
+                </p>
+                <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h3 className="font-display text-2xl font-semibold text-neutral-950 dark:text-white">
+                      Luminary Co. Website
+                    </h3>
+                    <p className={`mt-2 text-[13px] ${MUTED_TEXT}`}>Brand site build, CMS setup, launch support</p>
+                  </div>
+                  <span className="w-fit rounded-lg bg-neutral-950 px-3 py-2 text-[12px] font-semibold text-white dark:bg-white dark:text-neutral-950">
+                    On track
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid gap-4 pt-5 sm:grid-cols-3">
+                {[
+                  { label: 'Milestones', value: '3 / 4' },
+                  { label: 'Files ready', value: '12' },
+                  { label: 'Invoice', value: 'Pending' },
+                ].map(({ label, value }) => (
+                  <div key={label} className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                    <p className="text-[12px] font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
+                    <p className="mt-2 font-display text-2xl font-semibold text-neutral-950 dark:text-white">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:text-neutral-400">
+                      Ready for review
+                    </p>
+                    <h4 className="mt-2 text-[16px] font-semibold text-neutral-950 dark:text-white">
+                      Homepage development
+                    </h4>
+                    <p className={`mt-2 max-w-xl text-[13px] leading-6 ${MUTED_TEXT}`}>
+                      The final homepage build is ready with responsive polish, CMS wiring, and performance pass complete.
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-[12px] font-semibold text-neutral-700 dark:border-white/15 dark:bg-neutral-950 dark:text-neutral-300"
+                    >
+                      Changes
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-lg bg-neutral-950 px-3 py-2 text-[12px] font-semibold text-white dark:bg-white dark:text-neutral-950"
+                    >
+                      Approve
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-4 dark:border-white/10 dark:bg-neutral-950 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-950 text-white dark:bg-white dark:text-neutral-950">
+                    <CreditCard aria-hidden="true" className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-[13px] font-semibold text-neutral-950 dark:text-white">Final invoice</p>
+                    <p className={`text-[12px] ${MUTED_TEXT}`}>Ready after approval</p>
+                  </div>
+                </div>
+                <p className="font-display text-2xl font-semibold text-neutral-950 dark:text-white">Rs. 42,000</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   )

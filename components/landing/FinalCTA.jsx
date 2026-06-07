@@ -1,88 +1,81 @@
 'use client'
-// components/landing/FinalCTA.jsx + Footer
 
-import { FINAL_HEADLINE, FINAL_BODY, FINAL_CTA, FINAL_NOTE, FOOTER_LINKS, FOOTER_TAGLINE, FOOTER_COPYRIGHT } from './data'
-import { PrimaryButton, LogoMark } from './ui'
+// components/landing/FinalCTA.jsx
 
-// ── FinalCTA ──────────────────────────────────────────────────────────────────
-// Mirrors the opening pain from the hero — full circle moment.
-// "Stop sending project updates over WhatsApp" connects directly to Pain Block 1.
+import { ArrowRight, ShieldCheck } from 'lucide-react'
+import {
+  FINAL_BODY,
+  FINAL_CTA,
+  FINAL_HEADLINE,
+  FINAL_NOTE,
+  FOOTER_COPYRIGHT,
+  FOOTER_LINKS,
+  FOOTER_TAGLINE,
+} from './data'
+import { LogoMark, PAGE_MAX } from './ui'
+
 export function FinalCTA({ onCTA }) {
-  const [line1, line2] = FINAL_HEADLINE.split('\n')
   return (
-    <section className="py-24 px-6 border-t border-fp-border">
-      <div className="max-w-[740px] mx-auto">
-
-        {/* Card with subtle glow border */}
-        <div className="reveal relative rounded-2xl overflow-hidden border border-fp-accent/20 bg-fp-surface text-center px-8 py-16 sm:px-16">
-
-          {/* Accent top line */}
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-fp-accent to-transparent opacity-70" />
-
-          {/* Bottom radial glow */}
-          <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[500px] h-[200px] pointer-events-none"
-            style={{ background: 'radial-gradient(ellipse, rgba(123,147,255,0.08) 0%, transparent 70%)' }}
-          />
-
-          <div className="relative z-10">
-            {/* Headline */}
-            <h2 className="font-display font-semibold text-fp-text-primary leading-[1.15] tracking-tight mb-6" style={{ fontSize: 'clamp(28px, 4vw, 46px)' }}>
-              {line1}
-              <br />
-              <span className="text-fp-accent">{line2}</span>
-            </h2>
-
-            {/* Body — mirrors the pain */}
-            <p className="text-fp-text-secondary text-[15px] leading-[1.85] max-w-[480px] mx-auto mb-8">
-              {FINAL_BODY}
-            </p>
-
-            {/* CTA */}
-            <PrimaryButton onClick={onCTA} className="!py-4 !px-10 !text-[15px] !shadow-[0_12px_40px_rgba(123,147,255,0.45)]">
-              {FINAL_CTA}
-            </PrimaryButton>
-
-            {/* Reassurance */}
-            <p className="text-fp-text-tertiary text-[12px] mt-4">{FINAL_NOTE}</p>
+    <section className="border-y border-neutral-200 bg-neutral-950 py-20 text-white dark:border-white/10 dark:bg-white dark:text-neutral-950 sm:py-24">
+      <div className={`${PAGE_MAX} text-center`}>
+        <div className="reveal mx-auto max-w-3xl">
+          <div className="mx-auto mb-6 flex h-11 w-11 items-center justify-center rounded-lg bg-white text-neutral-950 dark:bg-neutral-950 dark:text-white">
+            <ShieldCheck aria-hidden="true" className="h-5 w-5" />
           </div>
-        </div>
+          <h2 className="font-display text-3xl font-semibold leading-[1.08] sm:text-4xl lg:text-5xl">
+            {FINAL_HEADLINE}
+          </h2>
+          <p className="mx-auto mt-6 max-w-2xl text-[15px] leading-8 text-neutral-300 dark:text-neutral-700">
+            {FINAL_BODY}
+          </p>
 
+          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <button
+              type="button"
+              onClick={onCTA}
+              className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-white px-5 py-3 text-[14px] font-semibold text-neutral-950 transition duration-200 hover:-translate-y-0.5 hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:focus-visible:ring-neutral-950 dark:focus-visible:ring-offset-white"
+            >
+              {FINAL_CTA}
+              <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
+            </button>
+            <a
+              href="#pricing"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/15 px-5 py-3 text-[14px] font-semibold text-white transition duration-200 hover:-translate-y-0.5 hover:border-white/35 dark:border-neutral-300 dark:text-neutral-950 dark:hover:border-neutral-950"
+            >
+              Compare plans
+              <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </a>
+          </div>
+
+          <p className="mt-5 text-[12px] font-medium text-neutral-400 dark:text-neutral-600">{FINAL_NOTE}</p>
+        </div>
       </div>
     </section>
   )
 }
 
-// ── Footer ────────────────────────────────────────────────────────────────────
 export function Footer() {
   return (
-    <footer className="border-t border-fp-border pt-12 pb-8 px-6">
-      <div className="max-w-[1120px] mx-auto">
-
-        {/* Top row */}
-        <div className="flex flex-wrap justify-between gap-10 mb-12">
-
-          {/* Brand block */}
-          <div className="max-w-[220px]">
-            <LogoMark size={30} />
-            <p className="mt-3 text-fp-text-tertiary text-[12px] leading-[1.8]">
-              {FOOTER_TAGLINE}
-            </p>
+    <footer className="px-0 py-12">
+      <div className={PAGE_MAX}>
+        <div className="flex flex-col gap-10 border-b border-neutral-200 pb-10 dark:border-white/10 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-xs">
+            <LogoMark size={32} />
+            <p className="mt-4 text-[13px] leading-6 text-neutral-600 dark:text-neutral-400">{FOOTER_TAGLINE}</p>
           </div>
 
-          {/* Link columns */}
-          <div className="flex gap-12 flex-wrap">
+          <div className="grid gap-8 sm:grid-cols-3">
             {FOOTER_LINKS.map(({ heading, links }) => (
               <div key={heading}>
-                <p className="text-fp-text-tertiary text-[10px] font-bold uppercase tracking-[0.12em] mb-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:text-neutral-400">
                   {heading}
                 </p>
-                <div className="flex flex-col gap-2">
+                <div className="mt-4 flex flex-col gap-3">
                   {links.map(({ label, href }) => (
                     <a
                       key={label}
                       href={href}
-                      className="text-[13px] text-fp-text-tertiary hover:text-fp-text-secondary transition-colors duration-150"
+                      className="text-[13px] font-medium text-neutral-600 transition-colors duration-150 hover:text-neutral-950 dark:text-neutral-400 dark:hover:text-white"
                     >
                       {label}
                     </a>
@@ -93,12 +86,10 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-fp-border pt-6 flex flex-wrap justify-between items-center gap-3">
-          <p className="text-fp-text-tertiary text-[12px]">{FOOTER_COPYRIGHT}</p>
-          <p className="text-fp-text-tertiary text-[11px] font-mono">Made with ♥ in India</p>
+        <div className="flex flex-col gap-3 pt-6 text-[12px] text-neutral-500 dark:text-neutral-500 sm:flex-row sm:items-center sm:justify-between">
+          <p>{FOOTER_COPYRIGHT}</p>
+          <p>Independent by design.</p>
         </div>
-
       </div>
     </footer>
   )
