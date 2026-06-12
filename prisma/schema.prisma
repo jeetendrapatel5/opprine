@@ -247,6 +247,8 @@ model Invoice {
 
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+  @@unique([projectId, number])
+  @@index([stripePaymentLinkId])
 }
 
 enum InvoiceStatus {

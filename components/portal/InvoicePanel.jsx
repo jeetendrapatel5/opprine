@@ -1,19 +1,21 @@
 // components/portal/InvoicePanel.jsx
 // ─────────────────────────────────────────────────────────────────────────────
-// Shows the client their invoices. Renders nothing if all invoices are
-// CANCELLED — clients don't need to know about administrative cancellations.
+// Shows the client their invoices.
 //
-// Design changes from old version:
-// - Was dark (#0e0e12) — now fp-portal-surface (white card).
-// - "Pay Now" button uses fp-portal-accent (amber) — warm gold signals
-//   value and is more appropriate for a payment CTA than generic blue.
-// - Invoice amounts use font-display (Fraunces) — numbers in a serif font
-//   look more like a proper invoice and less like a web form.
-// - Status badges use portal semantic tokens (fp-portal-success, fp-portal-danger).
+// WHY this is now a Client Component:
+// The original Server Component had no way to refresh after the client paid.
+// The client pays on Stripe's hosted page → webhook updates the DB → client
+// comes back to the portal → the old Server-rendered HTML still shows UNPAID.
 //
-// Server Component — "Pay Now" is a plain <a> tag linking to Stripe's hosted
-// page. No client-side JS needed for the payment flow.
+// Now: while any invoice is UNPAID, we poll router.refresh() every 15 seconds.
+// router.refresh() tells Next.js to re-run the parent Server Component, fetch
+// fresh DB data, and pass updated props down here.
+// We use the props directly (no useState) so every refresh shows the new data.
 // ─────────────────────────────────────────────────────────────────────────────
+'use client'
+
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 function formatCurrency(amount, currency) {
   return new Intl.NumberFormat('en-US', {
@@ -35,7 +37,28 @@ function isOverdue(date) {
 }
 
 export default function InvoicePanel({ invoices = [] }) {
-  const visible = invoices.filter(inv => inv.status !== 'CANCELLED')
+  const router = useRouter()
+
+  // ── Poll while any invoice is UNPAID ───────────────────────────────────────
+  // After the client pays, Stripe fires our webhook which marks the invoice PAID.
+  // We poll router.refresh() so the parent re-fetches and passes us fresh props.
+  // We use invoices prop directly (no useState) so fresh props render immediately.
+  // The interval stops automatically once no UNPAID invoices remain.
+  const hasUnpaid = invoices.some((inv) => inv.status === 'UNPAID')
+
+  useEffect(() => {
+    if (!hasUnpaid) return
+
+    const interval = setInterval(() => {
+      router.refresh()
+    }, 15_000)
+
+    return () => clearInterval(interval)
+  }, [hasUnpaid, router])
+
+  // Render nothing if all invoices are cancelled — clients don't need to see
+  // administrative cancellations.
+  const visible = invoices.filter((inv) => inv.status !== 'CANCELLED')
   if (visible.length === 0) return null
 
   return (
@@ -54,8 +77,8 @@ export default function InvoicePanel({ invoices = [] }) {
       {/* Invoice rows */}
       <div className="divide-y divide-fp-portal-border">
         {visible.map((invoice) => {
-          const isPaid   = invoice.status === 'PAID'
-          const overdue  = !isPaid && isOverdue(invoice.dueDate)
+          const isPaid  = invoice.status === 'PAID'
+          const overdue = !isPaid && isOverdue(invoice.dueDate)
 
           return (
             <div key={invoice.id} className="px-5 py-4">
@@ -147,7 +170,13 @@ export default function InvoicePanel({ invoices = [] }) {
                   bg-fp-portal-success/8 text-fp-portal-success text-sm font-semibold
                 ">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 16 16">
-                    <path d="M3 8l3.5 3.5L13 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M3 8l3.5 3.5L13 4.5"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                   Payment Received
                 </div>

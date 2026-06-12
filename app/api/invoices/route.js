@@ -1,15 +1,4 @@
 // app/api/invoices/route.js
-//
-// POST — create a new invoice for a project.
-//
-// What this route does in order:
-//   1. Authenticate the freelancer
-//   2. Validate the request body
-//   3. Verify the freelancer owns the project (BOLA prevention)
-//   4. Generate an invoice number (INV-001, INV-002, etc.)
-//   5. Create a Stripe Price + Payment Link
-//   6. Save the invoice to the database with the Stripe URLs
-//   7. Return the new invoice
 
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
@@ -17,14 +6,15 @@ import { authOptions } from "@/lib/auth"
 import prisma from '@/lib/prisma'
 import Stripe from 'stripe'
 
-// Initialize Stripe with the secret key.
-// apiVersion pins the Stripe API version so a Stripe update never
-// silently changes behavior in your app.
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-04-10',
 })
 
 export async function POST(request) {
+  // invoice is declared here so the catch block can access it for cleanup
+  // if Stripe fails after the DB row is already created.
+  let invoice = null
+
   try {
     // ── Step 1: Auth ────────────────────────────────────────────────────────
     const session = await getServerSession(authOptions)
@@ -32,24 +22,29 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // ── Step 2: Parse and validate body ────────────────────────────────────
+    // ── Step 2: Parse and validate body ─────────────────────────────────────
     const body = await request.json()
     const { projectId, amount, currency = 'USD', dueDate, note, milestoneId } = body
 
     if (!projectId) {
       return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
     }
+
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
-      return NextResponse.json({ error: 'amount must be a positive number' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'amount must be a positive number' },
+        { status: 400 }
+      )
     }
 
     // ── Step 3: Ownership check ─────────────────────────────────────────────
-    // Fetch the project with its client — we need the client name for the
-    // Stripe product name so the payment page looks professional.
+    // Fetch the project AND its client in one query.
+    // We need client.name for the Stripe product name (makes the payment page
+    // look professional — client sees their own name, not a generic string).
     const project = await prisma.project.findFirst({
       where: {
         id:     projectId,
-        userId: session.user.id,
+        userId: session.user.id,   // ensures the project belongs to THIS freelancer
       },
       include: {
         client: { select: { name: true } },
@@ -60,45 +55,97 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    // ── Step 4: Generate invoice number ────────────────────────────────────
-    // Count how many invoices this project already has.
-    // First invoice = INV-001, second = INV-002, etc.
-    // padStart(3, '0') ensures we always have 3 digits: 1 → "001"
-    // WHY per-project and not global: each project is a separate engagement.
-    // A client shouldn't see "INV-047" and wonder what the other 46 were.
-    const existingCount = await prisma.invoice.count({
-      where: { projectId },
-    })
-    const number = `INV-${String(existingCount + 1).padStart(3, '0')}`
+    // ── Step 4: Validate milestoneId ownership (if provided) ─────────────────
+    // The project ownership above only proves projectId belongs to this user.
+    // We must also verify the milestone belongs to the same project —
+    // otherwise a user could attach another freelancer's milestone to their invoice.
+    if (milestoneId) {
+      const milestone = await prisma.milestone.findFirst({
+        where: {
+          id:        milestoneId,
+          projectId: projectId,    // must belong to the same project
+        },
+      })
 
-    // ── Step 5: Create Stripe Price + Payment Link ──────────────────────────
-    // Stripe works in the smallest currency unit.
-    // For USD: $2,500.00 → 250000 cents
-    // Math.round handles any floating point issues from the input
+      if (!milestone) {
+        return NextResponse.json(
+          { error: 'Milestone not found or does not belong to this project' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // ── Step 5: Reserve invoice number + create DB row atomically ────────────
+    //
+    // WHY a transaction here:
+    // Without it, two simultaneous requests could both read existingCount = 2
+    // and both try to create INV-003. The $transaction locks the rows so only
+    // one request can count + create at a time.
+    //
+    // WHY we create the invoice BEFORE calling Stripe:
+    // Stripe calls go OUTSIDE the transaction (they can take 1–3 seconds and
+    // a DB transaction has a 5-second timeout). So we create the invoice first
+    // to lock in the number, then fill in the Stripe IDs after.
+    //
+    // WHY we use tx.invoice (not prisma.invoice) inside the callback:
+    // `tx` is the transaction-aware client. Using `prisma` inside a transaction
+    // bypasses the lock entirely — defeating the whole point.
+    invoice = await prisma.$transaction(async (tx) => {
+      const existingCount = await tx.invoice.count({
+        where: { projectId },
+      })
+
+      // INV-001, INV-002, etc. — padStart ensures always 3 digits.
+      // Per-project (not global) so each client sees a clean sequence.
+      const number = `INV-${String(existingCount + 1).padStart(3, '0')}`
+
+      return tx.invoice.create({
+        data: {
+          number,
+          amount:      Number(amount),
+          currency:    currency.toUpperCase(),
+          status:      'UNPAID',
+          dueDate:     dueDate      ? new Date(dueDate) : null,
+          note:        note?.trim() || null,
+          milestoneId: milestoneId  || null,
+          projectId,
+          // stripePaymentLinkId and stripePaymentLinkUrl are null for now.
+          // They are filled in Step 7 after Stripe responds.
+        },
+      })
+    })
+
+    // ── Step 6: Create Stripe Price ─────────────────────────────────────────
+    //
+    // A Stripe Price defines "what to charge and in which currency".
+    // It must be created before the Payment Link because the link references it.
+    //
+    // Stripe works in the smallest currency unit:
+    // $2,500.00 → 250000 cents. Math.round handles floating-point imprecision.
     const amountInCents = Math.round(Number(amount) * 100)
 
-    // Step 5a — Create a Stripe Price.
-    // A Price defines "how much" and "what currency".
-    // product_data.name is what appears on the Stripe-hosted payment page.
     const price = await stripe.prices.create({
       currency:     currency.toLowerCase(),
       unit_amount:  amountInCents,
       product_data: {
-        name: `${number} — ${project.name}`,
-        // Shown below the product name on the payment page
+        // This is what the client sees on the Stripe-hosted payment page.
+        name: `${invoice.number} — ${project.name}`,
         metadata: {
-          project:  project.name,
-          client:   project.client?.name ?? 'Client',
-          invoice:  number,
+          project: project.name,
+          client:  project.client?.name ?? 'Client',
+          invoice: invoice.number,
         },
       },
     })
 
-    // Step 5b — Create a Stripe Payment Link using that price.
-    // A Payment Link is a permanent, shareable URL.
-    // The client clicks it, enters their card, and pays.
-    // Stripe handles everything — no webhook needed just to show the page.
-    // We DO need a webhook (Feature 7.4) to know when payment succeeds.
+    // ── Step 7: Create Stripe Payment Link ──────────────────────────────────
+    //
+    // A Payment Link is a permanent, shareable URL the client clicks to pay.
+    // Stripe hosts the entire payment flow — no frontend checkout code needed.
+    //
+    // We store { projectId, invoiceNumber } in metadata so the webhook handler
+    // (app/api/webhooks/stripe/route.js) can find and update the right invoice
+    // when Stripe notifies us that payment succeeded.
     const paymentLink = await stripe.paymentLinks.create({
       line_items: [
         {
@@ -106,42 +153,49 @@ export async function POST(request) {
           quantity: 1,
         },
       ],
-      // after_completion shows a confirmation message instead of redirecting
+      // after_completion: show a hosted confirmation page instead of redirecting.
+      // The client sees a branded thank-you message — no extra page needed on our side.
       after_completion: {
-        type:          'hosted_confirmation',
+        type: 'hosted_confirmation',
         hosted_confirmation: {
           custom_message: `Thank you for your payment. ${project.name} is all taken care of.`,
         },
       },
-      // Store our invoice reference in Stripe metadata.
-      // This is how the webhook (Feature 7.4) will find the invoice
-      // when Stripe notifies us that payment succeeded.
       metadata: {
         projectId,
-        invoiceNumber: number,
+        invoiceNumber: invoice.number,
       },
     })
 
-    // ── Step 6: Save to database ────────────────────────────────────────────
-    const invoice = await prisma.invoice.create({
+    // ── Step 8: Attach Stripe IDs to the invoice ────────────────────────────
+    //
+    // Now that Stripe has responded successfully, update the DB row with the
+    // payment link ID and URL. The client portal reads stripePaymentLinkUrl
+    // to show the "Pay Now" button.
+    const updatedInvoice = await prisma.invoice.update({
+      where: { id: invoice.id },
       data: {
-        number,
-        amount:              Number(amount),
-        currency:            currency.toUpperCase(),
-        status:              'UNPAID',
-        dueDate:             dueDate    ? new Date(dueDate) : null,
-        note:                note?.trim()   || null,
-        milestoneId:         milestoneId    || null,
-        projectId,
         stripePaymentLinkId:  paymentLink.id,
         stripePaymentLinkUrl: paymentLink.url,
       },
     })
 
-    return NextResponse.json(invoice, { status: 201 })
+    return NextResponse.json(updatedInvoice, { status: 201 })
 
   } catch (error) {
-    // Stripe errors have a `type` field — log it specifically for easier debugging
+    // ── Cleanup: delete the DB invoice if Stripe failed ─────────────────────
+    //
+    // If the $transaction succeeded (invoice was created) but a Stripe call
+    // threw, we have an orphaned invoice with no payment link. Delete it so
+    // the freelancer can retry cleanly without gaps in the invoice number sequence.
+    if (invoice?.id && error.type?.startsWith('Stripe')) {
+      await prisma.invoice.delete({ where: { id: invoice.id } }).catch((cleanupErr) => {
+        // Log but don't throw — we still need to return the Stripe error below.
+        console.error('[POST /api/invoices] Cleanup failed for invoice:', invoice.id, cleanupErr)
+      })
+    }
+
+    // Stripe errors have a .type field starting with 'Stripe' — surface them clearly.
     if (error.type?.startsWith('Stripe')) {
       console.error('[POST /api/invoices] Stripe error:', error.message)
       return NextResponse.json(
@@ -149,6 +203,7 @@ export async function POST(request) {
         { status: 502 }
       )
     }
+
     console.error('[POST /api/invoices]', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }

@@ -18,8 +18,16 @@ export async function PATCH(request, { params }) {
     }
 
     const { id } = await params
-    const body   = await request.json()
+    const body = await request.json()
+    const ALLOWED_STATUSES = ['UNPAID', 'PAID', 'CANCELLED']
     const { status } = body
+
+    if (!status || !ALLOWED_STATUSES.includes(status)) {
+      return NextResponse.json(
+        { error: `status must be one of: ${ALLOWED_STATUSES.join(', ')}` },
+        { status: 400 }
+      )
+    }
 
     // Atomic ownership check
     const invoice = await prisma.invoice.findFirst({
@@ -49,7 +57,7 @@ export async function PATCH(request, { params }) {
 
     const updated = await prisma.invoice.update({
       where: { id },
-      data:  { status },
+      data: { status },
     })
 
     return NextResponse.json(updated)

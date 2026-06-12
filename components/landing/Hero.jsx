@@ -177,11 +177,6 @@ export default function Hero({ onCTA }) {
     <section id="product" className="px-0 pb-16 pt-28 sm:pt-32 lg:pb-20 lg:pt-36">
       <div className={PAGE_MAX}>
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
-          <div className="reveal inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white/80 px-3.5 py-2 text-[12px] font-semibold text-neutral-700 shadow-sm dark:border-white/10 dark:bg-white/[0.04] dark:text-neutral-300">
-            <ShieldCheck aria-hidden="true" className="h-4 w-4" />
-            {HERO_PRE}
-          </div>
-
           <h1 className="reveal mt-6 font-display text-4xl font-semibold leading-[0.98] text-neutral-950 sm:text-5xl lg:text-6xl xl:text-7xl dark:text-white">
             {HERO_HEADLINE}
           </h1>

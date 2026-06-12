@@ -228,7 +228,7 @@ export const TESTIMONIALS = [
 ]
 
 export const FOUNDER = {
-  name: 'Jeetu, Founder',
+  name: 'Jeetendra Patel, Founder',
   quote:
     'Client Portal exists because freelance developers deserve a client experience that matches the quality of their work. The goal is simple: fewer scattered conversations, clearer decisions, and a calmer path to getting paid.',
 }

@@ -22,19 +22,25 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
   const [note,        setNote]        = useState('')
   const [milestoneId, setMilestoneId] = useState('')
 
+  // Inline error message — better UX than alert()
+  const [error, setError] = useState('')
+
   const reset = () => {
     setAmount('')
     setCurrency('USD')
     setDueDate('')
     setNote('')
     setMilestoneId('')
+    setError('')
     setIsOpen(false)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setError('')
+
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
-      alert('Please enter a valid amount.')
+      setError('Please enter a valid amount greater than 0.')
       return
     }
 
@@ -53,9 +59,9 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
       onSuccess(response.data)
       reset()
 
-    } catch (error) {
-      const message = error.response?.data?.error ?? 'Failed to create invoice.'
-      alert(message)
+    } catch (err) {
+      const message = err.response?.data?.error ?? 'Failed to create invoice. Please try again.'
+      setError(message)
     } finally {
       setIsSubmitting(false)
     }
@@ -115,7 +121,6 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
             <label className="block text-xs font-bold text-gray-600 uppercase tracking-wide mb-1.5">
               Currency
             </label>
-            {/* Common currencies — expand this list later if needed */}
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
@@ -191,6 +196,13 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
           </p>
         </div>
 
+        {/* Inline error — replaces alert() for better UX */}
+        {error && (
+          <p className="text-xs text-red-500 bg-red-50 rounded-xl px-3 py-2">
+            {error}
+          </p>
+        )}
+
         {/* Actions */}
         <div className="flex gap-3 pt-1">
           <button
@@ -203,7 +215,7 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
           <button
             type="submit"
             disabled={isSubmitting || !amount}
-            className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-bold py-2.5 rounded-xl transition-colors"
+            className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-bold py-2.5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating...</>

@@ -9,7 +9,7 @@
 //   onCancel — function(invoiceId) — called when freelancer cancels an invoice
 
 import { useState } from 'react'
-import { ExternalLink, XCircle, Loader2, Copy, CheckCircle2} from 'lucide-react'
+import { ExternalLink, XCircle, Loader2, Copy, CheckCircle2 } from 'lucide-react'
 import axios from 'axios'
 
 const statusConfig = {
@@ -23,7 +23,7 @@ const statusConfig = {
   },
   CANCELLED: {
     label: 'Cancelled',
-    className: 'bg-gray-100 text-gray-500 ',
+    className: 'bg-gray-100 text-gray-500',
   },
 }
 
@@ -65,10 +65,17 @@ function InvoiceRow({ invoice, onCancel }) {
     }
   }
 
-  const copyPaymentLink = () => {
-    navigator.clipboard.writeText(invoice.stripePaymentLinkUrl)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const copyPaymentLink = async () => {
+    // BUG FIX: clipboard API can fail on HTTP (non-HTTPS) or in certain browsers.
+    // Always wrap in try/catch to avoid an unhandled promise rejection crashing the UI.
+    try {
+      await navigator.clipboard.writeText(invoice.stripePaymentLinkUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Fallback: select + copy for older browsers
+      alert('Could not copy automatically. URL: ' + invoice.stripePaymentLinkUrl)
+    }
   }
 
   return (
@@ -134,8 +141,8 @@ function InvoiceRow({ invoice, onCancel }) {
 
             {/* Open in Stripe */}
             {invoice.stripePaymentLinkUrl && (
-              
-              <a href={invoice.stripePaymentLinkUrl}
+              <a
+                href={invoice.stripePaymentLinkUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-indigo-600 transition-colors"
@@ -154,8 +161,8 @@ function InvoiceRow({ invoice, onCancel }) {
               title="Cancel this invoice"
             >
               {isCancelling
-                ? <Loader2  className="w-3.5 h-3.5 animate-spin" />
-                : <XCircle  className="w-3.5 h-3.5" />
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <XCircle className="w-3.5 h-3.5" />
               }
               Cancel
             </button>

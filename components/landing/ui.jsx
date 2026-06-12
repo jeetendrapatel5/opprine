@@ -169,19 +169,10 @@ export function WindowChrome({ url = 'clientportal.app', dark = false }) {
 export function LogoMark({ size = 32 }) {
   return (
     <div className="flex items-center gap-3">
-      <div
-        className="flex shrink-0 items-center justify-center rounded-lg bg-neutral-950 text-white shadow-sm dark:bg-white dark:text-neutral-950"
-        style={{ width: size, height: size }}
-      >
-        <span className="font-semibold leading-none" style={{ fontSize: size * 0.34 }}>
-          CP
-        </span>
-      </div>
       <span
-        className="font-display font-semibold leading-none text-neutral-950 dark:text-white"
-        style={{ fontSize: size * 0.56 }}
+        className="font-[poppins] font-medium text-2xl leading-none text-neutral-950 dark:text-white"
       >
-        Client Portal
+        <span className="text-3xl">o</span>pprine
       </span>
     </div>
   )

@@ -105,7 +105,10 @@ export async function POST(request) {
 // stripePaymentLinkId is always unique.
 
 async function handleCheckoutCompleted(session) {
-  console.log('[Webhook] checkout.session.completed:', session.id)
+  if (session.payment_status !== 'paid') {
+    console.log('[Webhook] Payment not confirmed yet, status:', session.payment_status)
+    return
+  }
 
   // The payment_link field on the session is the ID of the Payment Link used.
   // This is how we trace back to our invoice.

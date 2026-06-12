@@ -29,15 +29,11 @@ export default function Navbar({ user }) {
           href="/dashboard"
           className="flex items-center gap-2.5 group"
         >
-          {/* Logo mark — FP monogram in a small accent-colored box */}
-          {/* The rounded-lg and accent bg together signal "product", not "site" */}
-          <span className="w-7 h-7 rounded-lg bg-fp-accent flex items-center justify-center shrink-0">
-            <span className="text-[10px] font-bold text-fp-base leading-none tracking-tight">FP</span>
-          </span>
-
           {/* Brand name in Fraunces — makes even the nav feel premium */}
-          <span className="font-display text-[17px] font-medium text-fp-text-primary tracking-tight">
-            Freeport
+          <span
+            className="font-[poppins] text-2xl leading-none text-[#e8ecfff1]"
+          >
+            <span className="text-3xl">o</span>pprine
           </span>
         </Link>
 

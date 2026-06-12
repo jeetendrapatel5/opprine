@@ -26,21 +26,21 @@ ALTER TABLE "Inquiry" DROP CONSTRAINT "Inquiry_projectId_fkey";
 ALTER TABLE "Update" DROP CONSTRAINT "Update_projectId_fkey";
 
 -- DropIndex
-DROP INDEX "User_username_key";
+DROP INDEX IF EXISTS "User_username_key";
 
 -- AlterTable
-ALTER TABLE "Project" DROP COLUMN "caseStudyCoverImage",
-DROP COLUMN "caseStudyEnabled",
-DROP COLUMN "caseStudyHideClient",
-DROP COLUMN "caseStudyIndustry",
-DROP COLUMN "caseStudyOutcome",
-DROP COLUMN "caseStudyProblem",
-DROP COLUMN "caseStudyTechStack";
+ALTER TABLE "Project" DROP COLUMN IF EXISTS "caseStudyCoverImage",
+DROP COLUMN IF EXISTS "caseStudyEnabled",
+DROP COLUMN IF EXISTS "caseStudyHideClient",
+DROP COLUMN IF EXISTS "caseStudyIndustry",
+DROP COLUMN IF EXISTS "caseStudyOutcome",
+DROP COLUMN IF EXISTS "caseStudyProblem",
+DROP COLUMN IF EXISTS "caseStudyTechStack";
 
 -- AlterTable
-ALTER TABLE "User" DROP COLUMN "profileEnabled",
-DROP COLUMN "profileTagline",
-DROP COLUMN "username";
+ALTER TABLE "User" DROP COLUMN IF EXISTS "profileEnabled",
+DROP COLUMN IF EXISTS "profileTagline",
+DROP COLUMN IF EXISTS "username";
 
 -- AddForeignKey
 ALTER TABLE "File" ADD CONSTRAINT "File_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE CASCADE ON UPDATE CASCADE;
