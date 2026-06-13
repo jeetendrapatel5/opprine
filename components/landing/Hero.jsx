@@ -33,7 +33,7 @@ function PortalPreview() {
   return (
     <div className="reveal mx-auto mt-14 max-w-6xl">
       <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-[0_32px_120px_rgba(15,23,42,0.16)] dark:border-white/10 dark:bg-neutral-950 dark:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
-        <WindowChrome url="clientportal.app/p/luminary-website" />
+        <WindowChrome url="opprine.com/dashboard/projects/luminary-website" />
 
         <div className="grid bg-white dark:bg-neutral-950 lg:grid-cols-[286px_1fr]">
           <aside className="border-b border-neutral-200 bg-neutral-50/70 p-5 dark:border-white/10 dark:bg-white/[0.03] lg:border-b-0 lg:border-r">
@@ -43,7 +43,7 @@ function PortalPreview() {
               </div>
               <div>
                 <p className="text-[13px] font-semibold text-neutral-950 dark:text-white">Luminary Website</p>
-                <p className={`text-[12px] ${MUTED_TEXT}`}>Client portal</p>
+                <p className={`text-[12px] ${MUTED_TEXT}`}>Opprine</p>
               </div>
             </div>
 
@@ -211,9 +211,9 @@ export default function Hero({ onCTA }) {
           {HERO_METRICS.map(({ value, label }) => (
             <div
               key={label}
-              className="rounded-lg border border-neutral-200 bg-white/70 px-5 py-4 text-center dark:border-white/10 dark:bg-white/[0.03]"
+              className="rounded-lg bg-white/70 px-5 py-4 text-center dark:border-white/10 dark:bg-white/[0.03]"
             >
-              <p className="font-display text-2xl font-semibold text-neutral-950 dark:text-white">{value}</p>
+              <p className="font-[poppins] text-2xl font-semibold text-neutral-950 dark:text-white">{value}</p>
               <p className={`mt-1 text-[12px] font-medium ${MUTED_TEXT}`}>{label}</p>
             </div>
           ))}

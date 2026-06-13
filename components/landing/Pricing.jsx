@@ -10,7 +10,7 @@ function PlanFeature({ children, inverted = false }) {
   return (
     <div className="flex items-start gap-3">
       <span
-        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
           inverted
             ? 'bg-white text-neutral-950 dark:bg-neutral-950 dark:text-white'
             : 'bg-neutral-950 text-white dark:bg-white dark:text-neutral-950'
@@ -29,12 +29,13 @@ function PlanFeature({ children, inverted = false }) {
   )
 }
 
+
 function PlanButton({ href, children, highlight }) {
   if (highlight) {
     return (
       <a
         href={href}
-        className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-white px-5 py-3 text-[14px] font-semibold text-neutral-950 transition duration-200 hover:-translate-y-0.5 hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:focus-visible:ring-neutral-950 dark:focus-visible:ring-offset-white"
+        className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-white px-5 py-3 text-[14px] font-semibold text-neutral-950 transition duration-200 hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950 dark:bg-neutral-950 dark:text-white dark:hover:bg-neutral-800 dark:focus-visible:ring-neutral-950 dark:focus-visible:ring-offset-white"
       >
         {children}
       </a>
@@ -44,7 +45,7 @@ function PlanButton({ href, children, highlight }) {
   return (
     <a
       href={href}
-      className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-neutral-300 bg-white px-5 py-3 text-[14px] font-semibold text-neutral-800 transition duration-200 hover:-translate-y-0.5 hover:border-neutral-950 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/15 dark:bg-white/[0.03] dark:text-neutral-200 dark:hover:border-white/35 dark:hover:bg-white/[0.06] dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
+      className="inline-flex min-h-11 w-full items-center justify-center rounded-lg border border-neutral-300 bg-white px-5 py-3 text-[14px] font-semibold text-neutral-800 transition duration-200 hover:border-neutral-400 hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:border-white/15 dark:bg-white/[0.03] dark:text-neutral-200 dark:hover:border-white/35 dark:hover:bg-white/[0.06] dark:focus-visible:ring-white dark:focus-visible:ring-offset-neutral-950"
     >
       {children}
     </a>
@@ -65,7 +66,7 @@ export default function Pricing() {
               key={tier.name}
               className={`relative overflow-hidden rounded-lg p-6 sm:p-8 ${
                 tier.highlight
-                  ? 'bg-neutral-950 text-white shadow-[0_28px_90px_rgba(15,23,42,0.22)] dark:bg-white dark:text-neutral-950 dark:shadow-[0_28px_90px_rgba(255,255,255,0.08)]'
+                  ? 'bg-neutral-950 text-white dark:bg-white dark:text-neutral-950'
                   : CARD
               }`}
             >

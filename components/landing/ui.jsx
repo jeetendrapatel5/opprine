@@ -47,7 +47,7 @@ export function PrimaryButton({ children, onClick, href, className = '', icon = 
     group inline-flex min-h-11 items-center justify-center gap-2 rounded-lg
     bg-neutral-950 px-5 py-3 text-[14px] font-semibold text-white
     shadow-[0_18px_44px_rgba(10,10,10,0.18)]
-    transition duration-200 hover:-translate-y-0.5 hover:bg-neutral-800
+    transition duration-200 hover:bg-neutral-800
     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950
     focus-visible:ring-offset-2 focus-visible:ring-offset-white
     dark:bg-white dark:text-neutral-950 dark:shadow-[0_18px_44px_rgba(255,255,255,0.08)]
@@ -85,7 +85,7 @@ export function SecondaryButton({ children, onClick, href, className = '' }) {
   const base = `
     inline-flex min-h-11 items-center justify-center gap-2 rounded-lg
     border border-neutral-300 bg-white/70 px-5 py-3 text-[14px] font-semibold
-    text-neutral-800 transition duration-200 hover:-translate-y-0.5 hover:border-neutral-950
+    text-neutral-800 transition duration-200 hover:border-neutral-400
     hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-950
     focus-visible:ring-offset-2 focus-visible:ring-offset-white
     dark:border-white/15 dark:bg-white/[0.03] dark:text-neutral-200 dark:hover:border-white/35
@@ -139,7 +139,7 @@ export function Stars({ count = 5 }) {
   )
 }
 
-export function WindowChrome({ url = 'clientportal.app', dark = false }) {
+export function WindowChrome({ url = 'opprine.com', dark = false }) {
   return (
     <div
       className={`flex items-center gap-2 border-b px-3 py-3 ${

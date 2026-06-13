@@ -102,7 +102,7 @@ export function Reframe() {
           {TRUST_SIGNALS.map(({ title, desc }) => (
             <div
               key={title}
-              className="rounded-lg border border-white/12 bg-white/[0.06] p-5 dark:border-neutral-200 dark:bg-neutral-50"
+              className="rounded-lg border border-white/3 bg-white/[0.04] p-5 dark:border-neutral-200 dark:bg-neutral-50"
             >
               <div className="flex items-start gap-4">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-neutral-950 dark:bg-neutral-950 dark:text-white">
@@ -134,7 +134,7 @@ export function HowItWorks() {
             return (
               <article key={step} className={`${CARD} relative overflow-hidden p-5`}>
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-[12px] font-semibold text-neutral-500 dark:text-neutral-400">
+                  <span className="font-mono text-[22px] font-semibold text-neutral-300/60 dark:text-neutral-400">
                     {step}
                   </span>
                   <span className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 text-neutral-950 dark:border-white/10 dark:bg-white/[0.04] dark:text-white">
@@ -222,7 +222,7 @@ export function PortalMoment() {
           </div>
 
           <div className="reveal overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-neutral-950 dark:shadow-[0_28px_90px_rgba(0,0,0,0.48)]">
-            <WindowChrome url="clientportal.app/p/rahul/luminary" />
+            <WindowChrome url="opprine.com/dashboard/projects/luminary" />
 
             <div className="p-5 sm:p-6">
               <div className="border-b border-neutral-200 pb-5 dark:border-white/10">
@@ -250,7 +250,7 @@ export function PortalMoment() {
                 ].map(({ label, value }) => (
                   <div key={label} className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                     <p className="text-[12px] font-medium text-neutral-500 dark:text-neutral-400">{label}</p>
-                    <p className="mt-2 font-display text-2xl font-semibold text-neutral-950 dark:text-white">{value}</p>
+                    <p className="mt-2 font-sans text-xl font-semibold text-neutral-950 dark:text-white">{value}</p>
                   </div>
                 ))}
               </div>
@@ -295,7 +295,7 @@ export function PortalMoment() {
                     <p className={`text-[12px] ${MUTED_TEXT}`}>Ready after approval</p>
                   </div>
                 </div>
-                <p className="font-display text-2xl font-semibold text-neutral-950 dark:text-white">Rs. 42,000</p>
+                <p className="font-sans text-xl font-semibold text-neutral-950 dark:text-white">$1,740</p>
               </div>
             </div>
           </div>
