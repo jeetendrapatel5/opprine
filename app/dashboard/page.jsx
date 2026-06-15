@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma'
 import NewProjectModal from '@/components/NewProjectModal'
 import StatsCard from '@/components/StatsCard'
 import ProjectCard from '@/components/ProjectCard'
-import { Briefcase, AlertCircle } from 'lucide-react'
+import { Briefcase, AlertCircle, Dot } from 'lucide-react'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -28,8 +28,8 @@ export default async function DashboardPage() {
     orderBy: { createdAt: 'desc' },
   })
 
-  const totalProjects     = projects.length
-  const activeProjects    = projects.filter(p => p.status === 'ACTIVE').length
+  const totalProjects = projects.length
+  const activeProjects = projects.filter(p => p.status === 'ACTIVE').length
   const completedProjects = projects.filter(p => p.status === 'COMPLETED').length
 
   const projectsNeedingAttention = projects.filter(
@@ -37,8 +37,8 @@ export default async function DashboardPage() {
   )
 
   const firstName = session.user.name?.split(' ')[0] ?? 'there'
-  const hour      = new Date().getHours()
-  const greeting  = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   let subtitle
   if (totalProjects === 0) {
@@ -54,10 +54,14 @@ export default async function DashboardPage() {
   return (
     <div>
       <div className="mb-8 pt-2">
-        <h1 className="font-display text-3xl sm:text-4xl font-medium text-fp-text-primary tracking-tight leading-tight">
-          {greeting},{' '}
-          <span className="text-fp-accent">{firstName}</span>.
-        </h1>
+        <div className="flex items-end">
+          <h1 className="font-sans text-3xl sm:text-4xl font-medium text-fp-text-primary">
+            {greeting},{' '}
+            <span className="text-fp-accent">{firstName}</span>
+          </h1>
+          <Dot className="text-fp-text-primary" />
+        </div>
+
         <p className="text-fp-text-secondary text-sm mt-2">
           {subtitle}
         </p>

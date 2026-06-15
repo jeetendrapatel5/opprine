@@ -223,7 +223,7 @@ export default function ProjectCard({ project }) {
                 {timeAgo(lastUpdate.createdAt)}
               </span>
             ) : (
-              <span className="text-xs text-fp-text-tertiary italic">
+              <span className="text-xs text-fp-text-tertiary">
                 No updates yet
               </span>
             )}
