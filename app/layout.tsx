@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Fraunces, DM_Sans } from "next/font/google";
 import "./globals.css";
 import Providers from "./providers";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next"
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",  
@@ -48,6 +49,7 @@ export default function RootLayout({
       >
         <Providers>
           {children}
+          <Analytics />
         </Providers>
       </body>
     </html>
