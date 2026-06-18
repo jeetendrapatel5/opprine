@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma'
 import NewProjectModal from '@/components/NewProjectModal'
 import StatsCard from '@/components/StatsCard'
 import ProjectCard from '@/components/ProjectCard'
-import { Briefcase, AlertCircle, Dot } from 'lucide-react'
+import { Briefcase, AlertCircle} from 'lucide-react'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -59,7 +59,6 @@ export default async function DashboardPage() {
             {greeting},{' '}
             <span className="text-fp-accent">{firstName}</span>
           </h1>
-          <Dot className="text-fp-text-primary" />
         </div>
 
         <p className="text-fp-text-secondary text-sm mt-2">

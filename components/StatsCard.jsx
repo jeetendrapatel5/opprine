@@ -41,7 +41,7 @@ export default function StatsCard({ label, value, variant = 'default' }) {
     <div className="bg-fp-surface rounded-xl p-5 relative overflow-hidden">
       {/* Label — small, secondary, uppercase with tracking */}
       {/* Uppercase + letter-spacing = labels feel like labels, not body text */}
-      <p className="text-xs font-semibold text-fp-text-secondary uppercase tracking-widest mb-3">
+      <p className="lg:text-xs text-[10px] font-semibold text-fp-text-secondary uppercase tracking-widest mb-3">
         {label}
       </p>
 
