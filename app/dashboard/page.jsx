@@ -55,7 +55,7 @@ export default async function DashboardPage() {
     <div>
       <div className="mb-8 pt-2">
         <div className="flex items-end">
-          <h1 className="font-sans text-3xl sm:text-4xl font-medium text-fp-text-primary">
+          <h1 className="font-sans text-3xl sm:text-5xl font-medium text-fp-text-primary">
             {greeting},{' '}
             <span className="text-fp-accent">{firstName}</span>
           </h1>
