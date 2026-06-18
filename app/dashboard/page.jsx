@@ -72,7 +72,7 @@ export default async function DashboardPage() {
           principle: "I built something real." */}
       <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-8">
         <StatsCard
-          label="Total Projects"
+          label="Projects"
           value={totalProjects}
           variant="default"
         />
@@ -146,7 +146,7 @@ export default async function DashboardPage() {
 
           // Project card list — stacked vertically with a small gap
           // Each card is its own Link (see ProjectCard.jsx)
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid lg:grid-cols-2 grid-cols-1 gap-2">
             {projects.map(project => (
               <ProjectCard key={project.id} project={project} />
             ))}

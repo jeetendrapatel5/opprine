@@ -236,7 +236,7 @@ export default function ProjectCard({ project }) {
                 `flex-1` makes this div grow to fill available space.
                 `min-w-0` overrides flexbox's default min-width which would
                 prevent the `truncate` on h3 from working. Classic flex gotcha. */}
-          <div className="min-w-0 flex-1 flex lg:flex-row flex-col lg:gap-10 gap-1.5">
+          <div className="min-w-0 flex-1 flex lg:gap-10 gap-1.5">
 
             {/* PROJECT NAME — primary identity of the card.
                 `truncate` = overflow:hidden + text-overflow:ellipsis + whitespace:nowrap
@@ -252,8 +252,8 @@ export default function ProjectCard({ project }) {
 
             <span className={`
               self-start flex items-center gap-1.5
-              lg:text-[11px] text-[8px] font-semibold uppercase tracking-wider
-              lg:px-2.5 py-0.5 rounded-full
+              lg:text-[11px] text-[9px] font-semibold uppercase tracking-wider
+              lg:px-5 px-7 py-0.5 rounded-full
               ${status.badgeClass}
             `}>
               {status.label}
@@ -321,7 +321,7 @@ export default function ProjectCard({ project }) {
               transition-colors duration-200
             ">
               {/* Text label — hidden on mobile, visible on desktop */}
-              <span className="hidden sm:inline">View</span>
+              <span className="sm:inline">View</span>
               <span className="
                 inline-block
                 sm:group-hover:translate-x-1
