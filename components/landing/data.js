@@ -9,14 +9,14 @@ export const NAV_LINKS = [
 
 export const HERO_PRE = 'Client project portals for freelance developers'
 
-export const HERO_HEADLINE = 'Your client deserves better than a Drive folder and a status email.'
+export const HERO_HEADLINE = 'Your client deserves better than Drive and email'
 
 export const HERO_SUB =
-  'Opprine gives every project a private, dedicated client view - updates, file delivery, approval tracking, and invoicing in one link. No account for your client. No onboarding call. No new tool for them to learn.'
+  'Opprine gives each project a private client link for updates, file delivery, approvals, and invoicing. No account. No onboarding. No learning curve.'
 
-export const HERO_CTA = 'Create your first portal'
+export const HERO_CTA = 'Get Started'
 
-export const HERO_SECONDARY_CTA = 'See how it works'
+export const HERO_SECONDARY_CTA = 'Learn More'
 
 export const HERO_TRUST = [
   'No client account, ever',

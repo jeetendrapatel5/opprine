@@ -221,7 +221,7 @@ export function PortalMoment() {
             </div>
           </div>
 
-          <div className="reveal overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.14)] dark:border-white/10 dark:bg-neutral-950 dark:shadow-[0_28px_90px_rgba(0,0,0,0.48)]">
+          <div className="reveal overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-950">
             <WindowChrome url="opprine.com/dashboard/projects/luminary" />
 
             <div className="p-5 sm:p-6">

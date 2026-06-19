@@ -115,9 +115,8 @@ export function CheckItem({ children, muted = false }) {
         <Check aria-hidden="true" className="h-3.5 w-3.5" />
       </span>
       <span
-        className={`text-[13px] font-medium leading-6 ${
-          muted ? 'text-neutral-500 dark:text-neutral-500' : MUTED_TEXT
-        }`}
+        className={`text-[13px] font-medium leading-6 ${muted ? 'text-neutral-500 dark:text-neutral-500' : MUTED_TEXT
+          }`}
       >
         {children}
       </span>
@@ -142,21 +141,16 @@ export function Stars({ count = 5 }) {
 export function WindowChrome({ url = 'opprine.com', dark = false }) {
   return (
     <div
-      className={`flex items-center gap-2 border-b px-3 py-3 ${
-        dark
+      className={`flex items-center gap-2 border-b px-3 py-3 ${dark
           ? 'border-white/10 bg-neutral-950'
           : 'border-neutral-200 bg-neutral-50 dark:border-white/10 dark:bg-neutral-900'
-      }`}
+        }`}
     >
-      <span className="h-2.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
-      <span className="h-2.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
-      <span className="h-2.5 w-2.5 rounded-full bg-neutral-300 dark:bg-neutral-700" />
       <div
-        className={`ml-2 flex h-7 flex-1 items-center rounded-md border px-3 ${
-          dark
+        className={`ml-2 flex h-7 flex-1 items-center rounded-md border px-3 ${dark
             ? 'border-white/10 bg-white/[0.04]'
             : 'border-neutral-200 bg-white dark:border-white/10 dark:bg-white/[0.04]'
-        }`}
+          }`}
       >
         <span className="truncate font-mono text-[11px] text-neutral-500 dark:text-neutral-400">
           {url}
