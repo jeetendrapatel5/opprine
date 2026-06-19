@@ -177,11 +177,11 @@ export default function Hero({ onCTA }) {
     <section id="product" className="px-0 pb-16 pt-28 sm:pt-32 lg:pb-20 lg:pt-36">
       <div className={PAGE_MAX}>
         <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
-          <h1 className="reveal mt-6 font-display text-4xl font-semibold leading-[0.98] text-neutral-950 sm:text-5xl lg:text-6xl xl:text-7xl dark:text-white">
+          <h1 className="reveals mt-6 font-display text-[2rem] font-semibold leading-[0.98] text-neutral-950 sm:text-5xl lg:text-6xl xl:text-7xl dark:text-white">
             {HERO_HEADLINE}
           </h1>
 
-          <p className={`reveal mt-6 max-w-2xl text-base leading-8 sm:text-lg ${MUTED_TEXT}`}>
+          <p className={`reveals mt-6 max-w-2xl text-[0.953rem]  sm:text-lg ${MUTED_TEXT}`}>
             {HERO_SUB}
           </p>
 
