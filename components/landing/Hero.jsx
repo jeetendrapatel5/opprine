@@ -32,7 +32,7 @@ const timeline = [
 
 function PortalPreview() {
   return (
-    <div className="reveals mx-auto mt-4 max-w-6xl sm:mt-10 lg:mt-14">
+    <div className="reveals mx-auto mt-4 max-w-6xl sm:mt-10 lg:mt-14 hidden md:flex">
 
       {/* The outer border/shadow card — overflow-hidden already protects inner content */}
       <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white dark:border-white/10 dark:bg-neutral-950">
