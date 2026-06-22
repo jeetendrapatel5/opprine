@@ -1,31 +1,55 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from "@/lib/auth"
 import { redirect } from 'next/navigation'
-import Navbar from '@/components/Navbar'
-import { VscHome, VscArchive, VscAccount, VscSettingsGear } from 'react-icons/vsc'
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from '@/components/ui/sidebar'
+import DashboardSidebar from '@/components/DashboardSidebar'
 
 export default async function DashboardLayout({ children }) {
 
-  // Auth guard — if no session, redirect to signin immediately.
-  // This runs on the server so the page never renders for unauthenticated users.
   const session = await getServerSession(authOptions)
   if (!session) redirect('/signin')
 
   return (
-    // min-h-screen ensures the dark background fills the full viewport
-    // even when content is short (e.g. empty state with no projects)
-    <div className="min-h-screen bg-fp-base font-body">
+    <SidebarProvider
+      defaultOpen={false}
+      style={{
+        '--sidebar': 'var(--color-fp-base)',
+        '--sidebar-foreground': 'var(--color-fp-text-primary)',
+        '--sidebar-accent': 'var(--color-fp-accent-muted)',
+        '--sidebar-accent-foreground': 'var(--color-fp-text-primary)',
+        '--sidebar-border': 'transparent',
+        '--sidebar-ring': 'var(--color-fp-accent)',
+        '--sidebar-primary': 'var(--color-fp-accent)',
+        '--sidebar-primary-foreground': '#000000',
+      }}
+    >
 
-      {/* Navbar receives user data from session — server → client prop */}
-      <Navbar user={session.user} />
+      <DashboardSidebar user={session.user} />
+      <SidebarInset className="bg-fp-base min-h-screen font-body">
 
-      {/* Content area — max-w-5xl (1120px) is the sweet spot for a dashboard.
-          Wider than this and the eye travels too far across a row.
-          px-6 on mobile, no change on desktop — keeps content breathing. */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        {children}
-      </main>
+        <header className="
+          sticky top-0 z-10
+          flex items-center gap-3
+          h-14 px-4 sm:px-6
+          border-b border-fp-border
+          bg-fp-base
+        ">
 
-    </div>
+          <SidebarTrigger
+            className="text-fp-text-secondary hover:text-fp-text-primary hover:bg-fp-surface transition-colors"
+          />
+
+        </header>
+        <main className="w-full px-4 sm:px-6 py-8">
+          {children}
+        </main>
+
+      </SidebarInset>
+
+    </SidebarProvider>
   )
 }
