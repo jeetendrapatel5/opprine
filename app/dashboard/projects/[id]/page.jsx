@@ -177,9 +177,9 @@ export default async function ProjectPage({ params }) {
             Progress
           </p>
           <div className="flex items-baseline justify-between">
-            <span className="text-xl font-bold text-fp-text-primary tabular-nums leading-none">
+            <span className="text-md font-bold text-fp-text-secondary tabular-nums leading-none">
               {completed}
-              <span className="text-fp-text-tertiary font-normal text-sm">
+              <span className="text-fp-text-tertiary p-1 font-normal text-sm">
                 /{total}
               </span>
             </span>
@@ -203,7 +203,7 @@ export default async function ProjectPage({ params }) {
           <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest">
             Timeline
           </p>
-          <p className="text-xl font-bold text-fp-text-primary tabular-nums leading-none">
+          <p className="text-xl font-bold text-fp-text-secondary tabular-nums leading-none">
             {daysActive}
             <span className="text-sm font-normal text-fp-text-tertiary">
               {' '}

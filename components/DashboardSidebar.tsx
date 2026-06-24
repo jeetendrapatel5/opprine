@@ -30,7 +30,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarSeparator,
 } from '@/components/ui/sidebar'
 
 const NAV_ITEMS = [
@@ -68,7 +67,7 @@ export default function DashboardSidebar({ user }: Props) {
   return (
     <Sidebar collapsible="icon" className="border-[var(--color-fp-border)]">
 
-      <SidebarHeader className="border-b border-[var(--color-fp-border)] justify-center h-14">
+      <SidebarHeader className="justify-center h-14">
         <Link
           href="/dashboard"
           className="flex items-center gap-2.5"
@@ -108,7 +107,7 @@ export default function DashboardSidebar({ user }: Props) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-[var(--color-fp-border)] py-2 px-2">
+      <SidebarFooter className="py-2 px-2">
 
         {/* Settings link */}
         <SidebarMenu>
@@ -129,9 +128,7 @@ export default function DashboardSidebar({ user }: Props) {
           ))}
         </SidebarMenu>
 
-        <SidebarSeparator className="my-1 bg-[var(--color-fp-border)]" />
-
-        <div className="flex items-center gap-2.5 px-2 py-1.5">
+        <div className="flex items-center gap-2.5 py-1.5">
 
           <div className="w-7 h-7 rounded-full bg-[var(--color-fp-accent)]/15 border border-[var(--color-fp-accent)]/30 flex items-center justify-center shrink-0">
             <span className="text-[11px] font-semibold text-[var(--color-fp-accent)] leading-none">
