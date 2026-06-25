@@ -9,19 +9,6 @@ import { useRouter } from 'next/navigation'
 import axios from 'axios'
 import { X, Plus, Loader2 } from 'lucide-react'
 
-// ── Why no ScrollArea here? ────────────────────────────────────────────────
-// Radix ScrollArea has two problems in this project:
-//   1. scroll-area.tsx imports from "@radix-ui/react-scroll-area" but
-//      package.json only has "radix-ui" (the unified package) — wrong package.
-//   2. The scrollbar thumb uses "bg-border" (a shadcn variable) which doesn't
-//      exist in Freeport's token system, making the thumb invisible.
-//   3. Radix hides the scrollbar until hover — bad UX for a modal.
-//
-// Solution: native overflow-y-auto + CSS scrollbar styling via Tailwind's
-// arbitrary selector syntax ([&::-webkit-scrollbar]:...).
-// This uses our actual fp- tokens, is always visible, and always works.
-// ──────────────────────────────────────────────────────────────────────────
-
 const schema = z.object({
   name: z.string().min(2, 'Project name must be at least 2 characters'),
   description: z.string().optional(),
