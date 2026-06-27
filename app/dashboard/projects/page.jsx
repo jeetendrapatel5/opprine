@@ -1,5 +1,3 @@
-// app/dashboard/projects/page.jsx
-
 import { Suspense } from 'react'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -22,10 +20,7 @@ import NewProjectModal from '@/components/NewProjectModal'
 
 export const metadata = { title: 'Projects' }
 
-// Reads session cookies + URL-driven filters on every request — never cached.
 export const dynamic = 'force-dynamic'
-
-// ─── Status config (kept identical to the project detail page) ─────────────
 
 const STATUS_CONFIG = {
   ACTIVE: {
@@ -50,10 +45,6 @@ const PROJECTS_PER_PAGE = 10
 const VALID_STATUSES = new Set(['ACTIVE', 'COMPLETED', 'ON_HOLD'])
 const VALID_SORTS = new Set(['newest', 'oldest', 'name'])
 
-// ─── Pure helpers ────────────────────────────────────────────────────────────
-// timeAgoShort / getMilestoneProgress are duplicated from the detail page.
-// Worth lifting both into `lib/format.js` next time you touch either file.
-
 function timeAgoShort(date) {
   if (!date) return null
   const diffMs = Date.now() - new Date(date).getTime()
@@ -74,12 +65,9 @@ function getMilestoneProgress(milestones = []) {
   return { completed, total, progress }
 }
 
-// searchParams values can arrive as arrays — normalize defensively.
 function first(value) {
   return Array.isArray(value) ? value[0] : value
 }
-
-// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default async function ProjectsPage({ searchParams }) {
   const sp = await searchParams
@@ -87,7 +75,7 @@ export default async function ProjectsPage({ searchParams }) {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/signin')
 
-  // ── Parse + validate URL state ─────────────────────────────────────────
+  // Parse + validate URL state
   const q = (first(sp?.q) ?? '').trim()
   const statusParam = (first(sp?.status) ?? '').toUpperCase()
   const status = VALID_STATUSES.has(statusParam) ? statusParam : null
@@ -113,7 +101,7 @@ export default async function ProjectsPage({ searchParams }) {
   const orderBy =
     sort === 'oldest' ? { createdAt: 'asc' } :
     sort === 'name'   ? { name: 'asc' } :
-    { createdAt: 'desc' } // newest
+    { createdAt: 'desc' }
 
   // Stats are simple indexed counts (not a full row fetch) so this stays
   // fast regardless of how many projects an account accumulates.
@@ -213,51 +201,6 @@ export default async function ProjectsPage({ searchParams }) {
             <ChevronRight className="w-3 h-3" />
           </span>
         </Link>
-      )}
-
-      {/* ── FILTER STRIP — doubles as both the account snapshot and the
-           sole status filter. No separate pill row duplicating this. ───── */}
-      {!isEmptyAccount && (
-        <div className="bg-fp-surface border border-fp-border rounded-xl overflow-hidden mb-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4">
-            <FilterStatCell
-              href={buildHref({ status: null, financial: null })}
-              isActive={!status && financial !== 'unpaid'}
-              label="All"
-              value={totalCount}
-              valueClassName="text-fp-text-primary"
-              caption="Across your account"
-              borderClasses="border-r border-b lg:border-b-0 border-fp-border"
-            />
-            <FilterStatCell
-              href={buildHref({ status: 'ACTIVE', financial: null })}
-              isActive={status === 'ACTIVE'}
-              label="Active"
-              value={activeCount}
-              valueClassName="text-fp-success"
-              caption="Currently in progress"
-              borderClasses="border-b lg:border-b-0 lg:border-r border-fp-border"
-            />
-            <FilterStatCell
-              href={buildHref({ status: 'COMPLETED', financial: null })}
-              isActive={status === 'COMPLETED'}
-              label="Completed"
-              value={completedCount}
-              valueClassName="text-fp-accent"
-              caption="Successfully delivered"
-              borderClasses="border-r border-fp-border"
-            />
-            <FilterStatCell
-              href={buildHref({ status: 'ON_HOLD', financial: null })}
-              isActive={status === 'ON_HOLD'}
-              label="On hold"
-              value={onHoldCount}
-              valueClassName="text-fp-warning"
-              caption="Paused or waiting"
-              borderClasses=""
-            />
-          </div>
-        </div>
       )}
 
       {/* ── TOOLBAR — client island for search / sort ───────────────────── */}
@@ -364,44 +307,6 @@ export default async function ProjectsPage({ searchParams }) {
       )}
 
     </div>
-  )
-}
-
-// ─── FilterStatCell ────────────────────────────────────────────────────────
-// A stat card that's also a filter control. Active state reads via label
-// color + a soft accent tint — no edge-flush indicator bars, so it never
-// fights the container's rounded corners at any breakpoint.
-
-function FilterStatCell({ href, isActive, label, value, valueClassName, caption, borderClasses }) {
-  return (
-    <Link
-      href={href}
-      aria-current={isActive ? 'true' : undefined}
-      className={`
-        block px-5 py-4 space-y-2 transition-colors duration-150
-        focus-visible:outline-none focus-visible:bg-fp-raised/50
-        ${isActive ? 'bg-fp-accent/5' : 'hover:bg-fp-raised/50'}
-        ${borderClasses}
-      `}
-    >
-      <p
-        className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-150 ${
-          isActive ? 'text-fp-accent' : 'text-fp-text-tertiary'
-        }`}
-      >
-        {label}
-      </p>
-      <div className="flex items-baseline gap-1.5">
-        <span
-          className={`text-xl font-bold tabular-nums ${
-            value > 0 ? valueClassName : 'text-fp-text-tertiary'
-          }`}
-        >
-          {value}
-        </span>
-      </div>
-      <p className="text-[10px] text-fp-text-tertiary">{caption}</p>
-    </Link>
   )
 }
 

@@ -6,12 +6,11 @@ import prisma from '@/lib/prisma'
 export async function POST(request) {
   try {
     // Step 1 — Make sure user is logged in
-    // Never trust the frontend — always verify on server
     const session = await getServerSession(authOptions)
     if (!session) {
       return NextResponse.json(
         { error: 'You must be logged in' },
-        { status: 401 } // 401 = Unauthorized
+        { status: 401 }
       )
     }
 
@@ -28,8 +27,6 @@ export async function POST(request) {
     }
 
     // Step 4 — Create project AND client in one transaction
-    // A transaction means: do both or do neither
-    // If creating the client fails, the project also gets rolled back
     const project = await prisma.project.create({
       data: {
         name,
