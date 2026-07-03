@@ -331,7 +331,7 @@ export default function ClientsView({ clients, pendingRevenue }) {
     // Different from "search found nothing" — shown when the user has zero clients
     if (clients.length === 0) {
         return (
-            <div className="mt-8">
+            <div className="mt-15">
                 <div className="border border-dashed border-fp-border rounded-xl py-16 flex flex-col items-center justify-center text-center px-4">
                     <div className="w-10 h-10 rounded-xl bg-fp-surface border border-fp-border flex items-center justify-center mb-4">
                         <Users className="w-5 h-5 text-fp-text-tertiary" />
