@@ -1,13 +1,5 @@
 "use client"
 
-// ─── Why "use client"? ────────────────────────────────────────────────────
-// This component uses:
-//   - usePathname()  → reads the current URL (browser-only API)
-//   - signOut()      → triggers a client-side NextAuth action
-//   - The shadcn sidebar hooks (useSidebar) live in a client context too
-// Server components can't use any of these, so this must be a client component.
-// ─────────────────────────────────────────────────────────────────────────
-
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
@@ -17,6 +9,8 @@ import {
   Users,
   Receipt,
   Settings,
+  User,
+  Landmark,
   LogOut,
 } from 'lucide-react'
 import {
@@ -31,6 +25,12 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/dashboard',           icon: LayoutDashboard },
@@ -39,8 +39,9 @@ const NAV_ITEMS = [
   { label: 'Invoices',  href: '/dashboard/invoices',  icon: Receipt         },
 ]
 
-const BOTTOM_ITEMS = [
-  { label: 'Settings', href: '/dashboard/settings', icon: Settings },
+const SETTINGS_ITEMS = [
+  { label: 'Profile',      href: '/dashboard/settings?section=profile', icon: User     },
+  { label: 'Bank Account', href: '/dashboard/settings?section=bank',    icon: Landmark },
 ]
 
 type Props = {
@@ -109,23 +110,32 @@ export default function DashboardSidebar({ user }: Props) {
 
       <SidebarFooter className="py-2 px-2">
 
-        {/* Settings link */}
+        {/* Settings dropdown */}
         <SidebarMenu>
-          {BOTTOM_ITEMS.map(({ label, href, icon: Icon }) => (
-            <SidebarMenuItem key={href}>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive(href)}
-                tooltip={label}
-                className={navButtonClass(isActive(href))}
-              >
-                <Link href={href}>
-                  <Icon />
-                  <span>{label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  isActive={isActive('/dashboard/settings')}
+                  tooltip="Setting"
+                  className={navButtonClass(isActive('/dashboard/settings'))}
+                >
+                  <Settings />
+                  <span>Settings</span>
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" align="end" sideOffset={8} className="min-w-40">
+                {SETTINGS_ITEMS.map(({ label, href, icon: Icon }) => (
+                  <DropdownMenuItem key={href} asChild>
+                    <Link href={href} className="cursor-pointer">
+                      <Icon />
+                      <span>{label}</span>
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
         </SidebarMenu>
 
         <div className="flex items-center gap-2.5 py-1.5">

@@ -328,9 +328,9 @@ export default async function InvoicesPage({ searchParams }) {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 pb-7 mb-8 border-b border-fp-border">
+      <div className="flex items-start justify-between gap-4 pb-7">
         <div className="pt-2">
-          <h1 className="font-sans text-3xl font-medium text-fp-text-primary">Invoices</h1>
+          <h1 className="font-sans text-2xl font-medium text-fp-text-secondary">Invoices</h1>
           <p className="text-fp-text-secondary text-sm mt-2">{subtitle}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0 pt-3">

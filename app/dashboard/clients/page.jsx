@@ -1,16 +1,3 @@
-// app/dashboard/clients/page.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// SERVER COMPONENT — runs only on the server.
-//
-// Data flow:
-//   1. Auth check via getServerSession
-//   2. Prisma query → all clients owned by this user (via their project)
-//   3. Compute page-level stats (counts + revenue totals)
-//   4. Serialize dates (Dates can't cross the server→client boundary as-is)
-//   5. Render header + StatsCards, then hand off to <ClientsView> for
-//      the interactive table (search, sort, copy link)
-// ─────────────────────────────────────────────────────────────────────────────
-
 import { getServerSession } from 'next-auth'
 import { authOptions }       from '@/lib/auth'
 import { redirect }          from 'next/navigation'
@@ -106,25 +93,6 @@ export default async function ClientsPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div>
-
-      {/* Page header — matches DashboardPage pattern exactly */}
-      <div className="mb-8 pt-2">
-        <h1 className="font-sans text-3xl font-medium text-fp-text-primary">
-          Clients
-        </h1>
-        <p className="text-fp-text-secondary text-sm mt-2">
-          {subtitle}
-        </p>
-      </div>
-
-      {/* Stats row — same grid + StatsCard usage as DashboardPage */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-8">
-        <StatsCard label="Total"   value={totalClients}  variant="default"  />
-        <StatsCard label="Active"  value={activeClients} variant="success"  />
-        <StatsCard label="Billed"  value={billedDisplay} variant="complete" />
-      </div>
-
-      <div className="absolute left-[1px] right-[1px] h-px bg-fp-border" />
 
       <ClientsView
         clients={serialized}

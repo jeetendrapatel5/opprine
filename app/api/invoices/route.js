@@ -11,18 +11,16 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 })
 
 export async function POST(request) {
-  // invoice is declared here so the catch block can access it for cleanup
-  // if Stripe fails after the DB row is already created.
   let invoice = null
 
   try {
-    // ── Step 1: Auth ────────────────────────────────────────────────────────
+    // Step 1: Auth
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // ── Step 2: Parse and validate body ─────────────────────────────────────
+    // Step 2: Parse and validate body
     const body = await request.json()
     const { projectId, amount, currency = 'USD', dueDate, note, milestoneId } = body
 
@@ -37,10 +35,7 @@ export async function POST(request) {
       )
     }
 
-    // ── Step 3: Ownership check ─────────────────────────────────────────────
-    // Fetch the project AND its client in one query.
-    // We need client.name for the Stripe product name (makes the payment page
-    // look professional — client sees their own name, not a generic string).
+    // Step 3: Ownership check
     const project = await prisma.project.findFirst({
       where: {
         id:     projectId,
@@ -55,10 +50,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 })
     }
 
-    // ── Step 4: Validate milestoneId ownership (if provided) ─────────────────
-    // The project ownership above only proves projectId belongs to this user.
-    // We must also verify the milestone belongs to the same project —
-    // otherwise a user could attach another freelancer's milestone to their invoice.
+    // Step 4: Validate milestoneId ownership (if provided)
     if (milestoneId) {
       const milestone = await prisma.milestone.findFirst({
         where: {
@@ -75,7 +67,7 @@ export async function POST(request) {
       }
     }
 
-    // ── Step 5: Reserve invoice number + create DB row atomically ────────────
+    // Step 5: Reserve invoice number + create DB row atomically
     //
     // WHY a transaction here:
     // Without it, two simultaneous requests could both read existingCount = 2

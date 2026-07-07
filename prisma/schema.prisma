@@ -16,25 +16,37 @@ model User {
   updatedAt DateTime  @updatedAt
   projects  Project[]
 
-  // Profile fields — shown on the client portal "About your developer" card
-  bio          String?   // one-line summary e.g. "Full-stack developer based in Goa"
-  avatarUrl    String?   // Cloudinary URL of profile photo
-  portfolioUrl String?   // e.g. "https://jeetu.dev"
+  bio          String?  
+  avatarUrl    String?   
+  portfolioUrl String?   
 
-  // ── Public portfolio fields ───────────────────────────────────────────────
-  // username powers the /u/[username] route.
-  // Must be lowercase, alphanumeric, hyphens only. Null = not set up yet.
-  // @unique enforces no two freelancers share the same username.
   username       String?  @unique
-
-  // profileEnabled gates /u/[username]. When false, the page returns 404.
-  // Default false — freelancer opts in deliberately.
   profileEnabled Boolean  @default(false)
-
-  // profileTagline — marketing-facing one-liner, distinct from bio.
-  // bio: "Full-stack dev based in Goa" (factual, casual)
-  // profileTagline: "I build fast, conversion-focused SaaS products." (sells)
   profileTagline String?
+
+  bankAccounts BankAccount[]
+}
+
+model BankAccount {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  label             String   // freelancer's own nickname, e.g. "HDFC — Primary"
+  bankName          String   // e.g. "HDFC Bank"
+  accountHolderName String   // name on the account (often not the same as user.name)
+  currency          String   @default("INR")
+  country           String?  // e.g. "IN", "US" — helps us know which fields to ask for later
+  isDefault         Boolean  @default(false)
+
+  accountNumberLast4 String
+  accountNumberEnc String   // full account number, encrypted
+  routingCodeEnc   String?  // IFSC (India) / SWIFT / routing number, encrypted
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Project {

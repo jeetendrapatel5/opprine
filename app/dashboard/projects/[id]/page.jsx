@@ -457,42 +457,7 @@ export default async function ProjectPage({ params }) {
                   )}
                 </div>
               </div>
-
-              {/* Portal link */}
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-semibold text-fp-text-tertiary uppercase tracking-widest">
-                  Client portal
-                </p>
-                <div className="flex items-center gap-2 px-3 py-2 bg-fp-raised rounded-lg border border-fp-border">
-                  <p className="text-[11px] text-fp-text-tertiary font-mono truncate flex-1">
-                    {portalDisplayText}
-                  </p>
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <CopyButton
-                      value={portalLink}
-                      className="
-                        p-1.5 rounded-md
-                        text-fp-text-tertiary hover:text-fp-text-primary
-                        hover:bg-fp-surface transition-colors
-                      "
-                    />
-                    <Link
-                      href={portalLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label="Open client portal in new tab"
-                      className="
-                        p-1.5 rounded-md
-                        text-fp-text-tertiary hover:text-fp-text-primary
-                        hover:bg-fp-surface transition-colors
-                      "
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </Link>
-                  </div>
-                </div>
-              </div>
-
+              
             </div>
           </PanelCard>
 

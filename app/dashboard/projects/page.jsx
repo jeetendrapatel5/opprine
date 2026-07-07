@@ -173,7 +173,7 @@ export default async function ProjectsPage({ searchParams }) {
 
       {/* ── PAGE HEADER ─────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
-        <h1 className="font-[poppins] text-xl sm:text-2xl font-semibold text-fp-text-secondary leading-tight">
+        <h1 className="font-[poppins] text-xl font-semibold text-fp-text-secondary leading-tight">
           Projects
         </h1>
 

@@ -331,7 +331,7 @@ export default function ClientsView({ clients, pendingRevenue }) {
     // Different from "search found nothing" — shown when the user has zero clients
     if (clients.length === 0) {
         return (
-            <div className="mt-15">
+            <div>
                 <div className="border border-dashed border-fp-border rounded-xl py-16 flex flex-col items-center justify-center text-center px-4">
                     <div className="w-10 h-10 rounded-xl bg-fp-surface border border-fp-border flex items-center justify-center mb-4">
                         <Users className="w-5 h-5 text-fp-text-tertiary" />
@@ -361,7 +361,7 @@ export default function ClientsView({ clients, pendingRevenue }) {
 
     // Main render
     return (
-        <div className="mt-15">
+        <div>
 
             {/* ── Pending revenue banner ───────────────────────────────────────── */}
             {/* Only shown when there are unpaid invoices across client projects.  */}
@@ -387,7 +387,7 @@ export default function ClientsView({ clients, pendingRevenue }) {
 
             {/* ── Section label + search ───────────────────────────────────────── */}
             <div className="flex items-center justify-between mb-3">
-                <h2 className="text-fp-text-secondary text-xs font-semibold uppercase tracking-widest">
+                <h2 className="font-[poppins] text-xl font-semibold text-fp-text-secondary leading-tight">
                     Your Clients
                 </h2>
 
