@@ -77,9 +77,6 @@ export default function ProjectCard({ project }) {
               {project.name}
             </h3>
 
-            <p className="truncate text-sm leading-snug text-fp-text-secondary">
-              {clientName ?? 'No client assigned'}
-            </p>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
@@ -118,7 +115,7 @@ export default function ProjectCard({ project }) {
               <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-fp-text-tertiary">
                 Last update
               </p>
-              <p className="mt-1 flex items-center justify-end gap-1.5 text-sm font-medium text-fp-text-secondary tabular-nums">
+              <p className="mt-1 flex items-center justify-end gap-1.5 text-xs font-medium text-fp-text-secondary tabular-nums">
                 <Clock className="h-3.5 w-3.5 shrink-0" />
                 {lastUpdate ? timeAgo(lastUpdate.createdAt) : 'No updates yet'}
               </p>
@@ -128,7 +125,7 @@ export default function ProjectCard({ project }) {
               <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-fp-text-tertiary">
                 Milestones
               </p>
-              <p className="mt-1 text-sm font-medium text-fp-text-secondary tabular-nums">
+              <p className="mt-1 text-xs font-medium text-fp-text-secondary tabular-nums">
                 {totalMilestones > 0 ? `${completedMilestones}/${totalMilestones} Complete` : 'No milestones yet'}
               </p>
             </div>

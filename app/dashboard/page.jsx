@@ -31,7 +31,6 @@ export default async function DashboardPage() {
 
   const totalProjects = projects.length
   const activeProjects = projects.filter((project) => project.status === 'ACTIVE').length
-  const completedProjects = projects.filter((project) => project.status === 'COMPLETED').length
 
   const projectsNeedingAttention = projects.filter((project) =>
     project.milestones?.some((milestone) => milestone.status === 'IN_REVIEW')
