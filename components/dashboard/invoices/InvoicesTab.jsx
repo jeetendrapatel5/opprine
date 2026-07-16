@@ -1,7 +1,7 @@
 // components/dashboard/invoices/InvoicesTab.jsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import InvoiceForm from './InvoiceForm'
 import InvoiceList from './InvoiceList'
@@ -17,43 +17,34 @@ export default function InvoicesTab({ project }) {
   const [invoices, setInvoices] = useState(project.invoices ?? [])
 
   // ── Sync local state when server data refreshes ────────────────────────────
-  // When router.refresh() runs, Next.js re-renders the parent Server Component
-  // and passes fresh project.invoices down as a new prop.
-  // Without this effect, useState stays frozen on the original mount value
-  // and the fresh data is silently ignored.
   useEffect(() => {
     setInvoices(project.invoices ?? [])
   }, [project.invoices])
 
+  // Whether any invoice is still waiting on payment. Reused for two things:
+  // deciding whether to poll below, and showing a small "syncing" hint so
+  // the background refresh isn't an invisible, unexplained delay.
+  const hasUnpaid = useMemo(
+    () => invoices.some((inv) => inv.status === 'UNPAID'),
+    [invoices],
+  )
+
   // ── Poll for payment status while any invoice is UNPAID ────────────────────
-  // The Stripe webhook updates the DB, but the browser has no idea.
-  // Every 15 seconds, if there's an UNPAID invoice, call router.refresh().
-  // That re-runs the parent Server Component, fetches fresh DB data,
-  // and the useEffect above syncs it into local state.
-  // The interval clears itself when there are no UNPAID invoices left.
   useEffect(() => {
-    const hasUnpaid = invoices.some((inv) => inv.status === 'UNPAID')
-    if (!hasUnpaid) return // nothing to poll for
+    if (!hasUnpaid) return
 
     const interval = setInterval(() => {
       router.refresh()
-    }, 15_000) // 15 seconds — fast enough to feel responsive, slow enough to not spam
+    }, 15_000)
 
-    return () => clearInterval(interval) // cleanup on unmount or when invoices change
-  }, [invoices, router])
+    return () => clearInterval(interval)
+  }, [hasUnpaid, router])
 
   // ── Handlers ───────────────────────────────────────────────────────────────
-
-  // Called by InvoiceForm after a successful POST.
-  // Optimistically adds the new invoice to the top of the list immediately —
-  // no need to wait for a refresh cycle.
   const handleNewInvoice = (newInvoice) => {
     setInvoices((prev) => [newInvoice, ...prev])
   }
 
-  // Called by InvoiceList when the freelancer cancels an invoice.
-  // Optimistically marks it CANCELLED in local state.
-  // The real DB update happens in InvoiceList's PATCH call.
   const handleCancel = (invoiceId) => {
     setInvoices((prev) =>
       prev.map((inv) =>
@@ -62,17 +53,49 @@ export default function InvoicesTab({ project }) {
     )
   }
 
+  // Counts only, not dollar totals — this file doesn't have visibility into
+  // what field InvoiceForm/InvoiceList use for the invoice amount, so a
+  // totals strip is left for a follow-up rather than guessed at (would risk
+  // showing "$NaN" forever). Ask if you want that wired in.
+  const summaryParts = useMemo(() => {
+    const unpaid    = invoices.filter((inv) => inv.status === 'UNPAID').length
+    const paid      = invoices.filter((inv) => inv.status === 'PAID').length
+    const cancelled = invoices.filter((inv) => inv.status === 'CANCELLED').length
+
+    return [
+      unpaid > 0    && { label: `${unpaid} unpaid`, color: 'text-fp-warning' },
+      paid > 0      && { label: `${paid} paid`, color: 'text-fp-success' },
+      cancelled > 0 && { label: `${cancelled} cancelled`, color: 'text-fp-text-tertiary' },
+    ].filter(Boolean)
+  }, [invoices])
+
   return (
     <div className="space-y-5">
 
-      {/* Header row — title on the left, create button on the right */}
-      {/* BUG FIX: was flex-col items-center which stacked vertically */}
-      <div className="flex flex-row items-center justify-between">
+      {/* Header row — "Invoices" itself isn't repeated here, the tab bar
+          right above this already says it; this row is left for the
+          subtitle, live status summary, and the New Invoice button. */}
+      <div className="flex flex-row items-center justify-between gap-4 flex-wrap">
         <div>
-          <h3 className="text-sm font-bold text-gray-900">Invoices</h3>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-fp-text-tertiary">
             Payment links are generated automatically via Stripe.
           </p>
+          {summaryParts.length > 0 && (
+            <div className="flex items-center gap-2 mt-1.5 text-[11px] font-medium flex-wrap">
+              {summaryParts.map((part, i) => (
+                <span key={part.label} className="flex items-center gap-2">
+                  {i > 0 && <span className="text-fp-border" aria-hidden="true">·</span>}
+                  <span className={part.color}>{part.label}</span>
+                </span>
+              ))}
+              {hasUnpaid && (
+                <span className="flex items-center gap-1 text-fp-text-tertiary font-normal ml-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-fp-accent animate-pulse" aria-hidden="true" />
+                  Syncing payment status
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <InvoiceForm
           projectId={project.id}
