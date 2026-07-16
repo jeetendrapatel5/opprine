@@ -17,43 +17,44 @@ import {
   Mail,
 } from 'lucide-react'
 
-import ProjectTabs        from '@/components/project/ProjectTabs'
-import MilestoneManager   from '@/components/dashboard/milestones'
-import ClientReviewCard   from '@/components/dashboard/ClientReviewCard'
-import ProjectInPageNav   from '@/components/project/ProjectInPageNav'
-import CopyButton         from '@/components/project/CopyButton'
+import ProjectTabs from '@/components/project/ProjectTabs'
+import MilestoneManager from '@/components/dashboard/milestones'
+import ClientReviewCard from '@/components/dashboard/ClientReviewCard'
+import CopyButton from '@/components/project/CopyButton'
+import GithubConnectPanel from '@/components/GithubConnectPanel'
+import ProjectPanelDialog from '@/components/ProjectPanelDialog'
+import RecentActivityPanel from '@/components/project/RecentActivityPanel'
 
-// ─── Status config ──────────────────────────────────────────────────────────
+//Status config
 
 const STATUS_CONFIG = {
   ACTIVE: {
     label: 'Active',
-    className: 'bg-fp-success/10 text-fp-success',
+    className: 'text-fp-success',
     Icon: Circle,
   },
   COMPLETED: {
     label: 'Completed',
-    className: 'bg-fp-accent-muted text-fp-accent',
+    className: 'text-fp-accent',
     Icon: CheckCircle2,
   },
   ON_HOLD: {
     label: 'On Hold',
-    className: 'bg-fp-warning/10 text-fp-warning',
+    className: 'text-fp-warning',
     Icon: PauseCircle,
   },
 }
 
 const COMPLETED_MILESTONE_STATUSES = new Set(['COMPLETED', 'APPROVED'])
-const ACTIVE_INVOICE_STATUSES      = new Set(['UNPAID'])
 
-// ─── Pure helpers ───────────────────────────────────────────────────────────
+//helpers 
 
 function timeAgoShort(date) {
   if (!date) return null
   const diffMs = Date.now() - new Date(date).getTime()
   if (Number.isNaN(diffMs)) return null
   const seconds = Math.floor(diffMs / 1000)
-  if (seconds < 60)   return 'Just now'
+  if (seconds < 60) return 'Just now'
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
   return `${Math.floor(seconds / 86400)}d ago`
@@ -66,24 +67,14 @@ function buildPortalLink(magicToken) {
 }
 
 function getMilestoneProgress(milestones = []) {
-  const total     = milestones.length
+  const total = milestones.length
   const completed = milestones.filter((m) =>
     COMPLETED_MILESTONE_STATUSES.has(m?.status),
   ).length
-  const progress  = total > 0 ? Math.round((completed / total) * 100) : 0
+  const progress = total > 0 ? Math.round((completed / total) * 100) : 0
   return { completed, total, progress }
 }
 
-function getActiveInvoices(invoices = []) {
-  return invoices.filter((inv) => ACTIVE_INVOICE_STATUSES.has(inv?.status))
-}
-
-// ─── Sub-components (server, co-located for brevity) ────────────────────────
-
-/**
- * SectionHeader — a consistent label + optional right-side slot for every
- * major content section in the main column.
- */
 function SectionHeader({ title, badge, trailing }) {
   return (
     <div className="flex items-center justify-between mb-4">
@@ -102,9 +93,6 @@ function SectionHeader({ title, badge, trailing }) {
   )
 }
 
-/**
- * PanelCard — the consistent wrapper used for every card in the context panel.
- */
 function PanelCard({ label, children }) {
   return (
     <div className="bg-fp-surface border border-fp-border rounded-xl overflow-hidden">
@@ -120,8 +108,6 @@ function PanelCard({ label, children }) {
   )
 }
 
-// ─── Page ───────────────────────────────────────────────────────────────────
-
 export default async function ProjectPage({ params }) {
   const resolvedParams = await params
   const id = resolvedParams?.id
@@ -134,13 +120,13 @@ export default async function ProjectPage({ params }) {
     where: { id, userId: session.user.id },
     include: {
       client: true,
-      updates:  { orderBy: { createdAt: 'desc' } },
-      files:    { orderBy: { createdAt: 'desc' } },
+      updates: { orderBy: { createdAt: 'desc' } },
+      files: { orderBy: { createdAt: 'desc' } },
       milestones: {
         orderBy: { order: 'asc' },
         include: {
           milestoneUpdates: { orderBy: { createdAt: 'asc' } },
-          messages:         { orderBy: { createdAt: 'asc' } },
+          messages: { orderBy: { createdAt: 'asc' } },
           invoices: true,
         },
       },
@@ -153,34 +139,26 @@ export default async function ProjectPage({ params }) {
 
   if (!project) notFound()
 
-  // ── Derived values ─────────────────────────────────────────────────────────
-
-  const portalLink     = buildPortalLink(project.client?.magicToken)
-  const status         = STATUS_CONFIG[project.status] ?? STATUS_CONFIG.ACTIVE
-  const StatusIcon     = status.Icon
+  const portalLink = buildPortalLink(project.client?.magicToken)
+  const status = STATUS_CONFIG[project.status] ?? STATUS_CONFIG.ACTIVE
+  const StatusIcon = status.Icon
   const { completed, total, progress } = getMilestoneProgress(project.milestones)
-  const activeInvoices = getActiveInvoices(project.invoices)
-  const daysActive     = Math.max(
+  const daysActive = Math.max(
     0,
     Math.floor((Date.now() - new Date(project.createdAt).getTime()) / 86400000),
   )
-  const clientViewedText  = timeAgoShort(project.client?.lastViewedAt)
-  const clientInitial     = project.client?.name?.[0]?.toUpperCase() ?? '?'
-  const clientName        = project.client?.name ?? 'No client assigned'
-  const portalDisplayText = portalLink === '#'
-    ? 'No portal link'
-    : portalLink.replace(/^https?:\/\//, '')
+  const clientViewedText = timeAgoShort(project.client?.lastViewedAt)
+  const clientInitial = project.client?.name?.[0]?.toUpperCase() ?? '?'
+  const clientName = project.client?.name ?? 'No client assigned'
 
   const startedLabel = new Date(project.createdAt).toLocaleDateString('en-GB', {
     day: 'numeric', month: 'short', year: 'numeric',
   })
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
   return (
     <div className="pb-24">
 
-      {/* ── BREADCRUMB ──────────────────────────────────────────────────── */}
+      {/* ── BREADCRUMB ── */}
       <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 mb-6">
         <div className="flex items-center gap-1.5 text-xs font-medium">
           <Link
@@ -198,19 +176,18 @@ export default async function ProjectPage({ params }) {
         </div>
       </div>
 
-      {/* ── PROJECT HEADER — scroll anchor for "Overview" ───────────────── */}
+      {/* ── PROJECT HEADER ── */}
       <div id="overview" className="scroll-mt-24 mb-6">
         {/* Title row */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="font-[poppins] text-2xl sm:text-3xl font-semibold text-fp-text-primary tracking-tight leading-tight">
+              <h1 className="text-xl sm:text-3xl font-semibold text-fp-text-primary tracking-tight leading-tight">
                 {project.name}
               </h1>
               <span
                 className={`shrink-0 inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md ${status.className}`}
               >
-                <StatusIcon className="w-3 h-3" />
                 {status.label}
               </span>
             </div>
@@ -221,7 +198,7 @@ export default async function ProjectPage({ params }) {
             )}
           </div>
 
-          {/* Portal quick-actions — prominent in the header where freelancers need them */}
+          {/* Portal quick-actions */}
           <div className="shrink-0 flex items-center gap-2">
             <CopyButton
               value={portalLink}
@@ -252,122 +229,20 @@ export default async function ProjectPage({ params }) {
         </div>
       </div>
 
-      {/* ── HEALTH STRIP ────────────────────────────────────────────────── */}
-      {/*
-        Single card with internal dividers — reads as one status snapshot rather
-        than four disconnected boxes. On mobile: 2×2 grid. On desktop: 1×4 strip.
-      */}
-      <div className="bg-fp-surface border border-fp-border rounded-xl overflow-hidden mb-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4">
+      <div className='top-14 z-20
+        -mx-4 sm:-mx-6
+        px-4 sm:px-6
+        bg-fp-base/[.97] backdrop-blur-sm
+        border-b border-fp-border
+        mb-8' />
 
-          {/* Progress */}
-          <div className="px-5 py-4 space-y-2 border-r border-b lg:border-b-0 border-fp-border">
-            <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest">
-              Progress
-            </p>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-xl font-bold text-fp-text-primary tabular-nums">
-                {completed}
-              </span>
-              <span className="text-sm text-fp-text-tertiary font-normal">
-                / {total} milestones
-              </span>
-            </div>
-            <div className="space-y-1">
-              <div className="h-1.5 bg-fp-raised rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-fp-accent rounded-full transition-[width] duration-500"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-fp-text-tertiary">{progress}% complete</p>
-            </div>
-          </div>
-
-          {/* Timeline */}
-          <div className="px-5 py-4 space-y-2 border-b lg:border-b-0 lg:border-r border-fp-border">
-            <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest">
-              Timeline
-            </p>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-xl font-bold text-fp-text-primary tabular-nums">
-                {daysActive}
-              </span>
-              <span className="text-sm text-fp-text-tertiary font-normal">days</span>
-            </div>
-            <p className="text-[10px] text-fp-text-tertiary">
-              Since {startedLabel}
-            </p>
-          </div>
-
-          {/* Client activity */}
-          <div className="px-5 py-4 space-y-2 border-r border-fp-border">
-            <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest">
-              Client
-            </p>
-            <div className="flex items-center gap-2">
-              <span
-                className={`w-2 h-2 rounded-full shrink-0 ${
-                  clientViewedText
-                    ? 'bg-fp-success ring-2 ring-fp-success/25'
-                    : 'bg-fp-border'
-                }`}
-              />
-              <span className="text-sm font-semibold text-fp-text-primary">
-                {clientViewedText ?? 'Not opened'}
-              </span>
-            </div>
-            <p className="text-[10px] text-fp-text-tertiary">
-              {clientViewedText
-                ? `Last portal view · ${new Date(project.client.lastViewedAt).toLocaleDateString(
-                    'en-GB',
-                    { day: 'numeric', month: 'short' },
-                  )}`
-                : 'Share the magic link below'}
-            </p>
-          </div>
-
-          {/* Invoices */}
-          <div className="px-5 py-4 space-y-2">
-            <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest">
-              Invoices
-            </p>
-            {activeInvoices.length > 0 ? (
-              <>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-xl font-bold text-fp-warning tabular-nums">
-                    {activeInvoices.length}
-                  </span>
-                  <span className="text-sm text-fp-text-tertiary font-normal">unpaid</span>
-                </div>
-                <p className="text-[10px] text-fp-warning/80">Awaiting payment</p>
-              </>
-            ) : (
-              <>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-xl font-bold text-fp-success tabular-nums">
-                    {project.invoices.length}
-                  </span>
-                  <span className="text-sm text-fp-text-tertiary font-normal">total</span>
-                </div>
-                <p className="text-[10px] text-fp-text-tertiary">All settled</p>
-              </>
-            )}
-          </div>
-
-        </div>
-      </div>
-
-      {/* ── IN-PAGE NAV — client component, sticks below the dashboard header ── */}
-      <ProjectInPageNav />
-
-      {/* ── WORKSPACE GRID ──────────────────────────────────────────────── */}
+      {/* WORKSPACE GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
-        {/* ── MAIN CONTENT ──────────────────────────────────────────────── */}
+        {/* MAIN CONTENT */}
         <div className="lg:col-span-8 space-y-8">
 
-          {/* § Milestones ─────────────────────────────────────────────── */}
+          {/* Milestones */}
           <section id="milestones" className="scroll-mt-24">
             <SectionHeader
               title="Milestones"
@@ -381,7 +256,7 @@ export default async function ProjectPage({ params }) {
             />
           </section>
 
-          {/* § Activity & Files ──────────────────────────────────────── */}
+          {/* Activity & Files */}
           <section id="activity" className="scroll-mt-24">
             <SectionHeader
               title="Activity"
@@ -391,12 +266,7 @@ export default async function ProjectPage({ params }) {
                   : undefined
               }
             />
-            {/*
-              Border on the outer card gives ProjectTabs a clean frame without
-              the previous "tabs clipped by rounded overflow" artifact — the
-              tabs sit inside a bordered card rather than creating a rounded
-              clip that cuts the active underline.
-            */}
+
             <div className="bg-fp-surface border border-fp-border rounded-xl overflow-hidden">
               <ProjectTabs project={project} />
             </div>
@@ -404,14 +274,11 @@ export default async function ProjectPage({ params }) {
 
         </div>
 
-        {/* ── CONTEXT PANEL ─────────────────────────────────────────────── */}
-        {/*
-          sticky top-24: clears the 56px dashboard header + 40px in-page nav.
-          The panel remains in view while the user works through milestones.
-        */}
+        {/* CONTEXT PANEL */}
+
         <aside className="lg:col-span-4 space-y-4 lg:sticky lg:top-24">
 
-          {/* Client Panel ─────────────────────────────────────────────── */}
+          {/* Client Panel */}
           <PanelCard label="Client">
             <div className="px-4 py-4 space-y-4">
 
@@ -438,11 +305,10 @@ export default async function ProjectPage({ params }) {
               {/* Last activity */}
               <div className="flex items-center gap-2.5 px-3 py-2 bg-fp-raised rounded-lg">
                 <span
-                  className={`w-2 h-2 rounded-full shrink-0 ${
-                    clientViewedText
-                      ? 'bg-fp-success ring-2 ring-fp-success/25'
-                      : 'bg-fp-border'
-                  }`}
+                  className={`w-2 h-2 rounded-full shrink-0 ${clientViewedText
+                    ? 'bg-fp-success ring-2 ring-fp-success/25'
+                    : 'bg-fp-border'
+                    }`}
                 />
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-fp-text-primary">
@@ -457,7 +323,7 @@ export default async function ProjectPage({ params }) {
                   )}
                 </div>
               </div>
-              
+
             </div>
           </PanelCard>
 
@@ -548,6 +414,27 @@ export default async function ProjectPage({ params }) {
             </Link>
 
             <ClientReviewCard project={project} />
+
+            {/* Dialogs opened from the sidebar's project panel buttons
+                (lib/project-panels.js). Add a new button there, then add a
+                matching <ProjectPanelDialog panelId="..."> here — no other
+                wiring needed. */}
+            <ProjectPanelDialog
+              panelId="github"
+              title="Connect GitHub repository"
+              description="Add a webhook so pushes to this project automatically appear in the client's update feed."
+              bare
+            >
+              <GithubConnectPanel project={project} />
+            </ProjectPanelDialog>
+
+            <ProjectPanelDialog
+              panelId="activity"
+              title="Recent activity"
+              description="A quick look at the latest updates on this project."
+            >
+              <RecentActivityPanel updates={project.updates} />
+            </ProjectPanelDialog>
 
           </div>
 

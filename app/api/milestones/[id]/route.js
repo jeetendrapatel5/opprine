@@ -22,7 +22,6 @@ export async function PATCH(request, { params }) {
     let updateData = {};
 
     if (isMultipart) {
-      // ── MULTIPART PATH ────────────────────────────────────────────────────
       const formData = await request.formData();
 
       const deliveryHeadline = formData.get("deliveryHeadline");
@@ -55,7 +54,6 @@ export async function PATCH(request, { params }) {
       }
 
     } else {
-      // ── JSON PATH ─────────────────────────────────────────────────────────
       const body = await request.json();
 
       const {
@@ -67,7 +65,7 @@ export async function PATCH(request, { params }) {
         deliveryFileName,
         deliveryFileType,
         deliveryChecklist,
-        deliveryAnnotations,   // ← NEW: array of pin objects, or null to clear
+        deliveryAnnotations,
       } = body;
 
       if (status !== undefined) {
@@ -87,27 +85,11 @@ export async function PATCH(request, { params }) {
       if (deliveryFileType    !== undefined) updateData.deliveryFileType    = deliveryFileType;
       if (deliveryChecklist   !== undefined) updateData.deliveryChecklist   = deliveryChecklist;
 
-      // ── NEW: deliveryAnnotations ───────────────────────────────────────────
-      // The "include if present, skip if absent" pattern:
-      //
-      //   undefined → key was not in the request body at all.
-      //               Skip it. A status-only PATCH won't wipe existing annotations.
-      //
-      //   null      → caller explicitly sent null (e.g. non-image file selected).
-      //               Include it. Prisma will set the column to NULL.
-      //
-      //   [...]     → an array of pin objects.
-      //               Include it. Prisma stores it as JSONB.
-      //
-      // Prisma accepts a plain JS array directly for Json fields —
-      // no JSON.stringify() needed. axios serializes the array before sending,
-      // and request.json() deserializes it. We pass it straight to Prisma.
       if (deliveryAnnotations !== undefined) {
         updateData.deliveryAnnotations = deliveryAnnotations;
       }
     }
 
-    // ── Atomic ownership check ─────────────────────────────────────────────
     const milestone = await prisma.milestone.findFirst({
       where: {
         id,

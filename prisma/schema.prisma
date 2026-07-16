@@ -32,16 +32,16 @@ model BankAccount {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  label             String   // freelancer's own nickname, e.g. "HDFC — Primary"
-  bankName          String   // e.g. "HDFC Bank"
-  accountHolderName String   // name on the account (often not the same as user.name)
+  label             String  
+  bankName          String  
+  accountHolderName String  
   currency          String   @default("INR")
-  country           String?  // e.g. "IN", "US" — helps us know which fields to ask for later
+  country           String? 
   isDefault         Boolean  @default(false)
 
   accountNumberLast4 String
-  accountNumberEnc String   // full account number, encrypted
-  routingCodeEnc   String?  // IFSC (India) / SWIFT / routing number, encrypted
+  accountNumberEnc String  
+  routingCodeEnc   String? 
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -100,6 +100,10 @@ model Project {
   // e.g. "E-commerce", "SaaS", "Healthcare"
   // Shown as a badge on the showcase page.
   caseStudyIndustry   String?
+
+  githubRepoOwner     String?   // e.g. "jeetu-dev" — just for display, not required for the webhook to work
+  githubRepoName      String?   // e.g. "acme-website" — same, just for display
+  githubWebhookSecret String?   // a random string only you and GitHub know — this is what makes step 3 possible
 }
 
 model File {
@@ -132,6 +136,11 @@ model Update {
   createdAt DateTime    @default(now())
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  type        UpdateType @default(MANUAL)
+  commitSha   String?    // short commit hash, only set when type = AUTO_DEPLOY
+  commitUrl   String?    // link to the commit on GitHub
+  previewUrl  String?    // filled in later, in the Vercel add-on (Part 9)
 }
 
 model Milestone {
@@ -267,4 +276,9 @@ enum InvoiceStatus {
   UNPAID
   PAID
   CANCELLED
+}
+
+enum UpdateType {
+  MANUAL       // freelancer typed this by hand
+  AUTO_DEPLOY  // generated automatically from a git push
 }

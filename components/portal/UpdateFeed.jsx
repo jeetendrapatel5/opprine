@@ -65,6 +65,34 @@ export default function UpdateFeed({ updates }) {
   return (
     <div className="space-y-3">
       {updates.map((update) => {
+        // Auto-generated deploy updates (AI-summarized commits) — separate shape
+        // from the legacy Update model, so it gets its own branch here.
+        if (update.type === 'AUTO_DEPLOY') {
+          return (
+            <div key={update.id} className="rounded-lg border p-3">
+              {update.type === 'AUTO_DEPLOY' ? (
+                <div className="flex items-start gap-2">
+                  <span>🚀</span>
+                  <div>
+                    <p>{update.text}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Commit {update.commitSha}
+                      {update.previewUrl && (
+                        <> · <a href={update.previewUrl} target="_blank" rel="noreferrer" className="underline">Preview</a></>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p>{update.text}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {new Date(update.createdAt).toLocaleString()}
+              </p>
+            </div>
+          )
+        }
+
         const config = updateConfig[update.status] ?? updateConfig.IN_PROGRESS
 
         return (

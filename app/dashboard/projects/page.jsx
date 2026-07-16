@@ -230,7 +230,7 @@ export default async function ProjectsPage({ searchParams }) {
       ) : isEmptyFiltered ? (
         <EmptyFilteredState clearHref="/dashboard/projects" />
       ) : (
-        <div className="bg-fp-surface border border-fp-border rounded-xl overflow-hidden">
+        <div className="border border-fp-border rounded-lg overflow-hidden">
 
           {/* Column header — widths match ProjectRow exactly, sm+ only */}
           <div className="hidden sm:flex items-center gap-4 px-5 py-2.5 bg-fp-raised/40 border-b border-fp-border">

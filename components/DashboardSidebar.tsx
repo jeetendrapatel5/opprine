@@ -31,18 +31,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import ProjectPanelNavItem from '@/components/dashboard/ProjectPanelNavItem'
+import { PROJECT_PANELS } from '@/lib/project-panels'
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/dashboard',           icon: LayoutDashboard },
-  { label: 'Projects',  href: '/dashboard/projects',  icon: FolderKanban    },
-  { label: 'Clients',   href: '/dashboard/clients',   icon: Users           },
-  { label: 'Invoices',  href: '/dashboard/invoices',  icon: Receipt         },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Projects', href: '/dashboard/projects', icon: FolderKanban },
+  { label: 'Clients', href: '/dashboard/clients', icon: Users },
+  { label: 'Invoices', href: '/dashboard/invoices', icon: Receipt },
 ]
 
 const SETTINGS_ITEMS = [
-  { label: 'Profile',      href: '/dashboard/settings?section=profile', icon: User     },
-  { label: 'Bank Account', href: '/dashboard/settings?section=bank',    icon: Landmark },
+  { label: 'Profile', href: '/dashboard/settings?section=profile', icon: User },
+  { label: 'Bank Account', href: '/dashboard/settings?section=bank', icon: Landmark },
 ]
+
+// Matches /dashboard/projects/:id exactly — NOT /dashboard/projects (the
+// list page) and NOT nested routes like /dashboard/projects/:id/story.
+// PROJECT_PANELS buttons only make sense on the project detail page itself.
+const PROJECT_DETAIL_PATTERN = /^\/dashboard\/projects\/[^/]+\/?$/
 
 type Props = {
   user: {
@@ -64,6 +71,8 @@ export default function DashboardSidebar({ user }: Props) {
     active
       ? 'bg-[var(--color-fp-accent)]/10 text-[var(--color-fp-accent)] hover:bg-[var(--color-fp-accent)]/15 hover:text-[var(--color-fp-accent)]'
       : 'text-[var(--color-fp-text-secondary)] hover:text-[var(--color-fp-text-primary)] hover:bg-[var(--color-fp-surface-2,var(--color-fp-surface))]'
+
+  const isProjectDetailRoute = PROJECT_DETAIL_PATTERN.test(pathname ?? '')
 
   return (
     <Sidebar collapsible="icon" className="border-[var(--color-fp-border)]">
@@ -103,6 +112,20 @@ export default function DashboardSidebar({ user }: Props) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              <div className="mt-7">
+                {isProjectDetailRoute &&
+                  PROJECT_PANELS.map(({ id, label, icon }) => (
+                    <ProjectPanelNavItem
+                      key={id}
+                      panelId={id}
+                      label={label}
+                      icon={icon}
+                      activeClassName={navButtonClass(true)}
+                      inactiveClassName={navButtonClass(false)}
+                    />
+                  ))}
+              </div>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
