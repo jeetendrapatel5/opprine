@@ -359,7 +359,7 @@ function SigninForm() {
 
             {/* Sign-up link */}
             <p className="text-center text-sm text-zinc-600 fp-reveal" data-d="5">
-              New to Freeport?{' '}
+              New to Opprine?{' '}
               <Link
                 href="/signup"
                 className="text-zinc-500 hover:text-zinc-400 font-medium transition-colors duration-150 underline-offset-2 hover:underline"
