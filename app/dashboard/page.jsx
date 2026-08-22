@@ -2,16 +2,22 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import prisma from '@/lib/prisma'
+import { requireWorkspaceMembership } from '@/lib/workspace'
 import NewProjectModal from '@/components/NewProjectModal'
 import ProjectCard from '@/components/ProjectCard'
 import { Briefcase, AlertCircle } from 'lucide-react'
+
+
+export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/signin')
 
+  const membership = await requireWorkspaceMembership(session.user.id)
+
   const projects = await prisma.project.findMany({
-    where: { userId: session.user.id },
+    where: { workspaceId: membership.workspaceId },
     include: {
       client: true,
       updates: {

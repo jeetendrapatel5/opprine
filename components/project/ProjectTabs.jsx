@@ -32,7 +32,6 @@ export default function ProjectTabs({ project }) {
 
   return (
     <div>
-
       {/* Tab bar */}
       <div className="flex items-center border-b border-fp-border px-5">
         {tabs.map((tab) => {

@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
@@ -12,6 +13,8 @@ import {
   User,
   Landmark,
   LogOut,
+  CreditCard,
+  UserRoundPlus
 } from 'lucide-react'
 import {
   Sidebar,
@@ -32,18 +35,29 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import ProjectPanelNavItem from '@/components/dashboard/ProjectPanelNavItem'
-import { PROJECT_PANELS } from '@/lib/project-panels'
+import { visibleProjectPanels } from '@/lib/project-panels'
+import WorkspaceSwitcher from '@/components/dashboard/WorkspaceSwitcher'
+
+// Minimal shape of what getEntitlements() returns — just enough for the
+// filtering this file does. lib/project-panels.js stays plain JS (used by
+// .jsx files too), so this type lives here rather than being imported
+// from there.
+type Entitlements = {
+  features?: Record<string, boolean>
+}
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Projects', href: '/dashboard/projects', icon: FolderKanban },
   { label: 'Clients', href: '/dashboard/clients', icon: Users },
   { label: 'Invoices', href: '/dashboard/invoices', icon: Receipt },
+  { label: 'Team', href: '/dashboard/team', icon: UserRoundPlus },
 ]
 
 const SETTINGS_ITEMS = [
   { label: 'Profile', href: '/dashboard/settings?section=profile', icon: User },
   { label: 'Bank Account', href: '/dashboard/settings?section=bank', icon: Landmark },
+  { label: 'Plans', href: '/dashboard/settings/billing', icon: CreditCard },
 ]
 
 // Matches /dashboard/projects/:id exactly — NOT /dashboard/projects (the
@@ -61,6 +75,26 @@ type Props = {
 
 export default function DashboardSidebar({ user }: Props) {
   const pathname = usePathname()
+
+  // Start with only the panels that need no feature flag — the safe,
+  // restrictive default. This is deliberate: if we started with the
+  // FULL list and narrowed it once entitlements arrive, a Free-plan
+  // user would see the GitHub tab flash on screen, then vanish. Starting
+  // narrow means gated panels can only ever APPEAR as data loads in,
+  // never appear-then-disappear.
+  const [visiblePanels, setVisiblePanels] = useState(() => visibleProjectPanels(undefined))
+
+  useEffect(() => {
+    fetch('/api/workspace')
+      .then((res) => res.json())
+      .then((data: { entitlements?: Entitlements }) => {
+        setVisiblePanels(visibleProjectPanels(data.entitlements))
+      })
+      .catch(() => {
+        // Network hiccup — stay on the safe default list rather than
+        // risk showing a gated panel by accident.
+      })
+  }, [])
 
   const isActive = (href: string) =>
     href === '/dashboard'
@@ -94,6 +128,20 @@ export default function DashboardSidebar({ user }: Props) {
       </SidebarHeader>
 
       <SidebarContent className="py-2">
+        {/* Workspace context sits ABOVE page navigation on purpose —
+            switching it changes what every link below even points at,
+            so it needs to read as the higher-level control. Hidden in
+            icon-collapsed mode (group-data-[collapsible=icon]:hidden),
+            same convention this file already uses for the user
+            name/email in the footer — a dropdown with visible text
+            doesn't have a sensible icon-only form, so it just disappears
+            rather than rendering broken. */}
+        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+          <SidebarGroupContent>
+            <WorkspaceSwitcher />
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -115,7 +163,7 @@ export default function DashboardSidebar({ user }: Props) {
 
               <div className="mt-7">
                 {isProjectDetailRoute &&
-                  PROJECT_PANELS.map(({ id, label, icon }) => (
+                  visiblePanels.map(({ id, label, icon }) => (
                     <ProjectPanelNavItem
                       key={id}
                       panelId={id}
@@ -147,10 +195,10 @@ export default function DashboardSidebar({ user }: Props) {
                   <span>Settings</span>
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent side="right" align="end" sideOffset={8} className="min-w-40">
+              <DropdownMenuContent side="right" align="end" sideOffset={8} className="min-w-40 bg-fp-base ml-1">
                 {SETTINGS_ITEMS.map(({ label, href, icon: Icon }) => (
                   <DropdownMenuItem key={href} asChild>
-                    <Link href={href} className="cursor-pointer">
+                    <Link href={href} className="cursor-pointer text-white">
                       <Icon />
                       <span>{label}</span>
                     </Link>

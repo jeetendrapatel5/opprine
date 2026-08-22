@@ -10,7 +10,7 @@ import { Send, Clock, Loader2 } from 'lucide-react'
 import { UPDATE_STATUS, getUpdateStatus } from './updateStatus'
 
 const schema = z.object({
-  text:   z.string().min(5, 'Write at least 5 characters so the client has context.'),
+  text: z.string().min(5, 'Write at least 5 characters so the client has context.'),
   status: z.enum(['IN_PROGRESS', 'IN_REVIEW', 'DONE']),
 })
 
@@ -76,34 +76,63 @@ export default function UpdatesTab({ project }) {
             ref={timelineRef}
             className="max-h-[380px] overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:var(--color-fp-border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-fp-border [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-fp-text-tertiary"
           >
-            {/* Inner box: keeps its natural, un-clamped height. The
-                connecting line is a `before:` pseudo-element stretched
-                between this box's own top and bottom edges — if the
-                height clamp lived here instead of on the outer box, the
-                line would stop at the visible edge instead of running the
-                full length of the list. */}
-            <div className="relative space-y-6 before:absolute before:top-2 before:bottom-0 before:left-[5px] before:w-px before:bg-fp-border">
-              {project.updates.map((update) => {
+            {/* Each update is a flex row: a small "rail" column (dot +
+                the line segment under it) beside the content column
+                (label, date, text card). The rail is a flex column too,
+                so when the row stretches to match the content's height
+                (flex's default align-items: stretch), the line — which
+                is flex-1 — automatically grows to fill exactly that
+                height. That's what makes the connector land precisely on
+                the next dot every time, no matter how long or short each
+                update's text is, and why it simply stops after the last
+                dot instead of trailing off below it. */}
+            <div className="flex flex-col">
+              {project.updates.map((update, index) => {
                 const style = getUpdateStatus(update.status)
-                const Icon  = style.Icon
+                const isLast = index === project.updates.length - 1
+                // Newest update (index 0) is the most relevant one, so its
+                // dot glows a little brighter and the line fades slightly
+                // with each step further into the past. The dot's actual
+                // status color never fades — only this decorative glow —
+                // so older entries stay just as readable.
+                const emphasis = Math.max(0.4, 1 - index * 0.15)
+
                 return (
-                  <div key={update.id} className="relative pl-8 group">
-                    <div
-                      className={`absolute left-0 top-0.5 w-[11px] h-[11px] rounded-full z-10 ring-2 ring-fp-surface ${style.dot}`}
-                      aria-hidden="true"
-                    />
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className={`text-[10px] font-bold uppercase tracking-widest ${style.text}`}>
-                        {style.label}
-                      </span>
-                      <span className="text-[10px] text-fp-text-tertiary flex items-center gap-1">
-                        <Clock className="w-2.5 h-2.5" />
-                        {new Date(update.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                      </span>
+                  <div key={update.id} className="flex gap-3 group">
+                    <div className="flex flex-col items-center w-5 shrink-0">
+                      <div className="relative flex items-center justify-center w-5 h-5 shrink-0">
+                        <div
+                          className={`absolute inset-0 m-auto w-4 h-4 rounded-full blur-[3px] ${style.dot}`}
+                          style={{ opacity: 0.3 * emphasis }}
+                          aria-hidden="true"
+                        />
+                        <div
+                          className={`relative w-2.5 h-2.5 rounded-full ring-4 ring-fp-surface ${style.dot}`}
+                          aria-hidden="true"
+                        />
+                      </div>
+                      {!isLast && (
+                        <div
+                          className="w-px flex-1 mt-1 bg-fp-border"
+                          style={{ opacity: emphasis }}
+                          aria-hidden="true"
+                        />
+                      )}
                     </div>
-                    <p className="text-sm text-fp-text-secondary leading-relaxed bg-fp-raised border border-fp-border rounded-lg p-3 group-hover:border-fp-accent/20 transition-colors duration-150">
-                      {update.text}
-                    </p>
+                    <div className={`flex-1 min-w-0 ${isLast ? 'pb-1' : 'pb-6'}`}>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${style.text}`}>
+                          {style.label}
+                        </span>
+                        <span className="text-[10px] text-fp-text-tertiary flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5" />
+                          {new Date(update.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-fp-text-secondary leading-relaxed bg-fp-raised border border-fp-border rounded-lg p-3 group-hover:border-fp-accent/20 transition-colors duration-150">
+                        {update.text}
+                      </p>
+                    </div>
                   </div>
                 )
               })}
@@ -118,11 +147,10 @@ export default function UpdatesTab({ project }) {
           Post an update
         </p>
         <div
-          className={`bg-fp-raised border rounded-xl p-4 transition-colors duration-150 ${
-            errors.text
+          className={`bg-fp-raised border rounded-xl p-4 transition-colors duration-150 ${errors.text
               ? 'border-fp-danger/40'
               : 'border-fp-border focus-within:border-fp-accent/40 focus-within:ring-1 focus-within:ring-fp-accent/10'
-          }`}
+            }`}
         >
           <textarea
             {...register('text')}
@@ -133,7 +161,7 @@ export default function UpdatesTab({ project }) {
           <div className="flex items-center justify-between mt-3 pt-3 border-t border-fp-border">
             <div className="flex gap-1.5">
               {Object.entries(UPDATE_STATUS).map(([key, style]) => {
-                const Icon     = style.Icon
+                const Icon = style.Icon
                 const isActive = currentStatus === key
                 return (
                   <label key={key} className="cursor-pointer">

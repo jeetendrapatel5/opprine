@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import prisma from '@/lib/prisma'
+import { requireWorkspaceMembership } from '@/lib/workspace'
 import Link from 'next/link'
 import {
   Plus,
@@ -25,17 +26,17 @@ export const dynamic = 'force-dynamic'
 const STATUS_CONFIG = {
   ACTIVE: {
     label: 'Active',
-    className: 'bg-fp-success/10 text-fp-success',
+    className: 'text-fp-success',
     Icon: Circle,
   },
   COMPLETED: {
     label: 'Completed',
-    className: 'bg-fp-accent-muted text-fp-accent',
+    className: 'text-fp-accent',
     Icon: CheckCircle2,
   },
   ON_HOLD: {
     label: 'On Hold',
-    className: 'bg-fp-warning/10 text-fp-warning',
+    className: 'text-fp-warning',
     Icon: PauseCircle,
   },
 }
@@ -75,7 +76,8 @@ export default async function ProjectsPage({ searchParams }) {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/signin')
 
-  // Parse + validate URL state
+  const membership = await requireWorkspaceMembership(session.user.id)
+
   const q = (first(sp?.q) ?? '').trim()
   const statusParam = (first(sp?.status) ?? '').toUpperCase()
   const status = VALID_STATUSES.has(statusParam) ? statusParam : null
@@ -85,7 +87,7 @@ export default async function ProjectsPage({ searchParams }) {
   const page = Math.max(1, parseInt(first(sp?.page), 10) || 1)
 
   const where = {
-    userId: session.user.id,
+    workspaceId: membership.workspaceId,
     ...(status ? { status } : {}),
     ...(financial === 'unpaid' ? { invoices: { some: { status: 'UNPAID' } } } : {}),
     ...(q
@@ -103,8 +105,6 @@ export default async function ProjectsPage({ searchParams }) {
     sort === 'name'   ? { name: 'asc' } :
     { createdAt: 'desc' }
 
-  // Stats are simple indexed counts (not a full row fetch) so this stays
-  // fast regardless of how many projects an account accumulates.
   const [
     projects,
     filteredCount,
@@ -126,12 +126,12 @@ export default async function ProjectsPage({ searchParams }) {
       },
     }),
     prisma.project.count({ where }),
-    prisma.project.count({ where: { userId: session.user.id } }),
-    prisma.project.count({ where: { userId: session.user.id, status: 'ACTIVE' } }),
-    prisma.project.count({ where: { userId: session.user.id, status: 'COMPLETED' } }),
-    prisma.project.count({ where: { userId: session.user.id, status: 'ON_HOLD' } }),
+    prisma.project.count({ where: { workspaceId: membership.workspaceId } }),
+    prisma.project.count({ where: { workspaceId: membership.workspaceId, status: 'ACTIVE' } }),
+    prisma.project.count({ where: { workspaceId: membership.workspaceId, status: 'COMPLETED' } }),
+    prisma.project.count({ where: { workspaceId: membership.workspaceId, status: 'ON_HOLD' } }),
     prisma.invoice.count({
-      where: { status: 'UNPAID', project: { userId: session.user.id } },
+      where: { status: 'UNPAID', project: { workspaceId: membership.workspaceId } },
     }),
   ])
 
@@ -140,8 +140,6 @@ export default async function ProjectsPage({ searchParams }) {
   const isEmptyFiltered = !isEmptyAccount && projects.length === 0
   const hasFilters = Boolean(q || status || financial)
 
-  // Builds a URL preserving current filter state, with explicit overrides.
-  // Passing `null` for a key clears it; omitting a key keeps it as-is.
   function buildHref(overrides = {}) {
     const next = {
       q,
@@ -166,12 +164,9 @@ export default async function ProjectsPage({ searchParams }) {
     : null
   const clearFinancialHref = financial ? buildHref({ financial: null }) : null
 
-  // ── Render ───────────────────────────────────────────────────────────────
-
   return (
     <div className="pb-24">
 
-      {/* ── PAGE HEADER ─────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 flex-wrap mb-5">
         <h1 className="font-[poppins] text-xl font-semibold text-fp-text-secondary leading-tight">
           Projects
@@ -203,7 +198,6 @@ export default async function ProjectsPage({ searchParams }) {
         </Link>
       )}
 
-      {/* ── TOOLBAR — client island for search / sort ───────────────────── */}
       {!isEmptyAccount && (
         <Suspense
           fallback={
@@ -224,7 +218,6 @@ export default async function ProjectsPage({ searchParams }) {
         </Suspense>
       )}
 
-      {/* ── PROJECT LIST ─────────────────────────────────────────────────── */}
       {isEmptyAccount ? (
         <EmptyAccountState />
       ) : isEmptyFiltered ? (
@@ -232,7 +225,6 @@ export default async function ProjectsPage({ searchParams }) {
       ) : (
         <div className="border border-fp-border rounded-lg overflow-hidden">
 
-          {/* Column header — widths match ProjectRow exactly, sm+ only */}
           <div className="hidden sm:flex items-center gap-4 px-5 py-2.5 bg-fp-raised/40 border-b border-fp-border">
             <div className="w-10 shrink-0" />
             <div className="min-w-0 flex-1">
@@ -271,7 +263,6 @@ export default async function ProjectsPage({ searchParams }) {
         </div>
       )}
 
-      {/* ── PAGINATION ───────────────────────────────────────────────────── */}
       {!isEmptyFiltered && totalPages > 1 && (
         <div className="flex items-center justify-between mt-6 pt-4 border-t border-fp-border">
           <Link
@@ -310,13 +301,8 @@ export default async function ProjectsPage({ searchParams }) {
   )
 }
 
-// ─── ProjectRow ───────────────────────────────────────────────────────────────
-// The whole row is one <Link> (no nested interactive elements), so it stays
-// valid HTML and fully keyboard/click navigable to the project detail page.
-
 function ProjectRow({ project }) {
   const status = STATUS_CONFIG[project.status] ?? STATUS_CONFIG.ACTIVE
-  const StatusIcon = status.Icon
   const { progress } = getMilestoneProgress(project.milestones)
   const unpaidCount = project.invoices.filter((inv) => inv.status === 'UNPAID').length
   const clientViewedText = timeAgoShort(project.client?.lastViewedAt)
@@ -327,7 +313,6 @@ function ProjectRow({ project }) {
       href={`/dashboard/projects/${project.id}`}
       className="group flex items-center gap-4 px-5 py-4 hover:bg-fp-raised/60 transition-colors duration-150"
     >
-      {/* Avatar */}
       <div className="w-10 h-10 rounded-full bg-fp-accent/15 border border-fp-accent/20 flex items-center justify-center shrink-0">
         {clientInitial ? (
           <span className="text-sm font-bold text-fp-accent leading-none">{clientInitial}</span>
@@ -336,8 +321,6 @@ function ProjectRow({ project }) {
         )}
       </div>
 
-      {/* Name + client (mobile gets a condensed meta line in place of the
-          columns hidden below sm) */}
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-fp-text-primary truncate group-hover:text-fp-accent transition-colors duration-150">
           {project.name}
@@ -354,7 +337,6 @@ function ProjectRow({ project }) {
         </p>
       </div>
 
-      {/* Progress — md+. One signal, one glance: bar + percentage. */}
       <div className="hidden md:flex items-center gap-2 w-32 shrink-0">
         <div className="flex-1 h-1.5 bg-fp-raised rounded-full overflow-hidden">
           <div
@@ -367,7 +349,6 @@ function ProjectRow({ project }) {
         </span>
       </div>
 
-      {/* Last client activity — lg+ */}
       <div className="hidden lg:flex items-center gap-2 w-36 shrink-0">
         <span
           className={`w-1.5 h-1.5 rounded-full shrink-0 ${
@@ -379,7 +360,6 @@ function ProjectRow({ project }) {
         </span>
       </div>
 
-      {/* Invoices — sm+ */}
       <div className="hidden sm:block w-24 shrink-0">
         {unpaidCount > 0 ? (
           <span className="inline-flex items-center text-[10px] font-bold text-fp-warning bg-fp-warning/10 px-2 py-1 rounded-md whitespace-nowrap">
@@ -390,12 +370,10 @@ function ProjectRow({ project }) {
         )}
       </div>
 
-      {/* Status */}
       <div className="w-28 shrink-0">
         <span
-          className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md ${status.className}`}
+          className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest py-1 rounded-md ${status.className}`}
         >
-          <StatusIcon className="w-3 h-3" />
           {status.label}
         </span>
       </div>
@@ -404,8 +382,6 @@ function ProjectRow({ project }) {
     </Link>
   )
 }
-
-// ─── Empty states ─────────────────────────────────────────────────────────────
 
 function EmptyAccountState() {
   return (

@@ -2,6 +2,7 @@ import { NextResponse, after } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyGithubSignature } from '@/lib/verifyWebhook';
 import { summarizeCommitForClient } from '@/lib/ai';
+import { getEntitlements } from '@/lib/billing/entitlements';
 
 export async function POST(request, { params }) {
   const { projectId } = await params;
@@ -20,6 +21,24 @@ export async function POST(request, { params }) {
   const isValid = verifyGithubSignature(rawBody, signature, project.githubWebhookSecret);
   if (!isValid) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
+  // 3.5 — NEW: is this workspace even entitled to GitHub integration?
+  // `project.workspaceId` is already on the object above — no extra
+  // query needed, it's a plain scalar field on Project.
+  //
+  // Deliberately checked here: AFTER the signature is verified (so we
+  // don't leak plan info to an unauthenticated caller), but BEFORE the
+  // AI summarization work (so a Free-plan workspace never costs you a
+  // Gemini API call).
+  const entitlements = await getEntitlements(project.workspaceId);
+  if (!entitlements.features.githubIntegration) {
+    // This is GitHub calling us, not a user clicking a button — so we
+    // still return 200, not 403/402. Returning an error status here
+    // would make GitHub think delivery failed and retry it repeatedly.
+    // `ok: true` satisfies GitHub; `skipped` tells YOU why nothing
+    // happened, if you're ever reading delivery logs.
+    return NextResponse.json({ ok: true, skipped: 'github integration not on this plan' });
   }
 
   // 4. Only now is it safe to parse the body

@@ -25,6 +25,108 @@ model User {
   profileTagline String?
 
   bankAccounts BankAccount[]
+
+  // Every user has at least one WorkspaceMember row (their own workspace,
+  // created automatically). Can have more later if invited into others.
+  workspaceMemberships WorkspaceMember[]
+
+  // Which workspace the UI should show right now, for a user who
+  // belongs to more than one. Deliberately a plain scalar, NOT a
+  // Prisma @relation — getWorkspaceForUser() re-checks this against a
+  // real WorkspaceMember row on every read, so a stale/dangling value
+  // (e.g. after they're removed from that workspace) just falls back
+  // safely instead of needing DB-level FK integrity.
+  activeWorkspaceId String?
+
+  // Invites this user has personally sent (as OWNER/ADMIN of some
+  // workspace). Optional + SetNull on delete (see WorkspaceInvite
+  // below) so deleting this user's account doesn't wipe out invites
+  // still pending for OTHER people.
+  sentInvites WorkspaceInvite[] @relation("SentInvites")
+}
+
+// A Workspace is the new "billing owner." One subscription belongs to
+// one Workspace. Today every Workspace has exactly one member (the person
+// who signed up), auto-created for them — see the migration note below.
+// Later, when we build "invite a teammate," we just add more
+// WorkspaceMember rows to an existing Workspace. Nothing here changes then.
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String   // shown in UI, e.g. "Jeetu's Workspace" — editable later
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      WorkspaceMember[]
+  projects     Project[]
+  subscription Subscription?
+  invites      WorkspaceInvite[]
+}
+
+// Join table: connects a User to a Workspace, with a role.
+// A User can (in the future) be a member of more than one Workspace
+// (e.g. their own solo workspace + a client's team workspace they were
+// invited into). That's why this is a separate table instead of a
+// single workspaceId column on User.
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  role        WorkspaceRole @default(OWNER)
+  joinedAt    DateTime      @default(now())
+
+  // A user can't be added to the same workspace twice.
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+}
+
+enum WorkspaceRole {
+  OWNER  // created the workspace, or the original solo-migrated user
+  ADMIN  // future: can manage members/billing but didn't create it
+  MEMBER // future: regular teammate, no billing access
+}
+
+// A pending (or resolved) invite to join a Workspace. Separate table
+// from WorkspaceMember on purpose — a row here just means "an invite
+// was sent," not "this person is in the workspace." A WorkspaceMember
+// row only gets created once acceptInvite() actually runs.
+model WorkspaceInvite {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  email String // who the invite was sent to — may or may not have an account yet
+  role  WorkspaceRole // the role they'll get on accept — set by the inviter, never chosen by the invitee (see acceptInvite)
+
+  status InviteStatus @default(PENDING)
+
+  // Same @unique + @default(cuid()) pattern as Client.magicToken above —
+  // an opaque string safe to put in a public URL
+  // (app/invite/[token]/page.jsx), unrelated to the row's internal id.
+  token     String   @unique @default(cuid())
+  expiresAt DateTime // set at creation time as now() + 24 hours
+
+  // Optional + SetNull: if the inviter's account is later deleted, this
+  // invite should NOT disappear with them — the invitee should still be
+  // able to accept it. We just lose the "who sent this" attribution.
+  invitedByUserId String?
+  invitedBy       User?    @relation("SentInvites", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt // bumped on every re-invite (upsert), so "last sent" is always accurate
+
+  // Re-inviting the same email to the same workspace after a
+  // revoke/expiry must go through upsert() on this constraint — same
+  // pattern checkout/route.js already uses for Subscription — not
+  // create(), which would throw on the second invite to the same email.
+  @@unique([workspaceId, email])
+}
+
+enum InviteStatus {
+  PENDING  // sent, not yet acted on — may also be past expiresAt; we check that at read time, not with a separate stored status
+  ACCEPTED // acceptInvite() ran successfully
+  REVOKED  // an OWNER/ADMIN explicitly cancelled it before it was accepted
 }
 
 model BankAccount {
@@ -104,6 +206,11 @@ model Project {
   githubRepoOwner     String?   // e.g. "jeetu-dev" — just for display, not required for the webhook to work
   githubRepoName      String?   // e.g. "acme-website" — same, just for display
   githubWebhookSecret String?   // a random string only you and GitHub know — this is what makes step 3 possible
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
 }
 
 model File {
@@ -213,6 +320,8 @@ model Inquiry {
 enum Plan {
   FREE
   PRO
+  TEAM
+  ENTERPRISE
 }
 
 enum Status {
@@ -281,4 +390,63 @@ enum InvoiceStatus {
 enum UpdateType {
   MANUAL       // freelancer typed this by hand
   AUTO_DEPLOY  // generated automatically from a git push
+}
+
+// ── Billing ──────────────────────────────────────────────────────────────
+// One Workspace has at most one Subscription (see @unique on workspaceId).
+// This table is the SOURCE OF TRUTH for what a workspace can do — plan
+// config (limits/features) lives in code (lib/billing/plans.ts, built in
+// a later step), but *which plan a workspace is currently on* lives here.
+model Subscription {
+  id          String    @id @default(cuid())
+  workspaceId String    @unique
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  plan         Plan               @default(FREE)
+  billingCycle BillingCycle       @default(NONE)
+  status       SubscriptionStatus @default(ACTIVE)
+
+  // Null for FREE and for manually-created ENTERPRISE subscriptions —
+  // there's no Razorpay object behind those.
+  razorpayCustomerId     String?
+  razorpaySubscriptionId String? @unique
+  razorpayPlanId         String? // Razorpay's own "Plan" id for this plan+cycle combo
+
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+enum BillingCycle {
+  NONE    // FREE plan, or a manually-set ENTERPRISE deal
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  PENDING   // checkout started, Razorpay subscription created, first payment not yet confirmed
+  ACTIVE
+  PAST_DUE  // payment failed, but grace period hasn't run out
+  CANCELLED // user (or admin) cancelled — may still be usable until currentPeriodEnd
+  EXPIRED   // no longer usable, downgrade to FREE limits
+}
+
+// Every Razorpay webhook event has a unique event ID. Razorpay can send
+// the SAME event more than once (retries on their side, network blips,
+// etc). Before doing anything with an incoming webhook, we check: "is
+// razorpayEventId already in this table?" If yes, we've already handled
+// it — skip. If no, we process it AND insert this row, in the same
+// database transaction, so two near-simultaneous copies of the same
+// event can't both slip through and double-process.
+model WebhookEvent {
+  id              String   @id @default(cuid())
+  razorpayEventId String   @unique
+  eventType       String   // e.g. "subscription.charged", stored for debugging
+  payload         Json?    // raw event body, kept for troubleshooting
+  processedAt     DateTime @default(now())
 }

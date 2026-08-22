@@ -7,143 +7,143 @@ export const NAV_LINKS = [
 
 // ─── HERO ─────────────────────────────────────────────────────────────────────
 
-export const HERO_PRE = 'Client project portals for freelance developers'
+export const HERO_PRE = 'Client delivery software for web development studios'
 
-export const HERO_HEADLINE = 'Your client deserves better than Drive and email'
+export const HERO_HEADLINE = 'Your code already proves you\'re working. Now your client can see it.'
 
 export const HERO_SUB =
-  'Opprine gives each project a private client link for updates, file delivery, approvals, and invoicing. No account. No onboarding. No learning curve.'
+  'Opprine reads every commit and turns it into a client-ready update, automatically then ties it to milestone approvals, invoicing, and a record that protects you when a delay isn\'t your fault.'
 
-export const HERO_CTA = 'Get Started'
+export const HERO_CTA = 'Start Free Trial'
 
-export const HERO_SECONDARY_CTA = 'Learn More'
+export const HERO_SECONDARY_CTA = 'See how it works'
 
 export const HERO_TRUST = [
-  'No client account, ever',
-  'Every approval timestamped and recorded',
-  'Payment inside the moment of completion',
+  'Every commit becomes a client-ready update',
+  'Every delay timestamped, so blame lands where it belongs',
+  'Every approval tied directly to payment',
 ]
 
 export const HERO_METRICS = [
-  { value: '4 min', label: 'To launch a client portal' },
+  { value: 'Auto', label: 'Client updates from your commits' },
   { value: '1 link', label: 'For every client interaction' },
-  { value: '0', label: 'Accounts your client ever needs' },
+  { value: '0', label: 'Status calls required' },
 ]
 
 // ─── PAIN ─────────────────────────────────────────────────────────────────────
 // Framed as a process design failure — not a personal one. This keeps readers
 // engaged rather than defensive.
 
-export const PAIN_HEADER = 'Excellent work gets undermined by the process around it.'
+export const PAIN_HEADER = 'Excellent work gets undermined by how it\'s communicated.'
 
 export const PAIN_INTRO =
-  'Most freelance projects don\'t stall because of technical problems. They drift because the client doesn\'t know where to look, what needs their input, or what comes next. That\'s a process problem and it\'s completely solvable.'
+  'Most studio projects don\'t stall because of technical problems. They drift because the client can\'t see what\'s actually happening, doesn\'t know what needs their input, or doesn\'t know what comes next. That\'s a process problem, and it\'s completely solvable.'
 
 export const PAIN_CARDS = [
   {
     id: 'updates',
-    open: 'The project status lives in four different places.',
-    body: 'One client follows along in WhatsApp. Another checks email. A third sends a message asking for a call. The answer already exists posted somewhere but finding it takes longer than rebuilding the context from scratch. By then, confidence in the process has already slipped.',
-    sting: 'Scattered updates train clients to question the process.',
+    open: 'The project status lives in your head, not anywhere your client can see it.',
+    body: 'Your team has been heads-down for three days shipping real progress. The client thinks you\'ve gone quiet. So they message, you stop to explain, and the actual work waits while someone writes a paragraph about it instead of building.',
+    sting: 'Every manual status update is time nobody bills for.',
   },
   {
     id: 'approval',
-    open: 'A chat "yes" is not the same as an approval.',
-    body: 'Weeks later, a scope question surfaces, a revision lands on your plate, or billing becomes a conversation. You look for proof. What you find is a message thread and a competing memory. The client recalls something different. You cannot win a dispute you cannot document.',
-    sting: 'Professional work needs professional records.',
+    open: 'A missed deadline gets blamed on you even when it wasn\'t yours.',
+    body: 'A deadline slips. You know exactly why: the client sat on a review for eight days. But you have no clean way to prove it, so you quietly absorb the blame instead of having the awkward conversation.',
+    sting: 'You cannot defend a delay you cannot document.',
   },
   {
     id: 'files',
     open: 'The handoff matters as much as the work.',
-    body: 'A Drive link. A note in the email. A follow-up to confirm they found it. Another version a week later. The work is excellent but the way it arrives makes it feel like a draft. Presentation shapes perception, even when the quality is not in question.',
-    sting: 'How you deliver changes what clients think your work is worth.',
+    body: 'A Drive link. A message to confirm they found it. A revised version a week later. The work is excellent, but the way it arrives makes a studio look like a folder someone forgot to organize.',
+    sting: 'How you deliver changes what clients think your studio is worth.',
   },
   {
     id: 'payment',
     open: 'The best moment to ask for payment passes before the invoice arrives.',
-    body: 'The client approves the work. They close the tab. Then an invoice shows up in a separate email thread, disconnected from the satisfaction they just felt. Following up starts to feel like chasing, and chasing changes the dynamic of the relationship.',
-    sting: 'Payment belongs inside the moment of completion not after it.',
+    body: 'The client approves the milestone. They close the tab, still feeling good about the work. Then an invoice shows up in a separate thread days later, disconnected from that moment entirely. Following up starts to feel like chasing.',
+    sting: 'Payment belongs inside the moment of approval, not after it.',
   },
 ]
 
 // ─── REFRAME ──────────────────────────────────────────────────────────────────
-// Bridge section between pain and solution. Positions Opprine as
-// purpose-built for the client-facing moment — not a dashboard repurposed for it.
+// Bridge section between pain and solution. Positions Opprine as reading a
+// record that already exists (git) rather than asking anyone to create one.
 
 export const REFRAME_LABEL = 'The fix is not another project management tool.'
 
 export const REFRAME_BODY =
-  'Every project already has a client experience. The question is whether you designed it or it designed itself.\n\nOpprine gives each project a private, structured layer built specifically for the client-facing moment not an internal dashboard repurposed for it. One link tells the client what has happened, what needs their attention, what has been approved, and what is ready to pay.\n\nFewer questions. Cleaner decisions. A calmer path from delivery to payment.'
+  'Every project already produces a record of what happened it\'s sitting in your git history. The question is whether your client ever gets to see it.\n\nOpprine reads your commits and turns them into a client-ready update automatically, then ties that update to milestones, approvals, and invoicing inside one private link not a dashboard someone has to remember to fill in.\n\nFewer status calls. Undeniable proof of progress. A record that protects you when a delay isn\'t your fault.'
 
 // ─── TRUST DIFFERENTIATORS ────────────────────────────────────────────────────
 // Each point addresses a real objection rather than restating a feature.
-// Consider rendering this section as "Why it works differently" on the page.
 
 export const TRUST_SIGNALS = [
   {
-    title: 'Built for the client, not the freelancer',
-    desc: 'Every portal is designed to be read and acted on by someone who doesn\'t know your tools. One link. Obvious next actions. Nothing on their end to configure, install, or learn.',
+    title: 'Built from your code, not typed by hand',
+    desc: 'Every update starts from real git activity, translated into plain language your client understands. Nothing to remember to write it already knows what you built.',
   },
   {
-    title: 'Every approval is a record',
-    desc: 'Approvals are attached to the specific deliverable, milestone, and timestamp that produced them not floating in a chat history nobody can locate six weeks later.',
+    title: 'Every delay is timestamped and attributed',
+    desc: 'When a project is waiting on a client, Opprine records exactly when and why. If a deadline slips, the record shows whose court the ball was in automatically, with no awkward email required.',
   },
   {
     title: 'Payment is where the work already is',
-    desc: 'When a client approves a milestone and sees the invoice directly beneath the outcome, paying is the natural next step not a separate conversation you have to start.',
+    desc: 'When a client approves a milestone and sees the invoice directly beneath it, paying is the natural next step, not a separate conversation you have to start.',
   },
 ]
 
 // ─── HOW IT WORKS ─────────────────────────────────────────────────────────────
 
-export const HOW_HEADER = 'From first update to final payment, the whole flow lives in one place.'
+export const HOW_HEADER = 'From first commit to final payment, the whole flow lives in one place.'
 
 export const HOW_STEPS = [
   {
     step: '01',
-    title: 'Create the project',
-    desc: 'Add the client\'s name, project scope, milestones, and any initial files. Everything that makes the engagement feel intentional from the first interaction.',
-    result: 'The project has a home before the first update goes out.',
+    title: 'Connect your GitHub repo',
+    desc: 'Link the repo for the project. Takes two minutes and changes nothing about how your team already commits code.',
+    result: 'The project has a live source of truth before the first update goes out.',
   },
   {
     step: '02',
-    title: 'Share one private link',
-    desc: 'Opprine generates a unique, private link for each client. They open it on any device no account to create, no app to download, no onboarding meeting.',
-    result: 'The first impression is confidence, not friction.',
+    title: 'Opprine turns commits into updates',
+    desc: 'Every meaningful commit is translated into a plain-English update your client can actually read, organized against the milestones you\'ve defined.',
+    result: 'The client sees real progress without a single status message from you.',
   },
   {
     step: '03',
-    title: 'Deliver, review, approve',
-    desc: 'Post updates, upload deliverables, and request approvals against specific milestones. The client responds directly in their portal. Every decision is recorded where it happens.',
-    result: 'Documented decisions. Not vague replies buried in a thread.',
+    title: 'Deliver, approve, get flagged when you\'re blocked',
+    desc: 'Upload deliverables, request milestone approvals, and let Opprine timestamp any stretch where you\'re waiting on the client for feedback, assets, or sign-off.',
+    result: 'Every decision and every delay is documented where it happened.',
   },
   {
     step: '04',
     title: 'Invoice inside the moment',
-    desc: 'When the work is approved, the invoice is already embedded in the same portal where the client just reviewed the outcome. Paying is the obvious next action.',
-    result: 'Payment follows completion without a separate conversation to start.',
+    desc: 'When a milestone is approved, the invoice is already sitting in the same portal the client just reviewed. Paying is the obvious next action.',
+    result: 'Payment follows approval without a separate conversation to start.',
   },
 ]
 
-// ─── FEATURES ─────────────────────────────────────────────────────────────────
-// Header signals intentionality. Each feature is described by what it changes,
-// not just what it is. "Detail" lines are written as practitioner-to-practitioner
-// — the honest use case, not the marketing pitch.
-
-export const FEATURES_HEADER = 'Every feature built for the client-facing moment.'
+export const FEATURES_HEADER = 'Every feature built around what you actually built.'
 
 export const FEATURES = [
   {
+    icon: 'code',
+    name: 'AI commit-to-client updates',
+    desc: 'Opprine reads every commit and turns it into a plain-English update your client actually understands no dev jargon, no status report to write.',
+    detail: 'The single biggest time sink in client work, solved by data that already exists.',
+  },
+  {
     icon: 'link',
     name: 'Magic link client portals',
-    desc: 'Every client gets a private, project-specific link. It opens their portal instantly - no account creation, no password reset, no getting them onboarded.',
-    detail: 'Ideal for clients who won\'t adopt another platform - which is most of them.',
+    desc: 'Every client gets a private, project-specific link. It opens their portal instantly no account creation, no password reset, no getting them onboarded.',
+    detail: 'Ideal for clients who won\'t adopt another platform which is most of them.',
   },
   {
     icon: 'layout',
     name: 'One view your client actually understands',
     desc: 'Milestones, updates, files, approvals, and invoices composed in a single client view. Project status is obvious without a phone call to explain it.',
-    detail: 'Designed for how clients read progress - not how freelancers track it.',
+    detail: 'Designed for how clients read progress not how studios track it.',
   },
   {
     icon: 'file',
@@ -154,158 +154,126 @@ export const FEATURES = [
   {
     icon: 'check',
     name: 'Timestamped approvals',
-    desc: 'Approval requests go out with clear context. Client responses are recorded with date, time, and the deliverable they responded to - attached to the project, not to a chat thread.',
+    desc: 'Approval requests go out with clear context. Client responses are recorded with date, time, and the deliverable they responded to attached to the project, not to a chat thread.',
     detail: 'Scope protection starts with documentation. You cannot win a dispute you cannot prove.',
   },
   {
-    icon: 'activity',
-    name: 'Client activity visibility',
-    desc: 'Know when the portal was last viewed, which items are waiting on the client, and which projects are stalled - without sending a follow-up into the void.',
-    detail: 'Follow up from context, not anxiety. Send when the timing is right, not when the silence gets too long.',
+    icon: 'shield',
+    name: 'Delay attribution',
+    desc: 'When you\'re waiting on a client for feedback, an asset, or a sign-off, Opprine timestamps it automatically. If a deadline slips, the record shows exactly why and it isn\'t you.',
+    detail: 'You stay the professional. The record does the explaining.',
   },
   {
     icon: 'credit',
     name: 'In-portal invoicing and payment',
-    desc: 'The invoice is embedded in the client portal, directly beneath the approved work. Paying requires one action - not a separate email thread to start.',
+    desc: 'The invoice is embedded in the client portal, directly beneath the approved work. Paying requires one action not a separate email thread to start.',
     detail: 'The best moment to ask for payment is the moment the client feels the value of the work. This is that moment.',
   },
 ]
 
-// ─── PRICING ──────────────────────────────────────────────────────────────────
-// Reframe uses a specificity anchor — a dispute or faster payment — rather
-// than a vague "pays for itself" claim. The Pro badge renamed to "Most popular"
-// which is more credible than "Best value" (value is subjective; popularity is a fact).
-
 export const PRICING_REFRAME =
-  'One faster payment or one avoided scope dispute covers Opprine for months. Most freelancers earn it back inside the first project.'
+  'One avoided scope dispute or one delay you didn\'t get blamed for covers Opprine for months. Most studios earn it back inside the first project.'
 
 export const PRICING_TIERS = [
   {
-    name: 'Free',
-    tagline: 'Two real client projects. Fully functional. No card required.',
-    price: '$0',
-    per: '/ forever',
-    highlight: false,
-    ctaLabel: 'Start free',
-    ctaHref: '/signup',
-    features: [
-      'Up to 2 active projects',
-      'Magic link client portals',
-      'Milestone updates and file delivery',
-      'Approval tracking with timestamps',
-      'Client activity visibility',
-    ],
-  },
-  {
-    name: 'Pro',
-    tagline: 'For freelancers who run client work as a business, not a side activity.',
-    price: '$19',
+    name: 'Studio',
+    tagline: 'For studios running real client projects, not side gigs.',
+    price: '$89',
     per: '/ month',
     badge: 'Most popular',
     highlight: true,
-    ctaLabel: 'Start free, upgrade when ready',
-    ctaHref: '/signup?plan=pro',
+    ctaLabel: 'Start free trial',
+    ctaHref: '/signup?plan=studio',
     features: [
-      'Unlimited active projects',
+      'Up to 10 active client projects',
+      'AI commit-to-client updates',
+      'Milestone approvals and delay attribution',
       'In-portal invoicing and Stripe payments',
       'Custom portal branding',
-      'Priority email support',
-      'Early access to workflow upgrades',
     ],
-    note: 'No contracts. Cancel anytime. As your client roster grows, the cost stays the same.',
+    note: 'No contracts. Cancel anytime.',
+  },
+  {
+    name: 'Agency',
+    tagline: 'For agencies managing a full roster of client work.',
+    price: '$219',
+    per: '/ month',
+    highlight: false,
+    ctaLabel: 'Start free trial',
+    ctaHref: '/signup?plan=agency',
+    features: [
+      'Unlimited active client projects',
+      'Up to 10 team seats',
+      'Everything in Studio',
+      'Custom domain',
+      'Priority support',
+    ],
+    note: 'Built for teams managing more than one client at a time.',
   },
 ]
 
-// ─── TESTIMONIALS ─────────────────────────────────────────────────────────────
-// Header rewritten to anchor the "before state" — makes the product feel like
-// a discovery, not a boast. Quotes tuned to feel more specific and naturally
-// spoken: concrete details, not polished praise.
-
-export const TESTIMONIALS_HEADER = 'Freelancers who stopped managing clients across scattered tools.'
+export const TESTIMONIALS_HEADER = 'Studios who stopped writing status updates by hand.'
 
 export const TESTIMONIALS = [
   {
-    name: 'Arjun M.',
-    role: 'Freelance web developer, Pune',
+    name: 'Ankit',
+    role: 'Studio founder',
     rating: 5,
     quote:
-      'I used to write a status update email every week because clients kept asking. Now I post once in the portal and they check it when they want. They feel more informed - and I spend that time building instead.',
+      'Placeholder I used to write a status update every week because clients kept asking. Now the commits write it for me I spend that time building instead.',
   },
   {
-    name: 'Diana K.',
-    role: 'WordPress developer, Warsaw',
+    name: 'Ajay',
+    role: 'Studio lead',
     rating: 5,
     quote:
-      'I had an approval dispute mid-project last year. Nothing documented, just chat messages and competing memories. Now every milestone has a clean record. My revision conversations are completely different.',
+      'Placeholder A deadline slipped because a client sat on a review for a week. For the first time I had a record showing exactly why, instead of just apologizing.',
   },
   {
-    name: 'Marcus T.',
-    role: 'Shopify developer, Manila',
+    name: 'Daniel',
+    role: 'Agency owner',
     rating: 5,
     quote:
-      'I was giving clients three different links - Notion for scope, Drive for files, email for invoices. Opprine replaced all three with one link they already know how to open.',
-  },
-  {
-    name: 'Priya S.',
-    role: 'UI/UX designer, Bangalore',
-    rating: 5,
-    quote:
-      'A client told me the engagement felt like working with a small studio. That\'s exactly the perception I needed before raising my rates. The portal created that - not me.',
-  },
-  {
-    name: 'Kabir N.',
-    role: 'Motion designer, Pune',
-    rating: 5,
-    quote:
-      'I used to send the invoice two days after final delivery. By then the momentum was gone. Now the client sees it when they\'re still feeling good about the work. My follow-up time dropped from weeks to hours.',
-  },
-  {
-    name: 'Divya K.',
-    role: 'Brand consultant, Chennai',
-    rating: 5,
-    quote:
-      'I show the portal during discovery calls - before I send the proposal. It makes my process tangible immediately. Clients understand exactly what working with me looks like before they commit.',
+      'Placeholder I was giving clients three different links Notion for scope, Drive for files, email for invoices. One link replaced all three.',
   },
 ]
 
 // ─── FOUNDER ──────────────────────────────────────────────────────────────────
-// Quote rewritten to name the specific gap the product closes (agency-quality
-// work, freelance-quality presentation) and state the goal directly.
 
 export const FOUNDER = {
-  name: 'Jeetendra — Founder, Opprine',
+  name: 'Jeetendra - Founder, Opprine',
   quote:
-    'I built this because freelance developers do work that competes with agencies - but often present it like they\'re still freelancing. Opprine is the client-facing layer that closes that gap. Fewer scattered conversations, cleaner decisions, and a professional experience from first update to final payment.',
+    'I built this because studios do work that proves itself in the commit history but present it like a status update nobody has reason to trust. Opprine reads what you actually built and turns it into the client-facing record that closes that gap: fewer status calls, undeniable proof of progress, and a paper trail that protects you when a delay isn\'t your fault.',
 }
 
 // ─── FAQ ──────────────────────────────────────────────────────────────────────
-// Header rewritten to signal honesty — "questions worth answering" implies
-// real answers, not deflection.
-// Two new entries added: cancellation policy and portal privacy.
-// These address the objections fence-sitters think about but rarely voice.
 
 export const FAQ_HEADER = 'Questions worth answering before you sign up.'
 
 export const FAQS = [
   {
     q: 'Will clients be confused by yet another tool?',
-    a: 'They receive one link. It opens directly to their project - milestones, files, approvals, and invoices already organized. There\'s no account to create and nothing to install. Most clients find it simpler than navigating a shared Drive folder.',
+    a: 'They receive one link. It opens directly to their project milestones, files, approvals, and invoices already organized. There\'s no account to create and nothing to install.',
   },
   {
     q: 'Does this replace the tools I already use?',
-    a: 'No. Opprine doesn\'t replace your code editor, your file storage, or how you communicate internally. It gives the client a single, polished view of the project - regardless of how you manage it on your end.',
+    a: 'No. Opprine doesn\'t replace your code editor, your git workflow, or how you communicate internally. It reads what\'s already happening and gives the client a single, polished view of it.',
   },
   {
     q: 'Why not just use Notion, Google Drive, or email?',
-    a: 'Those tools were built for internal collaboration, not client-facing project management. They work - but they require your client to adapt to your workflow rather than the other way around. Opprine is purpose-built for the client interaction: updates, approvals, file delivery, and payment in one structured experience.',
+    a: 'Those tools were built for internal collaboration, not client-facing delivery. They work but they require your client to adapt to your workflow, and none of them know what you actually built. Opprine is purpose-built for that: updates, approvals, file delivery, and payment in one structured experience.',
   },
   {
-    q: 'Is the free plan actually usable for real projects?',
-    a: 'Yes. The free plan supports two active projects with full portal functionality - updates, files, approvals, and client activity visibility. It\'s designed so you can run real client engagements and decide whether Pro is worth it based on direct experience, not a sales page.',
+    q: 'What if my client isn\'t technical?',
+    a: 'That\'s exactly who Opprine writes for. Every commit gets translated into plain language no dev jargon, no assumptions about what your client already knows.',
   },
   {
-    q: 'What happens to my portals if I cancel Pro?',
-    a: 'Your projects revert to free tier limits. Active portals stay live - clients with existing links can still access their project. Nothing disappears. You decide whether to upgrade again based on what the tool actually does for your work.',
+    q: 'Is this just a GitHub tool?',
+    a: 'GitHub is the source. The product is what happens next updates, approvals, invoicing, and a record that protects you when a delay isn\'t your fault.',
+  },
+  {
+    q: 'What happens to my portals if I cancel?',
+    a: 'Active portals stay live for a grace period so nothing disappears on your clients mid-project. You can export your full project history at any time.',
   },
   {
     q: 'How private is the client portal?',
@@ -314,25 +282,21 @@ export const FAQS = [
 ]
 
 // ─── FINAL CTA ────────────────────────────────────────────────────────────────
-// Headline uses a time anchor ("30 seconds") to make the stakes immediate and
-// concrete. Converts an abstract concern into a specific, believable moment.
-// The body note uses specificity ("five minutes", "before the project is finished")
-// to make the promise feel real, not aspirational.
 
 export const FINAL_HEADLINE = 'Your client forms an opinion of your process within the first 30 seconds. Make it the right one.'
 
 export const FINAL_BODY =
-  'Set up a portal in under five minutes, share one private link, and give your client the kind of experience that makes them refer you before the project is even finished.'
+  'Connect your GitHub repo, share one private link, and give your client a record of progress they don\'t have to take your word for.'
 
-export const FINAL_CTA = 'Create your first portal - it\'s free'
+export const FINAL_CTA = 'Start your free trial'
 
-export const FINAL_NOTE = 'Two active projects free. No credit card. Upgrade only when the workflow earns its place.'
+export const FINAL_NOTE = '14-day free trial. No credit card required to start.'
 
 // ─── FOOTER ───────────────────────────────────────────────────────────────────
 
-export const FOOTER_TAGLINE = 'Professional client portals for freelance developers and independent service businesses.'
+export const FOOTER_TAGLINE = 'Client delivery software for web development studios who\'d rather ship than explain.'
 
-export const FOOTER_COPYRIGHT = 'Copyright 2026 Opprine. Built for independent professionals.'
+export const FOOTER_COPYRIGHT = 'Copyright 2026 Opprine. Built for web development studios.'
 
 export const FOOTER_LINKS = [
   {

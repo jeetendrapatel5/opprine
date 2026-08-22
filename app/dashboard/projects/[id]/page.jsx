@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect, notFound } from 'next/navigation'
 import prisma from '@/lib/prisma'
+import { requireWorkspaceMembership } from '@/lib/workspace'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -116,8 +117,10 @@ export default async function ProjectPage({ params }) {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/signin')
 
+  const membership = await requireWorkspaceMembership(session.user.id)
+
   const project = await prisma.project.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, workspaceId: membership.workspaceId },
     include: {
       client: true,
       updates: { orderBy: { createdAt: 'desc' } },
@@ -335,7 +338,6 @@ export default async function ProjectPage({ params }) {
                 <span
                   className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md ${status.className}`}
                 >
-                  <StatusIcon className="w-3 h-3" />
                   {status.label}
                 </span>
               </DetailRow>

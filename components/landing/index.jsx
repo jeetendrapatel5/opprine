@@ -1,7 +1,7 @@
 'use client'
 
 // components/landing/index.jsx
-// Root component for the Client Portal landing experience.
+// Root component for the Opprine landing page.
 
 import { useScrollReveal } from './hooks'
 import Nav from './Nav'
@@ -16,14 +16,14 @@ const STYLES = `
   .reveal-left,
   .reveal-right {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(16px);
     transition:
-      opacity 640ms cubic-bezier(.16, 1, .3, 1),
-      transform 640ms cubic-bezier(.16, 1, .3, 1);
+      opacity 600ms cubic-bezier(.16, 1, .3, 1),
+      transform 600ms cubic-bezier(.16, 1, .3, 1);
   }
 
-  .reveal-left { transform: translateX(-20px); }
-  .reveal-right { transform: translateX(20px); }
+  .reveal-left { transform: translateX(-16px); }
+  .reveal-right { transform: translateX(16px); }
 
   .reveal.is-visible,
   .reveal-left.is-visible,
@@ -34,33 +34,20 @@ const STYLES = `
 
   .stagger > * {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(14px);
     transition:
-      opacity 560ms cubic-bezier(.16, 1, .3, 1),
-      transform 560ms cubic-bezier(.16, 1, .3, 1);
+      opacity 520ms cubic-bezier(.16, 1, .3, 1),
+      transform 520ms cubic-bezier(.16, 1, .3, 1);
   }
 
   .stagger.is-visible > *:nth-child(1) { opacity: 1; transform: none; transition-delay: 0ms; }
-  .stagger.is-visible > *:nth-child(2) { opacity: 1; transform: none; transition-delay: 70ms; }
-  .stagger.is-visible > *:nth-child(3) { opacity: 1; transform: none; transition-delay: 140ms; }
-  .stagger.is-visible > *:nth-child(4) { opacity: 1; transform: none; transition-delay: 210ms; }
-  .stagger.is-visible > *:nth-child(5) { opacity: 1; transform: none; transition-delay: 280ms; }
-  .stagger.is-visible > *:nth-child(6) { opacity: 1; transform: none; transition-delay: 350ms; }
-  .stagger.is-visible > *:nth-child(7) { opacity: 1; transform: none; transition-delay: 420ms; }
-  .stagger.is-visible > *:nth-child(8) { opacity: 1; transform: none; transition-delay: 490ms; }
-
-  .landing-grid {
-    background-image:
-      linear-gradient(rgba(15, 23, 42, 0.045) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(15, 23, 42, 0.045) 1px, transparent 1px);
-    background-size: 72px 72px;
-  }
-
-  .dark .landing-grid {
-    background-image:
-      linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
-  }
+  .stagger.is-visible > *:nth-child(2) { opacity: 1; transform: none; transition-delay: 60ms; }
+  .stagger.is-visible > *:nth-child(3) { opacity: 1; transform: none; transition-delay: 120ms; }
+  .stagger.is-visible > *:nth-child(4) { opacity: 1; transform: none; transition-delay: 180ms; }
+  .stagger.is-visible > *:nth-child(5) { opacity: 1; transform: none; transition-delay: 240ms; }
+  .stagger.is-visible > *:nth-child(6) { opacity: 1; transform: none; transition-delay: 300ms; }
+  .stagger.is-visible > *:nth-child(7) { opacity: 1; transform: none; transition-delay: 360ms; }
+  .stagger.is-visible > *:nth-child(8) { opacity: 1; transform: none; transition-delay: 420ms; }
 
   @media (prefers-reduced-motion: reduce) {
     .reveal,
@@ -82,10 +69,8 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-white font-body text-neutral-950 antialiased selection:bg-neutral-950 selection:text-white dark:bg-neutral-950 dark:text-neutral-50 dark:selection:bg-white dark:selection:text-neutral-950">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#FFFAFA] font-body text-[#17130F] antialiased selection:bg-[#17130F] selection:text-white">
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
-      <div aria-hidden="true" className="landing-grid pointer-events-none fixed inset-0 opacity-45" />
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(255,255,255,0.72)_38%,rgba(255,255,255,0.94))] dark:bg-[linear-gradient(180deg,rgba(10,10,10,0.94),rgba(10,10,10,0.74)_38%,rgba(10,10,10,0.96))]" />
 
       <div className="relative z-10">
         <Nav onCTA={handleCTA} />
