@@ -72,6 +72,19 @@ export async function PATCH(request, { params }) {
         data:   milestoneData,
       })
 
+      // Strip createdByUserId before this crosses back over the
+      // magic-link boundary. This isn't Task data — nothing in this
+      // route can reach that, see the select above — but it's the
+      // same principle: this response goes to an unauthenticated
+      // client holding only a magic token, so it should carry only
+      // what the portal actually displays. createdByUserId is a new
+      // scalar column (added alongside ProjectMember/Task) that
+      // .update() now returns by default since no select/include was
+      // specified here — it wasn't being exposed before this schema
+      // change, and there's no reason for the client portal to see
+      // which internal user created the milestone.
+      const { createdByUserId, ...safeUpdated } = updated
+
       // On rejection — save the client message to MilestoneMessage permanently
       if (action === 'reject' && reason?.trim()) {
         await prisma.milestoneMessage.create({
@@ -132,7 +145,7 @@ export async function PATCH(request, { params }) {
         }
       }
 
-      return NextResponse.json(updated)
+      return NextResponse.json(safeUpdated)
     }
 
     // ── UPDATE (project-level update, not milestone) ──────────────────────────

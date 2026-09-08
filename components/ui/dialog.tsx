@@ -86,7 +86,7 @@ function DialogContent({
               "text-fp-text-tertiary opacity-90 transition-colors duration-150",
               "hover:text-fp-text-primary hover:bg-fp-raised",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fp-accent/40",
-              "disabled:pointer-events-none",
+              "disabled:pointer-events-none cursor-pointer",
             )}
           >
             <X className="w-3.5 h-3.5" />

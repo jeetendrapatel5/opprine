@@ -7,9 +7,22 @@ import InvoiceForm from './InvoiceForm'
 import InvoiceList from './InvoiceList'
 
 // Props:
-//   project — full project object including project.invoices and project.milestones
+//   project     — full project object including project.invoices and project.milestones
+//   permissions — { canCreateInvoices, canEditInvoices, ... } — this component only
+//                 reads those two; it exists (rather than each being passed
+//                 separately) so the same bundle flows through from the page
+//                 unchanged at every level.
 
-export default function InvoicesTab({ project }) {
+// NEW — fail-closed default. ProjectTabs already refuses to render this
+// component at all unless canViewInvoices is true, so in practice
+// `permissions` always arrives here — this is just a safety net if
+// InvoicesTab is ever reached another way.
+const DEFAULT_PERMISSIONS = {
+  canCreateInvoices: false,
+  canEditInvoices: false,
+}
+
+export default function InvoicesTab({ project, permissions = DEFAULT_PERMISSIONS }) {
   const router = useRouter()
 
   // Local state for optimistic updates (new invoice, cancel).
@@ -97,16 +110,23 @@ export default function InvoicesTab({ project }) {
             </div>
           )}
         </div>
+        {/* CHANGED — canCreate forwarded to InvoiceForm. A PM reaches
+            this tab (canViewInvoices: true) but shouldn't get the
+            create button (createInvoices: false, view only). */}
         <InvoiceForm
           projectId={project.id}
           milestones={project.milestones ?? []}
           onSuccess={handleNewInvoice}
+          canCreate={permissions.canCreateInvoices}
         />
       </div>
 
+      {/* CHANGED — canEdit forwarded to InvoiceList, for the same PM
+          reasoning: they can see every invoice, just can't cancel one. */}
       <InvoiceList
         invoices={invoices}
         onCancel={handleCancel}
+        canEdit={permissions.canEditInvoices}
       />
     </div>
   )

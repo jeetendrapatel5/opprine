@@ -2,7 +2,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Loader2, FileText, X } from 'lucide-react'
+import { Plus, Loader2, FileText, X, Eye } from 'lucide-react'
 import axios from 'axios'
 
 // Props:
@@ -10,8 +10,12 @@ import axios from 'axios'
 //   milestones  — array  — project milestones, for the optional milestone link
 //   onSuccess   — function(newInvoice) — called after successful creation
 //                 parent uses this to add the invoice to local state
+//   canCreate   — NEW — boolean, from the matrix's 'createInvoices' action.
+//                 true for Owner/Admin only — PM has view-only invoice
+//                 access, Contributor never reaches this component at all
+//                 (ProjectTabs hides the whole Invoices tab for them).
 
-export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
+export default function InvoiceForm({ projectId, milestones = [], onSuccess, canCreate = false }) {
   const [isOpen,       setIsOpen]       = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -37,6 +41,12 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    // NEW — same "guard the function, not just the button" discipline
+    // as everywhere else in this session. The real lock is server-side
+    // (can(role, 'createInvoices') in POST /api/invoices) — this just
+    // stops a stray form submission from firing a request that was
+    // always going to come back 403.
+    if (!canCreate) return
     setError('')
 
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
@@ -65,6 +75,22 @@ export default function InvoiceForm({ projectId, milestones = [], onSuccess }) {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  // NEW — a PM has viewInvoices but not createInvoices. Rather than
+  // showing the "New Invoice" button and having it either do nothing
+  // or 403 on click, this replaces the whole control with a small
+  // read-only indicator. Matches the "say the true thing" approach
+  // used for the client panel earlier ('Client info restricted') —
+  // a PM should be able to tell AT A GLANCE that this is a view-only
+  // screen for them, not wonder why the button isn't doing anything.
+  if (!canCreate) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-fp-text-tertiary">
+        <Eye className="w-3.5 h-3.5" />
+        View only
+      </div>
+    )
   }
 
   // Collapsed state — just a button

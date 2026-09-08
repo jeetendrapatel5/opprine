@@ -7,6 +7,10 @@ import { authOptions } from "@/lib/auth"
 import { v2 as cloudinary } from "cloudinary";
 import { sendEmail } from "@/lib/email";
 import { milestoneReadyForReviewEmail } from "@/lib/emailTemplates";
+import { requireProjectMembership } from "@/lib/project";
+import { can } from "@/lib/project-permissions";
+import { ForbiddenError } from "@/lib/errors";
+import { handleApiError } from "@/lib/http-errors";
 
 export async function PATCH(request, { params }) {
   try {
@@ -90,11 +94,10 @@ export async function PATCH(request, { params }) {
       }
     }
 
-    const milestone = await prisma.milestone.findFirst({
-      where: {
-        id,
-        project: { userId: session.user.id },
-      },
+    // Fetch first, authorize second — a milestone-scoped role check
+    // needs the milestone's projectId before it can run.
+    const milestone = await prisma.milestone.findUnique({
+      where: { id },
       include: {
         project: {
           include: {
@@ -117,6 +120,25 @@ export async function PATCH(request, { params }) {
 
     if (!milestone) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // CHANGED: was requireProjectRole(membership.role, ['PROJECT_MANAGER']).
+    // Same 'manageMilestones' check as the create route — see the
+    // comment there for why a raw 'PROJECT_MANAGER' string compare is
+    // now wrong for implicit Owner/Admin access.
+    //
+    // Note: `milestone.project.client` (with the client's name/email/
+    // magicToken) is fetched here only to build the review email
+    // below — it is NEVER put into the JSON response. `updated`
+    // (returned at the bottom) comes from a separate, narrower
+    // prisma.milestone.update() call. If you ever change this route
+    // to return `milestone` directly instead of `updated`, that
+    // client data would leak straight into a Contributor's response —
+    // worth a comment at the return site so nobody "simplifies" this
+    // later without noticing.
+    const membership = await requireProjectMembership(session.user.id, milestone.projectId);
+    if (!can(membership.role, 'manageMilestones')) {
+      throw new ForbiddenError('You do not have permission to update this milestone.');
     }
 
     const updated = await prisma.milestone.update({
@@ -150,8 +172,7 @@ export async function PATCH(request, { params }) {
     return NextResponse.json(updated);
 
   } catch (error) {
-    console.error("[PATCH /api/milestones/[id]]", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -164,15 +185,19 @@ export async function DELETE(request, { params }) {
 
     const { id } = await params;
 
-    const milestone = await prisma.milestone.findFirst({
-      where: {
-        id,
-        project: { userId: session.user.id },
-      },
+    const milestone = await prisma.milestone.findUnique({
+      where: { id },
+      select: { projectId: true },
     });
 
     if (!milestone) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // CHANGED — same reason as PATCH above.
+    const membership = await requireProjectMembership(session.user.id, milestone.projectId);
+    if (!can(membership.role, 'manageMilestones')) {
+      throw new ForbiddenError('You do not have permission to delete this milestone.');
     }
 
     await prisma.milestone.delete({ where: { id } });
@@ -180,7 +205,6 @@ export async function DELETE(request, { params }) {
     return NextResponse.json({ success: true });
 
   } catch (error) {
-    console.error("[DELETE /api/milestones/[id]]", error);
-    return NextResponse.json({ error: "Delete failed" }, { status: 500 });
+    return handleApiError(error);
   }
 }

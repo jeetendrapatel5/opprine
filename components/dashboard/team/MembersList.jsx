@@ -14,7 +14,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
 
@@ -33,6 +33,10 @@ export default function MembersList({ initialMembers, currentUserId, currentUser
   const [members, setMembers] = useState(initialMembers)
   const [removingId, setRemovingId] = useState(null)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    setMembers(initialMembers)
+  }, [initialMembers])
 
   async function handleRemove(member) {
     const confirmed = window.confirm(
@@ -91,9 +95,8 @@ export default function MembersList({ initialMembers, currentUserId, currentUser
 
               <div className="flex items-center gap-2 shrink-0">
                 <span
-                  className={`inline-flex items-center text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md ${
-                    ROLE_TEXT_CLASSES[member.role] ?? ROLE_TEXT_CLASSES.MEMBER
-                  }`}
+                  className={`inline-flex items-center text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md ${ROLE_TEXT_CLASSES[member.role] ?? ROLE_TEXT_CLASSES.MEMBER
+                    }`}
                 >
                   {member.role}
                 </span>

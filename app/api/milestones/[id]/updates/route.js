@@ -10,6 +10,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from "@/lib/auth"
 import prisma from '@/lib/prisma'
 import cloudinary from '@/lib/cloudinary'
+import { requireProjectMembership } from '@/lib/project'
+import { handleApiError } from '@/lib/http-errors'
 
 export async function POST(request, { params }) {
   try {
@@ -21,21 +23,30 @@ export async function POST(request, { params }) {
 
     const { id: milestoneId } = await params
 
-    // ── 2. Ownership check ─────────────────────────────────────────────────
-    // We fetch the milestone and include just enough of the project to
-    // verify the logged-in user owns it. This is one DB query, not two.
+    // ── 2. Project check ───────────────────────────────────────────────────
+    // This wasn't on the original "milestone create/update/reorder"
+    // checklist — a MilestoneUpdate is a progress note, not the
+    // Milestone itself — but it needed a decision too. Treating it as
+    // internal work-logging (same bucket as Task) rather than
+    // client-facing structure, so it's gated to requireProjectMembership
+    // only, no requireProjectRole check — any staffed member can post
+    // one, matching what you confirmed for Task edits.
+    //
+    // This does tighten it slightly from before: previously ANY
+    // workspace member could post an update on any milestone in the
+    // workspace, even on a project they weren't staffed on. If you'd
+    // rather this stay PROJECT_MANAGER-only like the structural
+    // milestone routes, it's a one-line addition — flag it back.
     const milestone = await prisma.milestone.findUnique({
       where: { id: milestoneId },
-      include: { project: { select: { userId: true } } }
+      select: { projectId: true },
     })
 
     if (!milestone) {
       return NextResponse.json({ error: 'Milestone not found' }, { status: 404 })
     }
 
-    if (milestone.project.userId !== session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
-    }
+    await requireProjectMembership(session.user.id, milestone.projectId)
 
     // ── 3. Parse FormData ──────────────────────────────────────────────────
     const formData = await request.formData()
@@ -86,7 +97,6 @@ export async function POST(request, { params }) {
     return NextResponse.json(milestoneUpdate, { status: 201 })
 
   } catch (error) {
-    console.error('[MilestoneUpdate POST]', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return handleApiError(error)
   }
 }

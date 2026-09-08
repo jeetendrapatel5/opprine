@@ -19,6 +19,10 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from "@/lib/auth"
 import prisma from '@/lib/prisma'
+import { requireProjectMembership } from '@/lib/project'
+import { can } from '@/lib/project-permissions'
+import { ForbiddenError } from '@/lib/errors'
+import { handleApiError } from '@/lib/http-errors'
 
 export async function PATCH(request) {
   try {
@@ -37,21 +41,47 @@ export async function PATCH(request) {
       return NextResponse.json({ error: 'orderedIds must be a non-empty array' }, { status: 400 })
     }
 
-    // Step 3 — Ownership check
-    // Verify ALL milestones in the list belong to this user.
-    // We do this by finding milestones that match both the IDs AND the userId
-    // through the project relation. If the count doesn't match orderedIds.length,
-    // at least one milestone doesn't belong to this user — reject the whole request.
-    const owned = await prisma.milestone.findMany({
-      where: {
-        id:      { in: orderedIds },
-        project: { userId: session.user.id },
-      },
-      select: { id: true },
+    // Step 3 — Project check
+    // Reordering is a per-project action. Look up which project every
+    // milestone in the list actually belongs to.
+    //
+    // If the count doesn't match orderedIds.length, at least one ID
+    // doesn't exist at all — 404, not a permission question.
+    //
+    // If the milestones span MORE THAN ONE project, reject with 400.
+    // Project-scoped role checking needs exactly one project to check
+    // the caller's role against — silently picking one and applying it
+    // to the others would be a real hole (someone staffed as PM on
+    // project A could smuggle a milestone ID from project B, where
+    // they're only a Contributor, into the same batch).
+    const milestones = await prisma.milestone.findMany({
+      where: { id: { in: orderedIds } },
+      select: { id: true, projectId: true },
     })
 
-    if (owned.length !== orderedIds.length) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (milestones.length !== orderedIds.length) {
+      return NextResponse.json({ error: 'One or more milestones not found' }, { status: 404 })
+    }
+
+    const projectIds = [...new Set(milestones.map((m) => m.projectId))]
+    if (projectIds.length > 1) {
+      return NextResponse.json(
+        { error: 'All milestones in a single reorder must belong to the same project' },
+        { status: 400 }
+      )
+    }
+    const [projectId] = projectIds
+
+    // CHANGED: was requireProjectRole(membership.role, ['PROJECT_MANAGER']).
+    // Same fix as every other milestone route — reordering is part of
+    // 'manageMilestones' in the matrix (Owner/Admin and PM, not
+    // Contributor). The raw 'PROJECT_MANAGER' string check was
+    // silently broken for implicit Owner/Admin access the moment
+    // requireProjectMembership stopped hardcoding that role string —
+    // this was one of the exact call sites that grep was for.
+    const membership = await requireProjectMembership(session.user.id, projectId)
+    if (!can(membership.role, 'manageMilestones')) {
+      throw new ForbiddenError('You do not have permission to reorder milestones on this project.')
     }
 
     // Step 4 — Batch update
@@ -70,7 +100,6 @@ export async function PATCH(request) {
     return NextResponse.json({ success: true })
 
   } catch (error) {
-    console.error('Reorder milestones error:', error)
-    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
+    return handleApiError(error)
   }
 }

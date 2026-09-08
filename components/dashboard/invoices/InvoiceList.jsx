@@ -7,6 +7,10 @@
 // Props:
 //   invoices — array of invoice objects from Prisma
 //   onCancel — function(invoiceId) — called when freelancer cancels an invoice
+//   canEdit  — NEW — boolean, from the matrix's 'editInvoices' action.
+//              true for Owner/Admin only. Gates ONLY the Cancel button —
+//              Copy link and Preview stay available to a PM (viewInvoices:
+//              true), since those are read actions, not edits.
 
 import { useState } from 'react'
 import { ExternalLink, XCircle, Loader2, Copy, CheckCircle2 } from 'lucide-react'
@@ -47,12 +51,14 @@ function formatDate(date) {
 }
 
 // Individual invoice row
-function InvoiceRow({ invoice, onCancel }) {
+function InvoiceRow({ invoice, onCancel, canEdit }) {
   const [isCancelling, setIsCancelling] = useState(false)
   const [copied,       setCopied]       = useState(false)
   const status = statusConfig[invoice.status] ?? statusConfig.UNPAID
 
   const handleCancel = async () => {
+    // NEW — guard the function too, not just the button below.
+    if (!canEdit) return
     if (!confirm(`Cancel invoice ${invoice.number}? This cannot be undone.`)) return
     setIsCancelling(true)
     try {
@@ -125,7 +131,11 @@ function InvoiceRow({ invoice, onCancel }) {
         {invoice.status === 'UNPAID' && (
           <div className="flex items-center gap-2">
 
-            {/* Copy payment link */}
+            {/* Copy payment link — unchanged, available regardless of
+                canEdit. This is a read action: it copies a link that
+                already exists, it doesn't change invoice state. A PM
+                with view-only invoice access should still be able to
+                grab the link to send to the client themselves. */}
             {invoice.stripePaymentLinkUrl && (
               <button
                 onClick={copyPaymentLink}
@@ -139,7 +149,7 @@ function InvoiceRow({ invoice, onCancel }) {
               </button>
             )}
 
-            {/* Open in Stripe */}
+            {/* Open in Stripe — unchanged, same reasoning as Copy link. */}
             {invoice.stripePaymentLinkUrl && (
               <a
                 href={invoice.stripePaymentLinkUrl}
@@ -153,19 +163,24 @@ function InvoiceRow({ invoice, onCancel }) {
               </a>
             )}
 
-            {/* Cancel invoice */}
-            <button
-              onClick={handleCancel}
-              disabled={isCancelling}
-              className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors"
-              title="Cancel this invoice"
-            >
-              {isCancelling
-                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                : <XCircle className="w-3.5 h-3.5" />
-              }
-              Cancel
-            </button>
+            {/* CHANGED — Cancel is the one action that actually
+                changes invoice state (editInvoices), so it's the only
+                one hidden without canEdit. A PM sees the invoice,
+                sees the payment link, just can't cancel it. */}
+            {canEdit && (
+              <button
+                onClick={handleCancel}
+                disabled={isCancelling}
+                className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors"
+                title="Cancel this invoice"
+              >
+                {isCancelling
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <XCircle className="w-3.5 h-3.5" />
+                }
+                Cancel
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -173,13 +188,18 @@ function InvoiceRow({ invoice, onCancel }) {
   )
 }
 
-export default function InvoiceList({ invoices = [], onCancel }) {
+export default function InvoiceList({ invoices = [], onCancel, canEdit = false }) {
   if (invoices.length === 0) {
     return (
       <div className="text-center py-10 bg-fp-base rounded-2xl">
         <p className="text-sm text-gray-400">No invoices yet.</p>
+        {/* CHANGED — the old copy assumed the reader can create one.
+            A PM sees this same empty state and shouldn't be told to
+            click a button that isn't there for them. */}
         <p className="text-xs text-gray-400 mt-1">
-          Create your first invoice using the button above.
+          {canEdit
+            ? 'Create your first invoice using the button above.'
+            : 'No invoices have been created for this project yet.'}
         </p>
       </div>
     )
@@ -192,6 +212,7 @@ export default function InvoiceList({ invoices = [], onCancel }) {
           key={invoice.id}
           invoice={invoice}
           onCancel={onCancel}
+          canEdit={canEdit}
         />
       ))}
     </div>

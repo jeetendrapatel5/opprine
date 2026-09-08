@@ -1,7 +1,13 @@
+// app/api/milestones/route.js  (POST)
+
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth"
+import { requireProjectMembership } from "@/lib/project";
+import { can } from "@/lib/project-permissions";
+import { ForbiddenError } from "@/lib/errors";
+import { handleApiError } from "@/lib/http-errors";
 
 export async function POST(request) {
   try {
@@ -18,13 +24,21 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    // 2. Security Check (BOLA Prevention): Ensure this user owns the project
-    const project = await prisma.project.findUnique({
-      where: { id: projectId }
-    });
-
-    if (!project || project.userId !== session.user.id) {
-      return NextResponse.json({ error: "Project not found or unauthorized" }, { status: 403 });
+    // 2. Project-scoped authorization. requireProjectMembership does
+    // the BOLA-prevention work: throws NotFoundError if projectId
+    // doesn't exist, ForbiddenError if this user has no ProjectMember
+    // row on it AND isn't OWNER/ADMIN of its workspace.
+    //
+    // CHANGED: was requireProjectRole(membership.role, ['PROJECT_MANAGER']).
+    // Milestones are gated to whoever can 'manageMilestones' in the
+    // matrix — Owner/Admin and PM, not Contributor. A raw
+    // 'PROJECT_MANAGER' string check would now WRONGLY block an
+    // Owner/Admin using implicit access, since requireProjectMembership
+    // returns their real role ('OWNER'/'ADMIN') instead of the old
+    // hardcoded 'PROJECT_MANAGER' — see the comment in lib/project.js.
+    const membership = await requireProjectMembership(session.user.id, projectId);
+    if (!can(membership.role, 'manageMilestones')) {
+      throw new ForbiddenError('You do not have permission to create milestones on this project.');
     }
 
     // 3. Auto-calculate the next order number
@@ -42,14 +56,14 @@ export async function POST(request) {
         title,
         order: nextOrder,
         projectId,
-        status: "PENDING" // Default status from your Prisma schema
+        status: "PENDING",
+        createdByUserId: session.user.id,
       }
     });
 
     return NextResponse.json(milestone, { status: 201 });
 
   } catch (error) {
-    console.error("Failed to create milestone:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return handleApiError(error);
   }
 }

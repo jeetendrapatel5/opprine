@@ -21,7 +21,7 @@ import { Settings, LogOut } from 'lucide-react'
 
 export default function Navbar({ user }) {
   return (
-    <nav className="bg-fp-surface border-b border-fp-border sticky top-0 z-40">
+    <nav className="bg-fp-surface border-b border-fp-border sticky top-0">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
 
         {/* ── Brand mark ── */}

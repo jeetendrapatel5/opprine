@@ -83,7 +83,25 @@ export default async function PortalPage({ params }) {
   }).catch(() => {})
 
   const { project } = client
-  const progress    = getProjectProgress(project.milestones)
+
+  // Strip createdByUserId from every milestone before it goes anywhere
+  // downstream. It's a new scalar field (added alongside ProjectMember/
+  // Task) that the `include` above pulls in by default along with
+  // every other Milestone column — include returns all scalars PLUS
+  // whatever relations are explicitly named, unlike select. Left as-is,
+  // it would ride along inside project.milestones straight into
+  // ProgressBanner and ProjectMilestones as props below, landing in
+  // the rendered page for anyone holding the magic link, whether or
+  // not either component actually displays it. Stripped once here
+  // rather than at each of the two call sites.
+  //
+  // tasks is NOT part of this — it's a relation, and Prisma never
+  // includes a relation unless it's named inside `include`, which it
+  // isn't above. That's the actual thing this file was checked for,
+  // and it's clean.
+  const safeMilestones = project.milestones.map(({ createdByUserId, ...milestone }) => milestone)
+
+  const progress = getProjectProgress(safeMilestones)
 
   // Update-level action items (legacy Update model, not milestones)
   const actionItems = project.updates.filter(u => u.status === 'IN_REVIEW')
@@ -100,7 +118,7 @@ export default async function PortalPage({ params }) {
           progress={progress}
           projectName={project.name}
           clientName={client.name}
-          milestones={project.milestones}
+          milestones={safeMilestones}
         />
 
         {/* ── Zone 2: Currently working on ── */}
@@ -124,7 +142,7 @@ export default async function PortalPage({ params }) {
             <section>
               <SectionLabel>Project Timeline</SectionLabel>
               <ProjectMilestones
-                milestones={project.milestones}
+                milestones={safeMilestones}
                 freelancerName={project.user.name}
                 clientName={client.name}
                 token={token}

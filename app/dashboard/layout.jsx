@@ -32,7 +32,7 @@ export default async function DashboardLayout({ children }) {
       <SidebarInset className="bg-fp-base min-h-screen font-body">
 
         <header className="
-          sticky top-0 z-90
+          sticky top-0 z-9
           flex items-center gap-3
           h-14 px-4 sm:px-6
           border-b border-fp-border

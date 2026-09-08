@@ -1,3 +1,5 @@
+// Real path: app/api/projects/route.js  (POST)
+
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from "@/lib/auth"
@@ -36,43 +38,28 @@ export async function POST(request) {
     // missing — see the signup-flow gap flagged in chat.
     const { workspaceId } = await requireWorkspaceMembership(session.user.id)
 
-    // Step 5 — Check limits AND create the project, inside one
-    // transaction, protected by an advisory lock scoped to this
-    // workspace.
-    //
-    // Why the lock: without it, two simultaneous requests could both
-    // read "1 of 2 projects used, allowed" and both insert, landing at
-    // 3 projects on a 2-project plan. pg_advisory_xact_lock forces any
-    // other transaction trying to create a project for the SAME
-    // workspace to wait until this one finishes — so the second request
-    // always sees the first one's result before deciding. The lock is
-    // released automatically when the transaction ends (commit OR
-    // rollback), so a failed request never leaves things stuck.
+    // Step 5 — Check limits, create the project, AND auto-stage the
+    // creator as PROJECT_MANAGER on it — all inside one transaction,
+    // protected by the same advisory lock as before.
     const project = await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${workspaceId}))`
 
-      // Pass `tx` (not the global prisma) so this count is read through
-      // the SAME locked connection — see the entitlements.js change.
       const projectCheck = await assertWithinLimit(workspaceId, 'maxProjects', tx)
       if (!projectCheck.allowed) {
         throw new LimitExceededError(projectCheck.reason)
       }
 
-      // This route always creates exactly one client alongside the
-      // project (1:1 relationship in this app), so a client-limit check
-      // matters too — e.g. if a future plan ever sets maxClients lower
-      // than maxProjects.
       const clientCheck = await assertWithinLimit(workspaceId, 'maxClients', tx)
       if (!clientCheck.allowed) {
         throw new LimitExceededError(clientCheck.reason)
       }
 
-      return tx.project.create({
+      const created = await tx.project.create({
         data: {
           name,
           description: description || null,
           userId: session.user.id, // kept: records who created it
-          workspaceId,             // NEW: the actual owner for billing/limits
+          workspaceId,             // the actual owner for billing/limits
           githubWebhookSecret: crypto.randomBytes(32).toString('hex'),
           client: {
             create: {
@@ -85,6 +72,35 @@ export async function POST(request) {
           client: true,
         },
       })
+
+      // NEW — auto-stage the creator as PROJECT_MANAGER on their own
+      // new project (per your call: yes, auto-stage).
+      //
+      // Deliberately NOT calling addProjectMember() here. That function
+      // requires the REQUESTER to already have PROJECT_MANAGER-or-above
+      // access on the project before it lets them add anyone (see
+      // requireProjectMembership + requireProjectRole inside it in
+      // lib/project.js). Right here, the project has zero ProjectMember
+      // rows and the creator might only be a workspace MEMBER, not
+      // OWNER/ADMIN — so addProjectMember() would throw ForbiddenError
+      // on itself. Nobody has authority on a project that was only
+      // just created; that's exactly the bootstrap gap this line fills.
+      //
+      // Same reasoning as createWorkspaceForUser() in workspace.js
+      // creating the first WorkspaceMember row directly rather than
+      // routing through a permission-gated helper. The one precondition
+      // addProjectMember() would otherwise check — target user must
+      // already be a WorkspaceMember of this workspace — is already
+      // satisfied, since requireWorkspaceMembership() above confirmed it.
+      await tx.projectMember.create({
+        data: {
+          projectId: created.id,
+          userId: session.user.id,
+          role: 'PROJECT_MANAGER',
+        },
+      })
+
+      return created
     })
 
     return NextResponse.json(project, { status: 201 })

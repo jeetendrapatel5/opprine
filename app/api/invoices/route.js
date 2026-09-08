@@ -5,6 +5,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from "@/lib/auth"
 import prisma from '@/lib/prisma'
 import Stripe from 'stripe'
+import { requireProjectMembership } from '@/lib/project'
+import { can } from '@/lib/project-permissions'
+import { ForbiddenError, NotFoundError } from '@/lib/errors'
+import { handleApiError } from '@/lib/http-errors'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-04-10',
@@ -35,19 +39,35 @@ export async function POST(request) {
       )
     }
 
-    // Step 3: Ownership check
-    const project = await prisma.project.findFirst({
-      where: {
-        id:     projectId,
-        userId: session.user.id,   // ensures the project belongs to THIS freelancer
-      },
+    // CHANGED: was `prisma.project.findFirst({ where: { id: projectId,
+    // userId: session.user.id } })` — the SAME bug the very first fix
+    // in this whole project addressed on the project-delete route:
+    // matching against `userId` only recognizes the project's
+    // ORIGINAL CREATOR. A Workspace Owner/Admin who didn't personally
+    // create this project, or a PM staffed on it later, would have
+    // been silently blocked here — not a permissions decision, just a
+    // stale check that predates workspaces and project staffing
+    // entirely.
+    //
+    // requireProjectMembership throws NotFoundError if the project
+    // doesn't exist, ForbiddenError if this user isn't staffed on it
+    // and isn't an implicit Owner/Admin. can(role, 'createInvoices')
+    // is then the actual matrix decision: true for Owner/Admin, false
+    // for PM (view only) and Contributor (no access at all).
+    const membership = await requireProjectMembership(session.user.id, projectId)
+    if (!can(membership.role, 'createInvoices')) {
+      throw new ForbiddenError('You do not have permission to create invoices on this project.')
+    }
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
       include: {
         client: { select: { name: true } },
       },
     })
 
     if (!project) {
-      return NextResponse.json({ error: 'Project not found' }, { status: 404 })
+      throw new NotFoundError('Project not found.')
     }
 
     // Step 4: Validate milestoneId ownership (if provided)
@@ -194,6 +214,15 @@ export async function POST(request) {
         { error: `Stripe error: ${error.message}` },
         { status: 502 }
       )
+    }
+
+    // CHANGED — was a bare console.error + generic 500 for everything.
+    // Now routes NotFoundError/ForbiddenError (from requireProjectMembership
+    // and the can() check above) through handleApiError, same as every
+    // other route in the app, instead of flattening them into an opaque
+    // 500 that would have hidden the real reason from the client.
+    if (error.name === 'NotFoundError' || error.name === 'ForbiddenError') {
+      return handleApiError(error)
     }
 
     console.error('[POST /api/invoices]', error)

@@ -43,6 +43,22 @@ model User {
   // below) so deleting this user's account doesn't wipe out invites
   // still pending for OTHER people.
   sentInvites WorkspaceInvite[] @relation("SentInvites")
+
+  // Projects this user is staffed on, with a project-scoped role
+  // (PROJECT_MANAGER / CONTRIBUTOR / VIEWER). This is a SEPARATE axis
+  // from WorkspaceRole above — see ProjectMember below for why they
+  // can't be merged. See lib/project.js for how the two combine.
+  projectMemberships ProjectMember[]
+
+  // Two distinct relations from User into Task (who it's assigned to,
+  // who created it) — both need an explicit @relation name below or
+  // Prisma can't tell them apart.
+  assignedTasks Task[] @relation("AssignedTasks")
+  createdTasks  Task[] @relation("CreatedTasks")
+
+  // Milestones this user created. No relation name needed — Milestone
+  // only has this one relation into User.
+  createdMilestones Milestone[]
 }
 
 // A Workspace is the new "billing owner." One subscription belongs to
@@ -129,6 +145,44 @@ enum InviteStatus {
   REVOKED  // an OWNER/ADMIN explicitly cancelled it before it was accepted
 }
 
+// Join table: connects a User to a Project, with a PROJECT-scoped
+// role. This is a second, separate axis from WorkspaceMember above —
+// WorkspaceRole answers "what can this person do to the agency,"
+// ProjectRole answers "what can this person do on this one client
+// engagement." A user can be PROJECT_MANAGER on one project and
+// CONTRIBUTOR on another, in the same workspace, at the same time —
+// which is exactly why the role has to live here and not on
+// WorkspaceMember.
+//
+// A ProjectMember row should only ever be created for a user who is
+// ALREADY a WorkspaceMember of this project's workspace — Prisma
+// can't express that constraint at the schema level, so
+// addProjectMember() in lib/project.js checks it directly before
+// writing this row.
+model ProjectMember {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  role      ProjectRole @default(CONTRIBUTOR)
+  addedAt   DateTime    @default(now())
+
+  // A user can't be staffed on the same project twice.
+  @@unique([projectId, userId])
+  // @@unique above already gives an efficient index for "who's staffed
+  // on this project" (projectId is the leading column). This second
+  // index is for the other direction — "which projects is this user
+  // staffed on" — same reasoning as WorkspaceMember's @@index([workspaceId]).
+  @@index([userId])
+}
+
+enum ProjectRole {
+  PROJECT_MANAGER // can create/edit/reorder milestones, staff people onto the project
+  CONTRIBUTOR     // can create tasks, work assigned tasks, post updates — default role
+  VIEWER          // read-only — reserved for future use, e.g. a stakeholder who shouldn't edit anything
+}
+
 model BankAccount {
   id     String @id @default(cuid())
   userId String
@@ -164,6 +218,7 @@ model Project {
   updates     Update[]
   files       File[]
   milestones  Milestone[]
+  members     ProjectMember[]
   isPublic      Boolean   @default(false)
   publicSlug    String?   @unique 
   clientRating  Int?    
@@ -281,6 +336,64 @@ model Milestone {
   milestoneUpdates MilestoneUpdate[]
   messages         MilestoneMessage[]
   invoices         Invoice[]
+  tasks            Task[]
+
+  // Who created this milestone. Deliberately OPTIONAL (String?, not
+  // String) — you already have real Milestone rows in production
+  // (this isn't a fresh model like Task/ProjectMember below), and a
+  // required FK on an existing table needs a backfill migration
+  // before it can go NOT NULL. Every NEW milestone must set this at
+  // creation time in application code — enforce it there, not in the
+  // schema, same tradeoff already made for activeWorkspaceId.
+  createdByUserId String?
+  createdBy       User?    @relation(fields: [createdByUserId], references: [id])
+}
+
+// A granular, INTERNAL work item under a Milestone. Never exposed on
+// any client-facing (magic-link) route — clients see Milestone's
+// delivery card, never the raw task list. Enforce that at the API
+// layer: client-facing endpoints should simply never query this model.
+//
+// Unlike Milestone (gated to PROJECT_MANAGER/ADMIN/OWNER), any
+// ProjectMember staffed on the project can create a Task — see
+// requireProjectMembership() in lib/project.js, called with no
+// additional role check for task creation.
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?    @db.Text
+  status      TaskStatus @default(TODO)
+  order       Int        @default(0)
+  dueDate     DateTime?
+
+  milestoneId String
+  milestone   Milestone  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  // Optional + SetNull: a task can briefly exist unassigned, and if
+  // the assigned person's account is later removed, the task should
+  // become unassigned again, not disappear — same reasoning as
+  // WorkspaceInvite.invitedByUserId.
+  assignedToId String?
+  assignedTo   User?      @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  // Required, no SetNull — this is a brand-new model with no existing
+  // rows, so (unlike Milestone.createdByUserId above) there's no
+  // backfill problem, and every Task should always know who made it.
+  createdByUserId String
+  createdBy       User    @relation("CreatedTasks", fields: [createdByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([milestoneId])
+  @@index([assignedToId])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
 }
 
 model MilestoneUpdate {
