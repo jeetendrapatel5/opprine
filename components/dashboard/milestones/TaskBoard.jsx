@@ -11,7 +11,21 @@
 // MilestoneUpdateFeed/MilestoneUpdateForm: the section label lives in
 // the parent (MilestoneRow), this component only renders the content.
 //
-// Usage: <TaskBoard milestoneId={milestone.id} projectId={milestone.projectId} />
+// currentUserId — CHANGED: MilestoneRow has been forwarding this prop
+// down for a while (for the delete-permission work described in its
+// comments), but this file wasn't reading it yet. It's picked up now
+// purely to identify "me" in the assignee dropdown below — the
+// canDeleteAnyTask permission wiring described in MilestoneRow's
+// comments is a separate piece of work, not part of this change.
+//
+// AssigneeSelect / StatusSelect — CHANGED: both were previously native
+// <select> elements (browser-default styling, clashing hard with the
+// dark fp-* theme). Both are now themed dropdowns living in their own
+// files next to this one. Neither changes what gets sent to the API —
+// assignedToId and the status PATCH payload are exactly as before.
+//
+// Usage: <TaskBoard milestoneId={milestone.id} projectId={milestone.projectId}
+//          currentUserId={currentUserId} />
 // projectId comes straight off the milestone object — Milestone.projectId
 // is a plain scalar column, already present on every milestone object
 // MilestoneManager holds (Prisma's `include` returns all scalars by
@@ -22,6 +36,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import axios from 'axios'
 import { Plus, Loader2, Trash2 } from 'lucide-react'
+import AssigneeSelect from './AssigneeSelect'
+import StatusSelect from './StatusSelect'
 
 const STATUSES = [
   { value: 'TODO', label: 'To do' },
@@ -30,7 +46,7 @@ const STATUSES = [
   { value: 'DONE', label: 'Done' },
 ]
 
-export default function TaskBoard({ milestoneId, projectId }) {
+export default function TaskBoard({ milestoneId, projectId, currentUserId }) {
   const [tasks, setTasks] = useState(null)
   const [projectMembers, setProjectMembers] = useState(null)
   const [isCreating, setIsCreating] = useState(false)
@@ -116,7 +132,7 @@ export default function TaskBoard({ milestoneId, projectId }) {
         <button
           type="button"
           onClick={() => setIsCreating((v) => !v)}
-          className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-fp-accent hover:text-fp-accent-hover transition-colors duration-150"
+          className="flex items-center gap-1 cursor-pointer text-[10px] font-bold uppercase tracking-wider text-fp-accent hover:text-fp-accent-hover transition-colors duration-150"
         >
           {isCreating ? (
             'Cancel'
@@ -132,7 +148,7 @@ export default function TaskBoard({ milestoneId, projectId }) {
       {isCreating && (
         <form
           onSubmit={handleCreate}
-          className="flex flex-wrap items-end gap-2 mb-4 bg-fp-raised border border-fp-border rounded-lg p-3"
+          className="flex items-center flex-wrap gap-2 mb-3 bg-fp-raised border border-fp-border rounded-lg px-1.5 py-1"
         >
           <input
             type="text"
@@ -148,24 +164,19 @@ export default function TaskBoard({ milestoneId, projectId }) {
               disabled:opacity-50 transition-colors duration-150
             "
           />
-          <select
+          {/* CHANGED — was a native <select> of project members. Now a
+              polished popover (AssigneeSelect) that surfaces "· Me" for
+              currentUserId, shows email as secondary text, and adds a
+              search box once the member list is long. Still just holds
+              a userId (or '') in newAssigneeId — handleCreate above is
+              untouched. */}
+          <AssigneeSelect
+            members={projectMembers ?? []}
             value={newAssigneeId}
-            onChange={(e) => setNewAssigneeId(e.target.value)}
+            onChange={setNewAssigneeId}
+            currentUserId={currentUserId}
             disabled={isSubmitting}
-            className="
-              bg-fp-base border border-fp-border text-fp-text-secondary
-              text-xs rounded-lg px-2.5 py-2
-              focus:outline-none focus:ring-2 focus:ring-fp-accent/30 focus:border-fp-accent/50
-              disabled:opacity-50
-            "
-          >
-            <option value="">Unassigned</option>
-            {(projectMembers ?? []).map((m) => (
-              <option key={m.userId} value={m.userId}>
-                {m.name || m.email}
-              </option>
-            ))}
-          </select>
+          />
           <button
             type="submit"
             disabled={isSubmitting || !newTitle.trim()}
@@ -210,20 +221,18 @@ export default function TaskBoard({ milestoneId, projectId }) {
                       </p>
                     )}
                     <div className="flex items-center justify-between gap-1.5 mt-2">
-                      <select
+                      {/* CHANGED — was a native <select>, which renders
+                          with the OS's own white/blue popup styling
+                          (see the screenshot this replaced). StatusSelect
+                          is a themed dropdown portaled past this column's
+                          overflow-hidden; updateTask's call shape below
+                          is unchanged. */}
+                      <StatusSelect
+                        statuses={STATUSES}
                         value={task.status}
-                        onChange={(e) => updateTask(task.id, { status: e.target.value })}
+                        onChange={(next) => updateTask(task.id, { status: next })}
                         disabled={pendingTaskId === task.id}
-                        className="
-                          text-[10px] bg-fp-raised border border-fp-border text-fp-text-secondary
-                          rounded px-1 py-1 disabled:opacity-50
-                          focus:outline-none focus:ring-1 focus:ring-fp-accent/30
-                        "
-                      >
-                        {STATUSES.map((s) => (
-                          <option key={s.value} value={s.value}>{s.label}</option>
-                        ))}
-                      </select>
+                      />
                       <button
                         type="button"
                         onClick={() => handleDelete(task.id)}

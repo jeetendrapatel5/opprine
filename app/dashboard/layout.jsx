@@ -7,6 +7,7 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import DashboardSidebar from '@/components/DashboardSidebar'
+import NotificationBell from '@/components/notifications/NotificationBell'
 
 export default async function DashboardLayout({ children }) {
 
@@ -42,6 +43,14 @@ export default async function DashboardLayout({ children }) {
           <SidebarTrigger
             className="text-fp-text-secondary hover:text-fp-text-primary hover:bg-fp-surface transition-colors"
           />
+
+          {/* ml-auto pushes the bell to the far right of the header.
+              SidebarTrigger stays left; nothing sits between them yet
+              (e.g. breadcrumbs) — if you add something there later, it
+              goes between this div and SidebarTrigger, not inside it. */}
+          <div className="ml-auto flex items-center">
+            <NotificationBell />
+          </div>
 
         </header>
         <main className="w-full px-4 sm:px-6 py-8">

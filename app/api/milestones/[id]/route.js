@@ -11,6 +11,7 @@ import { requireProjectMembership } from "@/lib/project";
 import { can } from "@/lib/project-permissions";
 import { ForbiddenError } from "@/lib/errors";
 import { handleApiError } from "@/lib/http-errors";
+import { notifyMilestoneAwaitingApproval } from "@/lib/notifications/triggers";
 
 export async function PATCH(request, { params }) {
   try {
@@ -167,6 +168,34 @@ export async function PATCH(request, { params }) {
           console.error("[PATCH milestone] Failed to send review email:", err);
         });
       }
+
+      // NEW — internal notification: tell the project's PMs the client
+      // now has this milestone to review. Deliberately a SIBLING of the
+      // `if (client?.email)` block above, not nested inside it — the
+      // internal team should hear about this regardless of whether the
+      // client happens to have an email on file. Fire-and-forget with
+      // its own .catch(), same pattern as sendEmail() right above: a
+      // notification failing to write must never fail this PATCH
+      // request, since the milestone update itself already succeeded.
+      //
+      // `updated` already has everything notifyMilestoneAwaitingApproval
+      // needs (id, title, projectId) — it's the fresh row straight from
+      // prisma.milestone.update() a few lines up, no extra query.
+      //
+      // CAVEAT worth knowing: the dedupe key for this notification type
+      // is scoped to the milestone only (see buildDedupeKey in
+      // lib/notifications/constants.js), so if this milestone is later
+      // REJECTED and resubmitted (status leaves IN_REVIEW and comes back
+      // to it), this call will silently create nothing the second time —
+      // the first notification row still exists. If you want a second
+      // submission to notify again, the fix goes in whatever route
+      // handles the client's reject action (not this one): delete the
+      // existing notification there, using the same dedupeKey format,
+      // right when the milestone leaves IN_REVIEW. I don't have that
+      // route, so this isn't wired up — flagging it rather than guessing.
+      notifyMilestoneAwaitingApproval(updated).catch((err) => {
+        console.error("[PATCH milestone] Failed to create approval notification:", err);
+      });
     }
 
     return NextResponse.json(updated);

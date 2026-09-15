@@ -186,3 +186,37 @@
   --sidebar-border:    hsl(240 3.7% 15.9%);
   --sidebar-ring:    hsl(217.2 91.2% 59.8%);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SCOPED DARK OVERRIDE FOR SHADCN PRIMITIVES IN THE DASHBOARD
+   :root above defines the shadcn system tokens (--popover, --accent, etc.)
+   as light-theme values, and .dark only overrides the --sidebar-* ones — so
+   a shadcn primitive like <Calendar> or <Popover> dropped into the (always-
+   dark) dashboard would render with its light-mode colors by default.
+
+   This isn't added to .dark itself because .dark is also reachable by the
+   light-themed client portal (see "Portal Colors" above) — redefining
+   --popover/--accent/etc. there would break portal pages that use shadcn
+   components too. Apply this class directly to the shadcn element (e.g.
+   PopoverContent's className) that needs dashboard-dark colors instead.
+───────────────────────────────────────────────────────────────────────────── */
+.fp-dark-popover {
+  --background:          #0D1117; /* fp-base */
+  --foreground:           #E8ECFF; /* fp-text-primary */
+  --card:                 #161B22; /* fp-surface */
+  --card-foreground:      #E8ECFF; /* fp-text-primary */
+  --popover:              #1C2230; /* fp-raised */
+  --popover-foreground:   #E8ECFF; /* fp-text-primary */
+  --primary:              #7B93FF; /* fp-accent */
+  --primary-foreground:   #0D1117; /* fp-base — same accent+base pairing as the existing "Add"/"Send for Review" buttons */
+  --secondary:            #1C2230; /* fp-raised */
+  --secondary-foreground: #E8ECFF; /* fp-text-primary */
+  --muted:                #161B22; /* fp-surface */
+  --muted-foreground:     #4A5368; /* fp-text-tertiary */
+  --accent:               #1E2440; /* fp-accent-muted */
+  --accent-foreground:    #7B93FF; /* fp-accent */
+  --destructive:          #F04438; /* fp-danger */
+  --border:               #2A3244; /* fp-border */
+  --input:                #2A3244; /* fp-border */
+  --ring:                 #7B93FF; /* fp-accent */
+}

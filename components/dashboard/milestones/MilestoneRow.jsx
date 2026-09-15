@@ -5,13 +5,20 @@ import { useState } from 'react'
 import {
   GripVertical, CheckCircle2, CircleDashed, ArrowRightCircle,
   Eye, Loader2, Trash2, ChevronDown, ChevronRight, MessageSquare,
-  Send, Calendar,
+  Send, Calendar as CalendarIcon,
 } from 'lucide-react'
 import MilestoneUpdateFeed from './MilestoneUpdateFeed'
 import MilestoneUpdateForm from './MilestoneUpdateForm'
 import DeliveryModal       from './DeliveryModal'
 import TaskBoard            from './TaskBoard'
 import axios from 'axios'
+// CHANGED — shadcn's own Calendar/Popover, replacing the native
+// <input type="date"> below. Aliased the lucide icon above to
+// CalendarIcon so it doesn't collide with this Calendar component —
+// both are still used, just for different things (a small glyph vs.
+// the actual picker).
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 const statusBadgeStyles = {
   PENDING:     'bg-fp-border/50 text-fp-text-tertiary border-fp-border',
@@ -99,6 +106,7 @@ export default function MilestoneRow({
   const [isDeliveryOpen, setIsDeliveryOpen]= useState(false)
   const [dueDate,        setDueDate]       = useState(milestone.dueDate ?? null)
   const [isDueSaving,    setIsDueSaving]   = useState(false)
+  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false)
 
   const messages       = milestone.messages ?? []
   const totalItems     = localUpdates.length + messages.length
@@ -196,7 +204,7 @@ export default function MilestoneRow({
             <button
               onClick={() => onStatusChange(milestone.id, milestone.status)}
               disabled={isUpdating}
-              className="hover:scale-110 transition-transform duration-150 focus:outline-none shrink-0"
+              className="hover:scale-110 transition-transform duration-150 focus:outline-none shrink-0 cursor-pointer"
               title="Click to advance status"
             >
               {isUpdating
@@ -236,7 +244,7 @@ export default function MilestoneRow({
                   : 'bg-fp-border/50 text-fp-text-tertiary'
                 }
               `}>
-                <Calendar className="w-2.5 h-2.5" />
+                <CalendarIcon className="w-2.5 h-2.5" />
                 {dueDateDisplay.label}
               </span>
             )}
@@ -252,7 +260,7 @@ export default function MilestoneRow({
               </span>
             )}
 
-            <span className="ml-auto shrink-0 flex items-center gap-2">
+            <span className="ml-auto cursor-pointer shrink-0 flex items-center gap-2">
               {hasUnresolved && (
                 <span
                   className="w-1.5 h-1.5 rounded-full bg-fp-danger animate-pulse"
@@ -278,7 +286,7 @@ export default function MilestoneRow({
                 shrink-0 flex items-center gap-1.5
                 bg-fp-accent hover:bg-fp-accent-hover text-fp-base
                 text-[10px] font-bold uppercase tracking-wider
-                px-2.5 py-1.5 rounded-lg transition-colors duration-150
+                px-2.5 py-1.5 rounded-lg transition-colors duration-150 cursor-pointer
               "
             >
               <Send className="w-3.5 h-3.5" />
@@ -342,7 +350,7 @@ export default function MilestoneRow({
               className="
                 opacity-0 group-hover:opacity-100 transition-opacity duration-150
                 text-fp-text-tertiary hover:text-fp-danger
-                p-1 rounded shrink-0
+                p-1 rounded shrink-0 cursor-pointer
               "
               title="Delete milestone"
             >
@@ -365,24 +373,69 @@ export default function MilestoneRow({
                 change. */}
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-fp-text-tertiary shrink-0">
-                <Calendar className="w-3 h-3" />
+                <CalendarIcon className="w-3 h-3" />
                 Due date
               </label>
               {canManage ? (
                 <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={toDateInputValue(dueDate)}
-                    onChange={handleDueDateChange}
-                    disabled={isDueSaving}
-                    className="
-                      text-xs bg-fp-raised text-fp-text-secondary
-                      rounded-lg px-2.5 py-1.5
-                      focus:outline-none focus:ring-2 focus:ring-fp-accent/30 focus:border-fp-accent/50
-                      disabled:opacity-50 cursor-pointer
-                      transition-colors duration-150
-                    "
-                  />
+                  {/* CHANGED — was a native <input type="date">, which
+                      renders with the OS's own calendar UI (the thing
+                      that clashed with the dark theme). handleDueDateChange
+                      below is untouched — Calendar's onSelect just calls
+                      it with the same { target: { value } } shape the
+                      native input's onChange used to produce, via the
+                      existing toDateInputValue helper. */}
+                  <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        disabled={isDueSaving}
+                        className="
+                          flex items-center gap-2
+                          bg-fp-raised border border-fp-border
+                          text-xs text-left rounded-lg px-2.5 py-1.5
+                          hover:border-fp-accent/40
+                          focus:outline-none focus:ring-2 focus:ring-fp-accent/30 focus:border-fp-accent/50
+                          disabled:opacity-50 cursor-pointer
+                          transition-colors duration-150
+                        "
+                      >
+                        <CalendarIcon className="w-3.5 h-3.5 text-fp-text-tertiary shrink-0" />
+                        <span className={dueDate ? 'text-fp-text-secondary' : 'text-fp-text-tertiary'}>
+                          {dueDate
+                            ? new Date(dueDate).toLocaleDateString('en-GB', {
+                                day: 'numeric', month: 'short', year: 'numeric',
+                              })
+                            : 'Set due date'}
+                        </span>
+                      </button>
+                    </PopoverTrigger>
+                    {/* fp-dark-popover (see globals.css) — shadcn's Calendar
+                        renders through Popover's own portal, using semantic
+                        classes like bg-popover / bg-accent that read from
+                        the root --popover/--accent CSS vars. Those vars are
+                        only overridden for dark under the existing .dark
+                        class, and .dark here only touches sidebar tokens —
+                        so without this, the calendar would render with the
+                        light-mode shadcn palette (white) inside the dark
+                        dashboard. fp-dark-popover scopes fp-equivalent
+                        values to just this popover instead of touching
+                        .dark globally, since that class is also reached by
+                        the light-themed client portal. */}
+                    <PopoverContent align="start" className="fp-dark-popover w-auto p-0 border-fp-border">
+                      <Calendar
+                        mode="single"
+                        selected={dueDate ? new Date(dueDate) : undefined}
+                        onSelect={(date) => {
+                          handleDueDateChange({
+                            target: { value: date ? toDateInputValue(date) : '' },
+                          })
+                          setIsDatePopoverOpen(false)
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   {isDueSaving && (
                     <Loader2 className="w-3 h-3 text-fp-accent animate-spin" />
                   )}

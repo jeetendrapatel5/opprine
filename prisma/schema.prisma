@@ -16,12 +16,12 @@ model User {
   updatedAt DateTime  @updatedAt
   projects  Project[]
 
-  bio          String?  
-  avatarUrl    String?   
-  portfolioUrl String?   
+  bio          String?
+  avatarUrl    String?
+  portfolioUrl String?
 
-  username       String?  @unique
-  profileEnabled Boolean  @default(false)
+  username       String? @unique
+  profileEnabled Boolean @default(false)
   profileTagline String?
 
   bankAccounts BankAccount[]
@@ -59,6 +59,21 @@ model User {
   // Milestones this user created. No relation name needed — Milestone
   // only has this one relation into User.
   createdMilestones Milestone[]
+
+  notifications Notification[]
+
+  // ── Password reset ─────────────────────────────────────────────────
+  // One-to-one: a user has at most one active reset request at a time.
+  // See PasswordReset model below for the full explanation.
+  passwordReset PasswordReset?
+
+  // Set every time this user's password changes (signup does NOT set
+  // this — only an actual password change does). Used by
+  // lib/auth.js's jwt() callback to invalidate any JWT session that
+  // was issued BEFORE this moment, which is how "log out other
+  // sessions after a password reset" is implemented despite NextAuth's
+  // JWT strategy having no server-side session record to delete.
+  passwordChangedAt DateTime?
 }
 
 // A Workspace is the new "billing owner." One subscription belongs to
@@ -68,7 +83,7 @@ model User {
 // WorkspaceMember rows to an existing Workspace. Nothing here changes then.
 model Workspace {
   id        String   @id @default(cuid())
-  name      String   // shown in UI, e.g. "Jeetu's Workspace" — editable later
+  name      String // shown in UI, e.g. "Jeetu's Workspace" — editable later
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -76,6 +91,8 @@ model Workspace {
   projects     Project[]
   subscription Subscription?
   invites      WorkspaceInvite[]
+
+  notifications Notification[]
 }
 
 // Join table: connects a User to a Workspace, with a role.
@@ -98,8 +115,8 @@ model WorkspaceMember {
 }
 
 enum WorkspaceRole {
-  OWNER  // created the workspace, or the original solo-migrated user
-  ADMIN  // future: can manage members/billing but didn't create it
+  OWNER // created the workspace, or the original solo-migrated user
+  ADMIN // future: can manage members/billing but didn't create it
   MEMBER // future: regular teammate, no billing access
 }
 
@@ -108,9 +125,9 @@ enum WorkspaceRole {
 // was sent," not "this person is in the workspace." A WorkspaceMember
 // row only gets created once acceptInvite() actually runs.
 model WorkspaceInvite {
-  id          String        @id @default(cuid())
+  id          String    @id @default(cuid())
   workspaceId String
-  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   email String // who the invite was sent to — may or may not have an account yet
   role  WorkspaceRole // the role they'll get on accept — set by the inviter, never chosen by the invitee (see acceptInvite)
@@ -127,7 +144,7 @@ model WorkspaceInvite {
   // invite should NOT disappear with them — the invitee should still be
   // able to accept it. We just lose the "who sent this" attribution.
   invitedByUserId String?
-  invitedBy       User?    @relation("SentInvites", fields: [invitedByUserId], references: [id], onDelete: SetNull)
+  invitedBy       User?   @relation("SentInvites", fields: [invitedByUserId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt // bumped on every re-invite (upsert), so "last sent" is always accurate
@@ -140,9 +157,100 @@ model WorkspaceInvite {
 }
 
 enum InviteStatus {
-  PENDING  // sent, not yet acted on — may also be past expiresAt; we check that at read time, not with a separate stored status
+  PENDING // sent, not yet acted on — may also be past expiresAt; we check that at read time, not with a separate stored status
   ACCEPTED // acceptInvite() ran successfully
-  REVOKED  // an OWNER/ADMIN explicitly cancelled it before it was accepted
+  REVOKED // an OWNER/ADMIN explicitly cancelled it before it was accepted
+}
+
+model Notification {
+  id String @id @default(cuid())
+
+  // WHO sees this.
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // WHICH workspace this belongs to. This is the field that makes the
+  // "never leak across workspaces" rule mechanically enforceable — every
+  // single read in lib/notifications/service.js filters by BOTH userId
+  // AND workspaceId together, the same two-part scoping
+  // getWorkspaceForUser() already establishes as the pattern for
+  // "which workspace" everywhere else in this app.
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  type    NotificationType
+  title   String
+  message String
+
+  read   Boolean   @default(false)
+  readAt DateTime?
+
+  // A lightweight POINTER to the project this is about — deliberately
+  // NOT a Prisma @relation, and deliberately NOT a foreign key. Two
+  // reasons, both on purpose:
+  //   1. If the project is later deleted, this notification should
+  //      SURVIVE (still show "Homepage Design is waiting for client
+  //      approval" in the list) rather than being cascade-deleted or
+  //      silently nulled out — the spec explicitly asks for this
+  //      resilience. lib/notifications/service.js is written to
+  //      handle a projectId that no longer resolves to a real row.
+  //   2. `title` and `message` above already contain the full,
+  //      human-readable text baked in at creation time — the list view
+  //      NEVER needs to JOIN into Project to render. That's what keeps
+  //      the notification dropdown fast even with a huge table: no
+  //      per-row join, just an indexed SELECT.
+  projectId String?
+
+  // Free-form JSON for anything type-specific that doesn't deserve its
+  // own column (e.g. { milestoneId, milestoneTitle } for an approval
+  // notification, { inviteToken } for an invite). This is what lets a
+  // brand-new notification TYPE ship later without a new migration —
+  // see lib/notifications/constants.js for how each type reads its own
+  // shape out of this field.
+  metadata Json?
+
+  // The actual mechanical duplicate-prevention. See @@unique below —
+  // this is what stops a webhook retry / double click / React
+  // re-render from creating two rows for the same real-world event.
+  dedupeKey String?
+
+  createdAt DateTime @default(now())
+
+  // The dedup mechanism itself. Postgres refuses a second row with the
+  // same (userId, dedupeKey) pair — so even if createNotification() is
+  // called twice for the exact same event (page refresh mid-request,
+  // webhook retry, a second identical mutation), only the FIRST insert
+  // succeeds; the second hits this constraint, and
+  // lib/notifications/service.js catches that specific error and treats
+  // it as "already exists," not a failure. NULL dedupeKey values are
+  // exempt from this (Postgres treats NULL as never equal to NULL) —
+  // fine, because every type currently defined always sets one; see
+  // buildDedupeKey() in constants.js.
+  @@unique([userId, dedupeKey])
+  // Two indexes, matching the two query shapes the spec calls out by
+  // name:
+  //   "recipient + read status"   → the unread badge + unread-only views
+  //   "recipient + createdAt"     → the full paginated list, newest first
+  // Both lead with [userId, workspaceId] together because EVERY query
+  // this app makes against this table filters on both at once — there
+  // is no legitimate query that needs userId without workspaceId, so a
+  // single-column userId index would be wasted space.
+  @@index([userId, workspaceId, read, createdAt])
+  @@index([userId, workspaceId, createdAt])
+}
+
+enum NotificationType {
+  MILESTONE_APPROVAL_PENDING
+  WORKSPACE_INVITE
+  PROJECT_ASSIGNED
+
+  // ── Add these three ──────────────────────────────────────────────────
+  MILESTONE_UPDATE_POSTED         // a Contributor posted a progress note (no file)
+  MILESTONE_DELIVERABLE_UPLOADED  // a Contributor posted a progress note WITH a file attached
+  TASK_COMPLETED                  // a Contributor marked a task DONE
+
+  PROJECT_UPDATE_POSTED
+  PROJECT_FILE_UPLOADED 
 }
 
 // Join table: connects a User to a Project, with a PROJECT-scoped
@@ -179,8 +287,8 @@ model ProjectMember {
 
 enum ProjectRole {
   PROJECT_MANAGER // can create/edit/reorder milestones, staff people onto the project
-  CONTRIBUTOR     // can create tasks, work assigned tasks, post updates — default role
-  VIEWER          // read-only — reserved for future use, e.g. a stakeholder who shouldn't edit anything
+  CONTRIBUTOR // can create tasks, work assigned tasks, post updates — default role
+  VIEWER // read-only — reserved for future use, e.g. a stakeholder who shouldn't edit anything
 }
 
 model BankAccount {
@@ -188,16 +296,16 @@ model BankAccount {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  label             String  
-  bankName          String  
-  accountHolderName String  
-  currency          String   @default("INR")
-  country           String? 
-  isDefault         Boolean  @default(false)
+  label             String
+  bankName          String
+  accountHolderName String
+  currency          String  @default("INR")
+  country           String?
+  isDefault         Boolean @default(false)
 
   accountNumberLast4 String
-  accountNumberEnc String  
-  routingCodeEnc   String? 
+  accountNumberEnc   String
+  routingCodeEnc     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -206,47 +314,47 @@ model BankAccount {
 }
 
 model Project {
-  id          String    @id @default(cuid())
-  name        String
-  description String?  
-  status      Status    @default(ACTIVE)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  client      Client?
-  updates     Update[]
-  files       File[]
-  milestones  Milestone[]
-  members     ProjectMember[]
-  isPublic      Boolean   @default(false)
-  publicSlug    String?   @unique 
-  clientRating  Int?    
-  testimonial   String?   @db.Text
-  inquiries     Inquiry[]
-  invoices      Invoice[]
+  id           String          @id @default(cuid())
+  name         String
+  description  String?
+  status       Status          @default(ACTIVE)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  userId       String
+  user         User            @relation(fields: [userId], references: [id])
+  client       Client?
+  updates      Update[]
+  files        File[]
+  milestones   Milestone[]
+  members      ProjectMember[]
+  isPublic     Boolean         @default(false)
+  publicSlug   String?         @unique
+  clientRating Int?
+  testimonial  String?         @db.Text
+  inquiries    Inquiry[]
+  invoices     Invoice[]
 
   // ── Project Story / Case Study fields ─────────────────────────────────────
   // caseStudyEnabled gates the full story view on /showcase/[slug].
   // When false, the page renders the MVP layout (testimonial + files only).
   // When true, the full case study layout renders.
-  caseStudyEnabled    Boolean  @default(false)
+  caseStudyEnabled Boolean @default(false)
 
   // caseStudyProblem + caseStudyOutcome are the two narrative paragraphs.
   // Written by the freelancer for prospective clients, not for the project client.
-  caseStudyProblem    String?  @db.Text
-  caseStudyOutcome    String?  @db.Text
+  caseStudyProblem String? @db.Text
+  caseStudyOutcome String? @db.Text
 
   // caseStudyTechStack — array of technology name strings.
   // e.g. ["Next.js", "PostgreSQL", "Stripe"]
   // @default([]) means existing rows get an empty array, not null.
   // Safe to .map() without a null check.
-  caseStudyTechStack  String[] @default([])
+  caseStudyTechStack String[] @default([])
 
   // caseStudyHideClient — privacy toggle, default true.
   // When true: render "A satisfied client" instead of client.name.
   // Freelancer explicitly opts in to showing the real name.
-  caseStudyHideClient Boolean  @default(true)
+  caseStudyHideClient Boolean @default(true)
 
   // caseStudyCoverImage — Cloudinary URL for the hero image.
   // If null, the showcase page auto-selects the first completed milestone's
@@ -256,11 +364,11 @@ model Project {
   // caseStudyIndustry — single-select label.
   // e.g. "E-commerce", "SaaS", "Healthcare"
   // Shown as a badge on the showcase page.
-  caseStudyIndustry   String?
+  caseStudyIndustry String?
 
-  githubRepoOwner     String?   // e.g. "jeetu-dev" — just for display, not required for the webhook to work
-  githubRepoName      String?   // e.g. "acme-website" — same, just for display
-  githubWebhookSecret String?   // a random string only you and GitHub know — this is what makes step 3 possible
+  githubRepoOwner     String? // e.g. "jeetu-dev" — just for display, not required for the webhook to work
+  githubRepoName      String? // e.g. "acme-website" — same, just for display
+  githubWebhookSecret String? // a random string only you and GitHub know — this is what makes step 3 possible
 
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
@@ -270,69 +378,69 @@ model Project {
 
 model File {
   id        String   @id @default(cuid())
-  name      String      
-  url       String        
-  fileType  String        
-  size      Int          
+  name      String
+  url       String
+  fileType  String
+  size      Int
   createdAt DateTime @default(now())
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model Client {
-  id         String   @id @default(cuid())
-  name       String
-  email      String
-  magicToken String   @unique @default(cuid())
+  id           String    @id @default(cuid())
+  name         String
+  email        String
+  magicToken   String    @unique @default(cuid())
   lastViewedAt DateTime?
-  createdAt  DateTime @default(now())
-  projectId  String   @unique
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+  projectId    String    @unique
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model Update {
-  id        String      @id @default(cuid())
-  text      String
-  status    UpdateStatus @default(IN_PROGRESS)
-  approvedAt  DateTime?
-  createdAt DateTime    @default(now())
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id         String       @id @default(cuid())
+  text       String
+  status     UpdateStatus @default(IN_PROGRESS)
+  approvedAt DateTime?
+  createdAt  DateTime     @default(now())
+  projectId  String
+  project    Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  type        UpdateType @default(MANUAL)
-  commitSha   String?    // short commit hash, only set when type = AUTO_DEPLOY
-  commitUrl   String?    // link to the commit on GitHub
-  previewUrl  String?    // filled in later, in the Vercel add-on (Part 9)
+  type       UpdateType @default(MANUAL)
+  commitSha  String? // short commit hash, only set when type = AUTO_DEPLOY
+  commitUrl  String? // link to the commit on GitHub
+  previewUrl String? // filled in later, in the Vercel add-on (Part 9)
 }
 
 model Milestone {
-  id          String          @id @default(cuid())
-  title       String
-  order       Int             
-  status      MilestoneStatus @default(PENDING)
-  approvedAt  DateTime?
+  id            String          @id @default(cuid())
+  title         String
+  order         Int
+  status        MilestoneStatus @default(PENDING)
+  approvedAt    DateTime?
   rejectionNote String?
-  
+
   // When this milestone reached COMPLETED status — set automatically by the API
-  completedAt   DateTime?                          // NEW
+  completedAt DateTime? // NEW
 
   // Scheduling
-  dueDate       DateTime?                          // NEW — freelancer can set a target date
+  dueDate DateTime? // NEW — freelancer can set a target date
 
   // Delivery card — freelancer fills these before sending to client for review
-  deliveryHeadline  String?                        // NEW — e.g. "Homepage is ready for review"
-  deliverySummary   String?                        // NEW — paragraph explaining what was done
-  deliveryFileUrl   String?                        // NEW — Cloudinary URL of the main deliverable
-  deliveryFileName  String?                        // NEW — original filename shown to client
-  deliveryFileType  String?                        // NEW — MIME type e.g. "image/png"
-  deliveryChecklist String[]    @default([])       // NEW — checklist items client should verify
+  deliveryHeadline    String? // NEW — e.g. "Homepage is ready for review"
+  deliverySummary     String? // NEW — paragraph explaining what was done
+  deliveryFileUrl     String? // NEW — Cloudinary URL of the main deliverable
+  deliveryFileName    String? // NEW — original filename shown to client
+  deliveryFileType    String? // NEW — MIME type e.g. "image/png"
+  deliveryChecklist   String[] @default([]) // NEW — checklist items client should verify
   deliveryAnnotations Json?
-         
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-  
-  projectId   String
-  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectId        String
+  project          Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
   milestoneUpdates MilestoneUpdate[]
   messages         MilestoneMessage[]
   invoices         Invoice[]
@@ -346,7 +454,7 @@ model Milestone {
   // creation time in application code — enforce it there, not in the
   // schema, same tradeoff already made for activeWorkspaceId.
   createdByUserId String?
-  createdBy       User?    @relation(fields: [createdByUserId], references: [id])
+  createdBy       User?   @relation(fields: [createdByUserId], references: [id])
 }
 
 // A granular, INTERNAL work item under a Milestone. Never exposed on
@@ -367,20 +475,20 @@ model Task {
   dueDate     DateTime?
 
   milestoneId String
-  milestone   Milestone  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  milestone   Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
 
   // Optional + SetNull: a task can briefly exist unassigned, and if
   // the assigned person's account is later removed, the task should
   // become unassigned again, not disappear — same reasoning as
   // WorkspaceInvite.invitedByUserId.
   assignedToId String?
-  assignedTo   User?      @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedTo   User?   @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: SetNull)
 
   // Required, no SetNull — this is a brand-new model with no existing
   // rows, so (unlike Milestone.createdByUserId above) there's no
   // backfill problem, and every Task should always know who made it.
   createdByUserId String
-  createdBy       User    @relation("CreatedTasks", fields: [createdByUserId], references: [id])
+  createdBy       User   @relation("CreatedTasks", fields: [createdByUserId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -398,11 +506,11 @@ enum TaskStatus {
 
 model MilestoneUpdate {
   id        String   @id @default(cuid())
-  note      String   @db.Text    // The freelancer's written note
-  fileUrl   String?              // Cloudinary URL — null if no file attached
-  fileName  String?              // Original filename shown to client
-  fileType  String?              // MIME type e.g. "image/png", "application/pdf"
-  fileSize  Int?                 // Bytes — shown as "1.2 MB" in UI
+  note      String   @db.Text // The freelancer's written note
+  fileUrl   String? // Cloudinary URL — null if no file attached
+  fileName  String? // Original filename shown to client
+  fileType  String? // MIME type e.g. "image/png", "application/pdf"
+  fileSize  Int? // Bytes — shown as "1.2 MB" in UI
   createdAt DateTime @default(now())
 
   milestoneId String
@@ -412,8 +520,8 @@ model MilestoneUpdate {
 
 model MilestoneMessage {
   id        String        @id @default(cuid())
-  content   String        @db.Text    // the client's actual typed message
-  sender    MessageSender             // who sent it — always CLIENT for now
+  content   String        @db.Text // the client's actual typed message
+  sender    MessageSender // who sent it — always CLIENT for now
   createdAt DateTime      @default(now())
 
   milestoneId String
@@ -421,13 +529,13 @@ model MilestoneMessage {
 }
 
 model Inquiry {
-  id          String   @id @default(cuid())
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  name        String
-  email       String
-  message     String
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
 }
 
 enum Plan {
@@ -458,23 +566,23 @@ enum MilestoneStatus {
 
 enum MessageSender {
   CLIENT
-  FREELANCER  // reserved for future: freelancer replies in-thread
+  FREELANCER // reserved for future: freelancer replies in-thread
 }
 
 model Invoice {
-  id          String        @id @default(cuid())
-  number      String        // e.g. "INV-001" — human readable, shown to client
-  amount      Float         // e.g. 2500.00
-  currency    String        @default("USD")
-  status      InvoiceStatus @default(UNPAID)
-  dueDate     DateTime?     // optional payment deadline
-  note        String?       @db.Text  // optional message to client
+  id       String        @id @default(cuid())
+  number   String // e.g. "INV-001" — human readable, shown to client
+  amount   Float // e.g. 2500.00
+  currency String        @default("USD")
+  status   InvoiceStatus @default(UNPAID)
+  dueDate  DateTime? // optional payment deadline
+  note     String?       @db.Text // optional message to client
 
   // Optional link to a specific milestone.
   // e.g. "This invoice is for the Homepage Design milestone"
   // null means it's a general project invoice, not tied to a milestone.
   milestoneId String?
-  milestone   Milestone?    @relation(fields: [milestoneId], references: [id])
+  milestone   Milestone? @relation(fields: [milestoneId], references: [id])
 
   // Stripe fields — populated after createPaymentLink() succeeds
   // stripePaymentLinkId is Stripe's internal ID (e.g. "plink_xxx")
@@ -483,13 +591,14 @@ model Invoice {
   stripePaymentLinkUrl String?
 
   // Set when Stripe webhook confirms payment
-  paidAt      DateTime?
+  paidAt DateTime?
 
-  projectId   String
-  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([projectId, number])
   @@index([stripePaymentLinkId])
 }
@@ -501,8 +610,8 @@ enum InvoiceStatus {
 }
 
 enum UpdateType {
-  MANUAL       // freelancer typed this by hand
-  AUTO_DEPLOY  // generated automatically from a git push
+  MANUAL // freelancer typed this by hand
+  AUTO_DEPLOY // generated automatically from a git push
 }
 
 // ── Billing ──────────────────────────────────────────────────────────────
@@ -536,17 +645,17 @@ model Subscription {
 }
 
 enum BillingCycle {
-  NONE    // FREE plan, or a manually-set ENTERPRISE deal
+  NONE // FREE plan, or a manually-set ENTERPRISE deal
   MONTHLY
   YEARLY
 }
 
 enum SubscriptionStatus {
-  PENDING   // checkout started, Razorpay subscription created, first payment not yet confirmed
+  PENDING // checkout started, Razorpay subscription created, first payment not yet confirmed
   ACTIVE
-  PAST_DUE  // payment failed, but grace period hasn't run out
+  PAST_DUE // payment failed, but grace period hasn't run out
   CANCELLED // user (or admin) cancelled — may still be usable until currentPeriodEnd
-  EXPIRED   // no longer usable, downgrade to FREE limits
+  EXPIRED // no longer usable, downgrade to FREE limits
 }
 
 // Every Razorpay webhook event has a unique event ID. Razorpay can send
@@ -559,7 +668,66 @@ enum SubscriptionStatus {
 model WebhookEvent {
   id              String   @id @default(cuid())
   razorpayEventId String   @unique
-  eventType       String   // e.g. "subscription.charged", stored for debugging
-  payload         Json?    // raw event body, kept for troubleshooting
+  eventType       String // e.g. "subscription.charged", stored for debugging
+  payload         Json? // raw event body, kept for troubleshooting
   processedAt     DateTime @default(now())
+}
+
+// ── Password reset ──────────────────────────────────────────────────────
+// One row per user (see @unique on userId below) holding the state of
+// their CURRENT password-reset attempt, if any. A brand-new
+// forgot-password request UPSERTs this row — it never inserts a second
+// row for the same user. That single design choice is what gives us,
+// for free:
+//   - "invalidate the previous OTP when a new one is generated"
+//     (the upsert just overwrites otpHash/expiresAt/attempts)
+//   - no cleanup job needed for old/expired rows (there's nothing to
+//     accumulate — a stale row just gets overwritten the next time
+//     this user requests a reset)
+// See lib/password-reset.js for the three functions that read/write
+// this model (startPasswordReset, verifyResetOtp, resetPassword).
+model PasswordReset {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // NEVER the raw 6-digit code — only a bcrypt hash of it (see
+  // lib/otp.js hashOtp()/compareOtp()). Low entropy (only 1,000,000
+  // possible codes) is exactly why bcrypt — deliberately slow — is
+  // used here instead of a fast hash like sha256.
+  otpHash   String
+  expiresAt DateTime // createdAt + 10 minutes, set in lib/password-reset.js
+
+  // Incremented atomically (a single UPDATE ... SET attempts =
+  // attempts + 1) on every verification attempt, correct or not.
+  // Once this exceeds MAX_OTP_ATTEMPTS, the code is locked out and the
+  // user must request a new one — see verifyResetOtp().
+  attempts Int @default(0)
+
+  // Set the moment the correct OTP is entered. From that point on the
+  // OTP itself can never be used again — verifyResetOtp() refuses to
+  // even compare a code against a record that already has
+  // verifiedAt set. All it does is unlock the reset-token fields below.
+  verifiedAt DateTime?
+
+  // Generated only once verifiedAt is set. High-entropy (32 random
+  // bytes = 256 bits), so unlike the OTP, a fast sha256 hash is fine —
+  // see hashResetToken() in lib/otp.js. This is what the frontend
+  // carries from step 2 (verify OTP) to step 3 (set new password),
+  // instead of asking the user to type the OTP again.
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
+
+  // Also doubles as "when was the current OTP issued" — checked
+  // against a 60-second cooldown before allowing a resend. Explicitly
+  // overwritten on every upsert (Prisma's @default(now()) only applies
+  // on INSERT, not on UPDATE), so this always reflects the latest OTP.
+  createdAt DateTime @default(now())
+
+  // Used by a periodic cleanup query, if you ever add one (see
+  // docs/PASSWORD_RESET.md) — not required for correctness, since a
+  // stale row is harmless and gets overwritten on the user's next
+  // request, but useful if you want to periodically vacuum very old
+  // abandoned rows for hygiene.
+  @@index([expiresAt])
 }

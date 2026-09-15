@@ -103,8 +103,8 @@ export default function DashboardSidebar({ user }: Props) {
 
   const navButtonClass = (active: boolean) =>
     active
-      ? 'bg-[var(--color-fp-accent)]/10 text-[var(--color-fp-accent)] hover:bg-[var(--color-fp-accent)]/15 hover:text-[var(--color-fp-accent)]'
-      : 'text-[var(--color-fp-text-secondary)] hover:text-[var(--color-fp-text-primary)] hover:bg-[var(--color-fp-surface-2,var(--color-fp-surface))]'
+      ? 'bg-[var(--color-fp-accent)]/10 text-[var(--color-fp-accent)] hover:bg-[var(--color-fp-accent)]/15 hover:text-[var(--color-fp-accent)] cursor-pointer'
+      : 'text-[var(--color-fp-text-secondary)] hover:text-[var(--color-fp-text-primary)] hover:bg-[var(--color-fp-surface-2,var(--color-fp-surface))] cursor-pointer'
 
   const isProjectDetailRoute = PROJECT_DETAIL_PATTERN.test(pathname ?? '')
 

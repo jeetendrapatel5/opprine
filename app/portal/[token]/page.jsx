@@ -8,13 +8,15 @@
 //   Full-width: CurrentlyWorkingOn — what's being built RIGHT NOW
 //   Full-width: ActionPanel — if a milestone needs approval (most important CTA)
 //   Left 2/3:  ProjectMilestones (timeline) + UpdateFeed (work log)
-//   Right 1/3: FreelancerCard + InvoicePanel + FileDeliverables + ProjectSignOff
+//   Right 1/3: ProjectTeam + InvoicePanel + FileDeliverables + ProjectSignOff
 //
 // HIERARCHY:
 //   1. Progress bar + project name (trust signal — scored immediately)
 //   2. Action items (if approval is needed — give client one job)
 //   3. Timeline (where are we? where are we going?)
-//   4. Freelancer identity (who is doing this work?)
+//   4. Team identity (who is doing this work? — was a single
+//      "Your Developer" card, now every ProjectMember, since a real
+//      project is usually staffed by more than one person)
 //   5. Everything else (invoices, files, sign-off)
 //
 // Server Component — data fetched here, passed down as props.
@@ -24,13 +26,14 @@
 import { notFound } from 'next/navigation'
 import prisma from '@/lib/prisma'
 import { getProjectProgress } from '@/lib/projectProgress'
+import { listProjectMembersForPortal } from '@/lib/project'
 
 import ProgressBanner      from '@/components/portal/ProgressBanner'
 import CurrentlyWorkingOn  from '@/components/portal/CurrentlyWorkingOn'
 import ActionPanel         from '@/components/portal/ActionPanel'
 import ProjectMilestones   from '@/components/portal/ProjectMilestones'
 import UpdateFeed          from '@/components/portal/UpdateFeed'
-import FreelancerCard      from '@/components/portal/FreelancerCard'
+import ProjectTeam         from '@/components/portal/ProjectTeam'
 import InvoicePanel        from '@/components/portal/InvoicePanel'
 import FileDeliverables    from '@/components/portal/FileDeliverables'
 import ProjectSignOff      from '@/components/portal/ProjectSignOff'
@@ -44,13 +47,16 @@ export default async function PortalPage({ params }) {
     include: {
       project: {
         include: {
+          // Only name + email are used anywhere below now — bio,
+          // avatarUrl, and portfolioUrl existed solely to feed the old
+          // FreelancerCard, which ProjectTeam replaces. Trimmed the
+          // select rather than leave them riding along unused, same
+          // "don't fetch what nothing reads" reasoning as the
+          // createdByUserId strip on milestones further down.
           user: {
             select: {
-              name:         true,
-              email:        true,
-              bio:          true,
-              avatarUrl:    true,
-              portfolioUrl: true,
+              name:  true,
+              email: true,
             },
           },
           updates:  { orderBy: { createdAt: 'desc' }, take: 10 },
@@ -84,6 +90,14 @@ export default async function PortalPage({ params }) {
 
   const { project } = client
 
+  // Everyone staffed on this project, shaped for client eyes (no
+  // email, no workspace role, no permission metadata) — see
+  // listProjectMembersForPortal in lib/project.js. Scoped to this
+  // project only, via the projectId we already resolved above from a
+  // valid magic token, so this can never surface another project's or
+  // another workspace's people.
+  const teamMembers = await listProjectMembersForPortal(project.id)
+
   // Strip createdByUserId from every milestone before it goes anywhere
   // downstream. It's a new scalar field (added alongside ProjectMember/
   // Task) that the `include` above pulls in by default along with
@@ -108,7 +122,7 @@ export default async function PortalPage({ params }) {
 
   return (
     // Portal world: warm paper-white background, generous padding
-    <div className="min-h-screen bg-fp-portal-bg font-body">
+    <div className="min-h-screen bg-fp-portal-surface font-body">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
 
         {/* ── Zone 1: Progress banner ── */}
@@ -156,16 +170,13 @@ export default async function PortalPage({ params }) {
 
           </div>
 
-          {/* RIGHT — Freelancer, Invoices, Files, Sign-off */}
+          {/* RIGHT — Team, Invoices, Files, Sign-off */}
           <div className="lg:col-span-4 space-y-5">
 
-            {/* Who is doing this work? — always first on the right */}
-            <FreelancerCard
-              name={project.user.name}
-              bio={project.user.bio}
-              avatarUrl={project.user.avatarUrl}
-              portfolioUrl={project.user.portfolioUrl}
-            />
+            {/* Who is doing this work? — always first on the right.
+                Renders nothing if the project has no ProjectMember rows
+                yet (see the early return in ProjectTeam). */}
+            <ProjectTeam members={teamMembers} />
 
             {/* Invoices — time-sensitive, shown before files */}
             <InvoicePanel invoices={project.invoices} />

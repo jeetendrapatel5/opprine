@@ -80,7 +80,7 @@ export default async function DashboardPage() {
           </div>
 
           {attentionCount > 0 && (
-            <div className="mt-6 flex flex-col gap-4 rounded-2xl border border-fp-warning/20 bg-fp-warning/10 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-fp-base/20 bg-fp-portal-raised/10 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-fp-warning/15 text-fp-warning">
                   <AlertCircle className="h-4 w-4" />

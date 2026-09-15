@@ -87,9 +87,10 @@ export async function POST(request) {
       throw new LimitExceededError(seatCheck.reason)
     }
 
-    // Step 5 — create (or revive) the invite and send the email.
-    // Email normalization (lowercasing) and the "already a member?"
-    // check both live inside createInvite itself — see lib/invites.js.
+    // Step 5 — create (or revive) the invite, send the email, AND
+    // create the in-app notification. All three of those now happen
+    // inside createInvite() itself — see lib/invites.js — not here.
+    // This route's only job is auth + validation + calling it.
     const invite = await createInvite(membership.workspaceId, {
       email,
       role,
