@@ -19,6 +19,7 @@ import {
   BookOpen,
   Mail,
   Lock,
+  Star,
 } from 'lucide-react'
 
 import ProjectTabs from '@/components/project/ProjectTabs'
@@ -343,6 +344,56 @@ export default async function ProjectPage({ params }) {
               >
                 {status.label}
               </span>
+
+              {/* NEW — compact client-engagement chip, promoted to
+                  header level. It reuses clientInitial / clientName /
+                  clientViewedText, which were already being computed
+                  above for the sidebar Client panel — no new query,
+                  no new derived value, just the same three variables
+                  rendered a second time. It sits behind the exact same
+                  canViewClient gate as the sidebar panel, so a
+                  Contributor without that permission sees nothing
+                  added here — not a broken or empty chip. The point:
+                  "who's the client, have they looked at anything
+                  recently" is answerable in one glance, without
+                  scrolling to the sidebar. Full email/contact detail
+                  still lives ONLY in the Client panel below — this
+                  chip deliberately does not repeat the email. */}
+              {canViewClient && (
+                <span className="shrink-0 inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-full border border-fp-border bg-fp-surface text-[11px] text-fp-text-secondary">
+                  <span className="w-4 h-4 rounded-full bg-fp-accent/15 flex items-center justify-center text-[9px] font-bold text-fp-accent leading-none">
+                    {clientInitial}
+                  </span>
+                  {clientName}
+                  {clientViewedText && (
+                    <span className="text-fp-text-tertiary"> {clientViewedText}</span>
+                  )}
+                </span>
+              )}
+
+              {/* NEW — client review, promoted from the very bottom of
+                  the sidebar (it used to render under Project Story
+                  and two dialog triggers, in the "Actions" stack) up
+                  to header level, right next to Status. clientRating
+                  is a plain Int? column directly on Project, so — like
+                  githubWebhookSecret before displayProject existed —
+                  it's a scalar the current `include` block has no way
+                  to hide, and it's already being fetched and rendered
+                  today for every role via <ClientReviewCard project=
+                  {project} .../> a few dozen lines down, unconditionally.
+                  So this badge doesn't newly expose anything; it just
+                  makes the SAME already-visible fact visible sooner.
+                  Flagging for later: if you want the review restricted
+                  the way client/invoice data is, this needs its own
+                  can(role, 'viewClientReview') key, plus a redaction
+                  step on `project.clientRating` the same shape as
+                  `displayProject` above — I didn't add that myself
+                  since it would silently change who sees a review that
+                  everyone can already see today. */}
+              <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md bg-fp-warning/10 text-fp-warning">
+                <Star className="w-3 h-3" />
+                {project.clientRating ? `${project.clientRating}/5` : 'No review yet'}
+              </span>
             </div>
             {project.description && (
               <p className="text-fp-text-tertiary text-sm mt-1.5 max-w-2xl leading-relaxed">
@@ -494,20 +545,20 @@ export default async function ProjectPage({ params }) {
             )}
           </PanelCard>
 
-          {/* Project Details Panel — unchanged. Status, dates,
-              milestone progress %, and update/file COUNTS are visible
-              to every role that reaches this page at all; none of
-              this is client- or invoice-specific per the matrix. */}
+          {/* Project Details Panel — CHANGED: dropped the Status row.
+              The header now shows status, the client chip, and the
+              review badge together, so repeating "Active" a second
+              time down here was exactly the "same fact, two places"
+              problem — the reader has to wonder if the two could ever
+              disagree. Dates, milestone progress %, and update/file
+              COUNTS stay: none of those appear anywhere else on the
+              page, so they're not duplicates, just detail that's fine
+              to keep one click into the scroll rather than in the
+              header. Still visible to every role that reaches this
+              page at all; none of this is client- or invoice-specific
+              per the matrix. */}
           <PanelCard label="Project details">
             <div className="px-4 py-1 divide-y divide-fp-border">
-
-              <DetailRow label="Status">
-                <span
-                  className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md ${status.className}`}
-                >
-                  {status.label}
-                </span>
-              </DetailRow>
 
               <DetailRow label="Started">
                 <span className="text-xs font-medium text-fp-text-secondary">

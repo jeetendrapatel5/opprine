@@ -4,24 +4,80 @@ import { Prisma } from "@prisma/client";
 import prisma from "@/lib/prisma";
 import { createWorkspaceForUser } from "@/lib/workspace";
 import { acceptInvite } from "@/lib/invites";
+import { NotFoundError, ForbiddenError, LimitExceededError } from "@/lib/errors";
+
+// Simple "does this look like an email" check: something@something.something
+// with no spaces. It does not prove the address exists, it only blocks junk.
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const MAX_NAME_LENGTH = 100;
+const MAX_EMAIL_LENGTH = 254; // the practical maximum length of an email address
+
+// bcrypt only reads the first 72 bytes of a password. Anything after that is
+// silently ignored, so we reject longer passwords instead of pretending the
+// whole thing was used.
+const MAX_PASSWORD_BYTES = 72;
 
 export async function POST(request: Request) {
     try {
-        const { name, email, password, inviteToken } = await request.json();
+        // Reading the body can itself throw (empty body, broken JSON).
+        // That is the client's mistake, so we answer 400, not 500.
+        let body: unknown;
+        try {
+            body = await request.json();
+        } catch {
+            return NextResponse.json(
+                { error: "Request body must be valid JSON" },
+                { status: 400 }
+            );
+        }
 
-        // Accept the token as an optional field. Defensive typeof check
-        // because this comes straight from request.json() — an
-        // attacker (or just a buggy client) could send a number, an
-        // object, anything. Prisma's client is strict about field
-        // types, so passing something non-string straight into a
-        // `where: { token }` lookup could throw a confusing internal
-        // error instead of a clean "invalid invite" response.
-        const normalizedInviteToken =
-            typeof inviteToken === "string" && inviteToken.trim() ? inviteToken.trim() : null;
+        // `?? {}` protects against a body of literally `null`, which would
+        // crash the destructuring on the next line.
+        const { name, email, password, inviteToken } = (body ?? {}) as Record<
+            string,
+            unknown
+        >;
 
-        if (!name || !email || !password) {
+        // Everything here comes straight from the network, so nothing can be
+        // trusted to be a string. A number or object would crash .toLowerCase()
+        // or slip past .length. Check the type first, once, for every field.
+        if (
+            typeof name !== "string" ||
+            typeof email !== "string" ||
+            typeof password !== "string"
+        ) {
             return NextResponse.json(
                 { error: "Name, email and password are required" },
+                { status: 400 }
+            );
+        }
+
+        const trimmedName = name.trim();
+        // Trim + lowercase so " Jeetu@Mail.com " and "jeetu@mail.com" are the
+        // same account.
+        const normalizedEmail = email.trim().toLowerCase();
+
+        if (!trimmedName || !normalizedEmail || !password) {
+            return NextResponse.json(
+                { error: "Name, email and password are required" },
+                { status: 400 }
+            );
+        }
+
+        if (trimmedName.length > MAX_NAME_LENGTH) {
+            return NextResponse.json(
+                { error: `Name must be at most ${MAX_NAME_LENGTH} characters long` },
+                { status: 400 }
+            );
+        }
+
+        if (
+            normalizedEmail.length > MAX_EMAIL_LENGTH ||
+            !EMAIL_PATTERN.test(normalizedEmail)
+        ) {
+            return NextResponse.json(
+                { error: "Please enter a valid email address" },
                 { status: 400 }
             );
         }
@@ -33,9 +89,23 @@ export async function POST(request: Request) {
             );
         }
 
+        if (Buffer.byteLength(password, "utf8") > MAX_PASSWORD_BYTES) {
+            return NextResponse.json(
+                { error: "Password is too long (maximum 72 bytes)" },
+                { status: 400 }
+            );
+        }
+
+        // Optional invite token. Same idea as above: only accept a real,
+        // non-empty string, otherwise treat it as "no invite".
+        const normalizedInviteToken =
+            typeof inviteToken === "string" && inviteToken.trim()
+                ? inviteToken.trim()
+                : null;
+
         const existingUser = await prisma.user.findUnique({
-            where: {email: email.toLowerCase()}
-        })
+            where: { email: normalizedEmail },
+        });
 
         if (existingUser) {
             return NextResponse.json(
@@ -46,30 +116,26 @@ export async function POST(request: Request) {
 
         const hashedPassword = await bcrypt.hash(password, 12);
 
-        // Create the User AND their Workspace together, in ONE
-        // transaction. Why this matters, concretely: without a
-        // transaction, it's possible for the User row to be created
-        // successfully, then something fails while creating the
-        // Workspace (a dropped connection, a bug, anything) — leaving a
-        // user who can log in, but has no workspace. Their very first
-        // project-creation request would then hit
-        // requireWorkspaceMembership() and fail with a confusing error,
-        // for a reason that has nothing to do with what they just did.
-        // Wrapping both creates in $transaction guarantees: either BOTH
-        // exist when this finishes, or NEITHER does.
+        // Create the User AND their Workspace in ONE transaction: either
+        // BOTH exist when this finishes, or NEITHER does. Without it, a
+        // failure between the two creates would leave a user who can log in
+        // but has no workspace.
+        //
+        // `tx` needs no type annotation: lib/prisma.js now gives `prisma` a
+        // real type, so TypeScript works out `tx` by itself. If someone ever
+        // breaks that typing again, this line fails the build loudly instead
+        // of silently going untyped.
         const { user } = await prisma.$transaction(async (tx) => {
             const user = await tx.user.create({
                 data: {
-                    name,
-                    email: email.toLowerCase(),
+                    name: trimmedName,
+                    email: normalizedEmail,
                     password: hashedPassword,
                 },
             });
 
-            // Same function the backfill script uses (lib/workspace.js)
-            // — one definition of "what a brand-new workspace looks
-            // like," reused everywhere a workspace gets created, instead
-            // of copy-pasted logic that could drift out of sync.
+            // Same function the backfill script uses (lib/workspace.js),
+            // so "what a new workspace looks like" is defined in one place.
             await createWorkspaceForUser(user.id, {
                 name: `${user.name}'s Workspace`,
                 db: tx,
@@ -78,22 +144,15 @@ export async function POST(request: Request) {
             return { user };
         });
 
-        // SEPARATE step, deliberately outside the transaction above —
-        // see the chat message before this code for why acceptInvite
-        // can't be nested inside it (it needs its own advisory-locked
-        // transaction, and Prisma doesn't support nesting one
-        // interactive transaction inside another).
+        // SEPARATE step, deliberately outside the transaction above.
+        // acceptInvite needs its own advisory-locked transaction, and Prisma
+        // cannot nest one interactive transaction inside another.
         //
-        // Isolated try/catch on purpose: by this point the account and
-        // personal workspace already exist and are fully valid — the
-        // hard-to-redo part (password hashing, uniqueness checks) is
-        // done. If joining the invited workspace fails for any reason
-        // (link expired in the last few seconds, seat limit hit right
-        // now, invite was revoked), that should NOT make this whole
-        // signup look like it failed — that would incorrectly trigger
-        // the generic 500 branch below for someone whose account was
-        // actually created successfully. We log it and tell the
-        // frontend via `inviteError`, but still return 201.
+        // Own try/catch on purpose: the account and personal workspace are
+        // already saved and valid. If joining the invited workspace fails
+        // (link expired, seat limit hit, invite revoked, invite sent to a
+        // different email), signup should still count as a success. We log
+        // it and tell the frontend through `inviteError`, but still return 201.
         let inviteError: string | null = null;
         if (normalizedInviteToken) {
             try {
@@ -103,8 +162,14 @@ export async function POST(request: Request) {
                     "signup: account created, but accepting the invite failed:",
                     err
                 );
+                // Only show the browser messages WE wrote on purpose (these
+                // three error types). Anything else, such as a database
+                // error, can contain internal details, so it gets a
+                // generic message instead.
                 inviteError =
-                    err instanceof Error
+                    err instanceof NotFoundError ||
+                    err instanceof ForbiddenError ||
+                    err instanceof LimitExceededError
                         ? err.message
                         : "Could not join the invited workspace.";
             }
@@ -116,30 +181,24 @@ export async function POST(request: Request) {
                 user: {
                     id: user.id,
                     name: user.name,
-                    email: user.email
+                    email: user.email,
                 },
-                // Only present when an invite was provided AND failed —
-                // absent entirely on a normal signup, so existing
-                // frontend code that doesn't know about this field
-                // keeps working unchanged.
+                // Only present when an invite was provided AND failed, so
+                // frontends that don't know about this field keep working.
                 ...(inviteError ? { inviteError } : {}),
             },
             { status: 201 }
-        )
+        );
     } catch (error) {
-        // Correction to the original version of this route: a genuine
-        // race is possible here. Two signup requests with the SAME
-        // email can both arrive close enough together that both pass
-        // the findUnique check above — neither sees the other yet — and
-        // both then try to insert. The database's unique constraint on
-        // User.email (not our app code) is what actually stops the
-        // second insert, and it does so by throwing a specific error:
-        // Prisma error code P2002. The original code caught this only
-        // as a generic error and returned a confusing 500 "something
-        // went wrong" for what is actually a completely normal,
-        // expected case (duplicate signup). Catching it specifically
-        // here means that race gets the SAME correct 409 response as
-        // the non-race duplicate-email check above.
+        // Race condition: two signups with the SAME email can both pass the
+        // findUnique check above before either has inserted. The database's
+        // unique constraint on User.email stops the second insert by throwing
+        // Prisma error P2002. That is a normal duplicate signup, so it gets
+        // the same 409 as the non-race case, not a 500.
+        //
+        // Safe to assume it's the email: the only other rows created in that
+        // transaction (Workspace, WorkspaceMember) use brand-new ids, so
+        // they can't collide.
         if (
             error instanceof Prisma.PrismaClientKnownRequestError &&
             error.code === "P2002"
@@ -150,10 +209,10 @@ export async function POST(request: Request) {
             );
         }
 
-        console.log("Signup error:", error);
+        console.error("Signup error:", error);
         return NextResponse.json(
             { error: "Something went wrong. Please try again." },
             { status: 500 }
         );
     }
-};
+}

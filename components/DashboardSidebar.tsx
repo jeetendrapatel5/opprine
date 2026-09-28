@@ -117,11 +117,32 @@ export default function DashboardSidebar({ user }: Props) {
           className="flex items-center gap-2.5"
         >
 
-          <div className="w-7 h-7 rounded-lg bg-[var(--color-fp-accent)] flex items-center justify-center shrink-0">
-            <span className="text-[11px] font-bold text-black leading-none">OP</span>
-          </div>
+          {/* Logo, painted through a stencil. The PNG is pure black with a
+              see-through middle, and black would vanish on this dark
+              sidebar. So we use the PNG as a mask (a stencil): where the
+              logo is solid, the box's background colour shows; where the
+              logo is see-through, nothing shows. Result: the bare logo
+              shape in the accent colour, with no square behind it.
+              The box is 32px wide (same as the collapsed nav icon buttons)
+              so the logo stays centred on the icon column; the logo itself
+              is drawn 28px inside that box. */}
+          <div
+            role="img"
+            aria-label="Opprine logo"
+            className="w-8 h-8 shrink-0 bg-neutral-200"
+            style={{
+              WebkitMaskImage: 'url(/logo/opprine-secondary-logo.png)',
+              maskImage: 'url(/logo/opprine-secondary-logo.png)',
+              WebkitMaskRepeat: 'no-repeat',
+              maskRepeat: 'no-repeat',
+              WebkitMaskPosition: 'center',
+              maskPosition: 'center',
+              WebkitMaskSize: '28px 28px',
+              maskSize: '28px 28px',
+            }}
+          />
 
-          <span className="font-semibold text-sm tracking-tight text-[var(--color-fp-text-primary)] group-data-[collapsible=icon]:hidden">
+          <span className="font-semibold text-sm tracking-tight  text-[var(--color-fp-text-primary)] group-data-[collapsible=icon]:hidden">
             Opprine
           </span>
         </Link>

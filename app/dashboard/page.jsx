@@ -1,14 +1,49 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import prisma from '@/lib/prisma'
 import { requireWorkspaceMembership } from '@/lib/workspace'
 import NewProjectModal from '@/components/NewProjectModal'
 import ProjectCard from '@/components/ProjectCard'
-import { Briefcase, AlertCircle } from 'lucide-react'
+import { Briefcase, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
 
 
 export const dynamic = 'force-dynamic'
+
+// One line in the attention panel: a project that has at least one milestone
+// in review. The whole row is a link to that project's page.
+function AttentionRow({ project }) {
+  const inReview = (project.milestones ?? []).filter(
+    (milestone) => milestone.status === 'IN_REVIEW'
+  )
+  const [first, ...rest] = inReview
+
+  return (
+    <li>
+      <Link
+        href={`/dashboard/projects/${project.id}`}
+        className="group/row flex items-center gap-3 px-4 py-3 transition-colors hover:bg-fp-raised focus-visible:bg-fp-raised focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-fp-accent"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-fp-text-primary">
+            {project.name}
+          </p>
+          <p className="mt-0.5 flex items-baseline gap-1 text-xs text-fp-text-secondary">
+            <span className="truncate">{first?.title ?? 'Untitled milestone'}</span>
+            {rest.length > 0 && (
+              <span className="shrink-0 tabular-nums">+{rest.length} more</span>
+            )}
+          </p>
+        </div>
+        <ChevronRight
+          className="h-4 w-4 shrink-0 text-fp-text-tertiary transition-colors group-hover/row:text-fp-text-secondary"
+          aria-hidden="true"
+        />
+      </Link>
+    </li>
+  )
+}
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
@@ -78,37 +113,46 @@ export default async function DashboardPage() {
               </div>
             </div>
           </div>
-
-          {attentionCount > 0 && (
-            <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-fp-base/20 bg-fp-portal-raised/10 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start gap-3">
-                <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-fp-warning/15 text-fp-warning">
-                  <AlertCircle className="h-4 w-4" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold leading-snug text-fp-text-primary">
-                    {attentionCount === 1
-                      ? `"${projectsNeedingAttention[0].name}" has a milestone waiting for client approval.`
-                      : `${attentionCount} projects have milestones waiting for client approval.`}
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-fp-text-secondary">
-                    Keep approvals moving so delivery stays on schedule.
-                  </p>
-                </div>
-              </div>
-
-              <div className="sm:text-right">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-fp-text-tertiary">
-                  Needs attention
-                </p>
-                <p className="mt-1 text-sm font-medium text-fp-warning tabular-nums">
-                  {attentionCount} open
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </section>
+
+      {attentionCount > 0 && (
+        <details className="group/panel overflow-hidden rounded-2xl border border-fp-border bg-fp-surface">
+          <summary className="flex cursor-pointer select-none list-none items-center justify-between gap-3 px-4 py-2 transition-colors hover:bg-fp-raised focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-fp-accent [&::-webkit-details-marker]:hidden">
+            <span className="flex min-w-0 items-center gap-2.5">
+              <AlertCircle
+                className="mt-0.5 h-5 w-5 shrink-0 text-fp-warning"
+                aria-hidden="true"
+              />
+              <span className="min-w-0 flex gap-2 items-center">
+                <span className="block text-sm font-medium leading-5 text-fp-text-primary">
+                  Waiting on client approval
+                </span>
+                <span className="mt-0.5 block text-xs leading-relaxed text-fp-text-secondary">
+                  Follow up to keep delivery on schedule.
+                </span>
+              </span>
+            </span>
+
+            <span className="flex shrink-0 items-center gap-2">
+              <span className="rounded-full bg-fp-warning/15 px-2 py-0.5 text-xs font-medium tabular-nums text-fp-warning">
+                {attentionCount}
+                <span className="sr-only"> pending</span>
+              </span>
+              <ChevronDown
+                className="h-4 w-4 text-fp-text-secondary transition-transform group-open/panel:rotate-180"
+                aria-hidden="true"
+              />
+            </span>
+          </summary>
+
+          <ul className="divide-y divide-fp-border border-t border-fp-border animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">
+            {projectsNeedingAttention.map((project) => (
+              <AttentionRow key={project.id} project={project} />
+            ))}
+          </ul>
+        </details>
+      )}
 
       <section className="space-y-4">
         <div className="flex gap-2 flex-row items-end justify-between">

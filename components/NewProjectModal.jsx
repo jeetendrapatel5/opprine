@@ -77,32 +77,28 @@ export default function NewProjectModal({ userId }) {
           />
 
           {/* ── Modal box ──
-              max-h-[90vh]      → caps height to 90% of screen
-              overflow-y-auto   → native scroll when content overflows
+              flex flex-col      → stacks header and form top-to-bottom as two
+                                   separate regions, instead of one blob of content
+              max-h-[90vh]       → caps total modal height at 90% of screen
+              overflow-hidden    → clips anything (like the form's scrollbar) that
+                                   would otherwise poke past the rounded corners
 
-              Custom scrollbar via Tailwind arbitrary selectors:
-              [&::-webkit-scrollbar]:w-1.5          → thin 6px scrollbar
-              [&::-webkit-scrollbar-track]:bg-transparent → no track background
-              [&::-webkit-scrollbar-thumb]:bg-fp-border  → thumb uses our token
-              [&::-webkit-scrollbar-thumb]:rounded-full  → pill shaped
-              [&::-webkit-scrollbar-thumb:hover]:bg-fp-text-tertiary → hover state
-
-              This is guaranteed to work — no third-party library, no CSS variable
-              mismatches, always visible when there is content to scroll.
-          -->*/}
+              The header below is a fixed region (flex-shrink-0 → never scrolls).
+              The <form> below it is the ONLY scrolling region: it gets flex-1
+              (take remaining height), min-h-0 (the flexbox trick that allows a
+              flex child to actually shrink and scroll instead of growing to fit
+              its content), and overflow-y-auto (the real scrollbar).
+              The custom scrollbar styling has moved onto the form for that reason.
+          */}
           <div className="
             relative z-10 w-full max-w-md
             bg-fp-raised border border-fp-border rounded-xl shadow-2xl
-            max-h-[90vh] overflow-y-auto
-            [&::-webkit-scrollbar]:w-1.5
-            [&::-webkit-scrollbar-track]:bg-transparent
-            [&::-webkit-scrollbar-thumb]:bg-fp-border
-            [&::-webkit-scrollbar-thumb]:rounded-full
-            [&::-webkit-scrollbar-thumb:hover]:bg-fp-text-tertiary
+            max-h-[90vh] overflow-hidden
+            flex flex-col
           ">
 
             {/* ── Modal header ── */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-fp-border">
+            <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-fp-border">
               <div>
                 <h2 className="text-fp-text-primary text-base font-semibold">
                   New Project
@@ -124,7 +120,18 @@ export default function NewProjectModal({ userId }) {
             </div>
 
             {/* ── Form ── */}
-            <form onSubmit={handleSubmit(onSubmit)} className="px-6 py-5 space-y-4">
+            <form
+              onSubmit={handleSubmit(onSubmit)}
+              className="
+                flex-1 min-h-0 overflow-y-auto
+                px-6 py-5 space-y-4
+                [&::-webkit-scrollbar]:w-1.5
+                [&::-webkit-scrollbar-track]:bg-transparent
+                [&::-webkit-scrollbar-thumb]:bg-fp-border
+                [&::-webkit-scrollbar-thumb]:rounded-full
+                [&::-webkit-scrollbar-thumb:hover]:bg-fp-text-tertiary
+              "
+            >
 
               {/* Error banner */}
               {error && (
