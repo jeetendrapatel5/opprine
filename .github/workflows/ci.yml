@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# If you push a new commit to a PR, stop the old run (it is outdated).
+# On main we let every run finish so each merge gets a full result.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Least privilege: this workflow can only read the repo.
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, typecheck and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Dummy values so the build can run. Real secrets live ONLY in Vercel.
+      # If the build complains about another missing variable, add a fake one here.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      NEXTAUTH_SECRET: ci-only-not-a-real-secret
+      NEXTAUTH_URL: http://localhost:3000
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Prisma 7 does not generate the client on install.
+      # Typecheck needs it, so we generate it before lint and typecheck.
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Uncomment when you add your first tests (for example with Vitest):
+      # - name: Test
+      #   run: npm test
+
+      - name: Build
+        run: npm run build
