@@ -114,7 +114,7 @@ export default function DashboardSidebar({ user }: Props) {
       <SidebarHeader className="justify-center h-14">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2.5"
+          className="flex items-center gap-1"
         >
 
           {/* Logo, painted through a stencil. The PNG is pure black with a
@@ -138,7 +138,7 @@ export default function DashboardSidebar({ user }: Props) {
               WebkitMaskPosition: 'center',
               maskPosition: 'center',
               WebkitMaskSize: '28px 28px',
-              maskSize: '28px 28px',
+              maskSize: '25px 25px',
             }}
           />
 

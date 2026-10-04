@@ -4,15 +4,22 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import prisma from '@/lib/prisma'
 import { requireWorkspaceMembership } from '@/lib/workspace'
+import { hasImplicitProjectAccess } from '@/lib/project'
 import NewProjectModal from '@/components/NewProjectModal'
 import ProjectCard from '@/components/ProjectCard'
-import { Briefcase, AlertCircle, ChevronDown, ChevronRight } from 'lucide-react'
+import { Briefcase, AlertCircle, ChevronDown, ChevronRight, Lock } from 'lucide-react'
 
 
 export const dynamic = 'force-dynamic'
 
-// One line in the attention panel: a project that has at least one milestone
-// in review. The whole row is a link to that project's page.
+// what ProjectCard needs
+const CARD_INCLUDE = {
+  client: true,
+  updates: { orderBy: { createdAt: 'desc' }, take: 1 },
+  milestones: { select: { id: true, title: true, status: true } },
+}
+
+// attention panel row: project with a milestone in review, links to the project
 function AttentionRow({ project }) {
   const inReview = (project.milestones ?? []).filter(
     (milestone) => milestone.status === 'IN_REVIEW'
@@ -45,35 +52,67 @@ function AttentionRow({ project }) {
   )
 }
 
+// unassigned project: id + name only, nothing else is ever loaded for it
+// still links to the project page, which renders the "access restricted" screen
+function LockedProjectCard({ id, name }) {
+  return (
+    <Link
+      href={`/dashboard/projects/${id}`}
+      className="group/locked flex items-center gap-3 rounded-2xl border border-fp-border bg-fp-surface px-4 py-4 transition-colors hover:bg-fp-raised focus-visible:bg-fp-raised focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-fp-accent"
+    >
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-fp-border bg-fp-base/70">
+        <Lock className="h-4 w-4 text-fp-text-tertiary" aria-hidden="true" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-fp-text-primary">{name}</p>
+        <p className="mt-0.5 text-xs text-fp-text-secondary">
+          You&apos;re not assigned to this project.
+        </p>
+      </div>
+      <ChevronRight
+        className="h-4 w-4 shrink-0 text-fp-text-tertiary transition-colors group-hover/locked:text-fp-text-secondary"
+        aria-hidden="true"
+      />
+    </Link>
+  )
+}
+
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
-  if (!session) redirect('/signin')
+  if (!session?.user?.id) redirect('/signin')
 
-  const membership = await requireWorkspaceMembership(session.user.id)
+  const userId = session.user.id
+  const membership = await requireWorkspaceMembership(userId)
+  const { workspaceId } = membership
+  const seesAll = hasImplicitProjectAccess(membership.role)
 
-  const projects = await prisma.project.findMany({
-    where: { workspaceId: membership.workspaceId },
-    include: {
-      client: true,
-      updates: {
-        orderBy: { createdAt: 'desc' },
-        take: 1,
-      },
-      milestones: {
-        select: {
-          id: true,
-          title: true,
-          status: true,
-        },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
+  // owner/admin: all projects, full data
+  // everyone else: assigned projects get full data, the rest get id + name
+  const [openable, locked] = await Promise.all([
+    prisma.project.findMany({
+      where: seesAll ? { workspaceId } : { workspaceId, members: { some: { userId } } },
+      include: CARD_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    }),
+    seesAll
+      ? []
+      : prisma.project.findMany({
+          where: { workspaceId, members: { none: { userId } } },
+          select: { id: true, name: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+        }),
+  ])
 
-  const totalProjects = projects.length
-  const activeProjects = projects.filter((project) => project.status === 'ACTIVE').length
+  // one list, newest first, locked and open mixed
+  const rows = [
+    ...openable.map((project) => ({ project, isLocked: false })),
+    ...locked.map((project) => ({ project, isLocked: true })),
+  ].sort((a, b) => b.project.createdAt - a.project.createdAt)
 
-  const projectsNeedingAttention = projects.filter((project) =>
+  // stats only cover projects the user can open
+  const activeProjects = openable.filter((project) => project.status === 'ACTIVE').length
+
+  const projectsNeedingAttention = openable.filter((project) =>
     project.milestones?.some((milestone) => milestone.status === 'IN_REVIEW')
   )
 
@@ -83,8 +122,10 @@ export default async function DashboardPage() {
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
 
   let subtitle
-  if (totalProjects === 0) {
+  if (rows.length === 0) {
     subtitle = "Let's get your first project set up."
+  } else if (openable.length === 0) {
+    subtitle = "You're not assigned to any projects yet."
   } else if (attentionCount > 0) {
     subtitle = `${attentionCount} project${attentionCount > 1 ? 's' : ''} waiting on client review.`
   } else if (activeProjects > 0) {
@@ -117,7 +158,7 @@ export default async function DashboardPage() {
       </section>
 
       {attentionCount > 0 && (
-        <details className="group/panel overflow-hidden rounded-2xl border border-fp-border bg-fp-surface">
+        <details className="group/panel overflow-hidden rounded-lg border border-fp-border bg-fp-surface">
           <summary className="flex cursor-pointer select-none list-none items-center justify-between gap-3 px-4 py-2 transition-colors hover:bg-fp-raised focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-fp-accent [&::-webkit-details-marker]:hidden">
             <span className="flex min-w-0 items-center gap-2.5">
               <AlertCircle
@@ -163,11 +204,11 @@ export default async function DashboardPage() {
           </div>
 
           <div className="shrink-0">
-            <NewProjectModal userId={session.user.id} />
+            <NewProjectModal userId={userId} />
           </div>
         </div>
 
-        {projects.length === 0 ? (
+        {rows.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-fp-border bg-fp-surface/70 px-6 py-16 text-center sm:px-10">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-fp-border bg-fp-base/70">
               <Briefcase className="h-5 w-5 text-fp-text-tertiary" />
@@ -178,15 +219,16 @@ export default async function DashboardPage() {
             <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-fp-text-tertiary">
               Add a project and invite your client. They&apos;ll get a private portal with their own link.
             </p>
-            <div className="mt-6 flex justify-center">
-              <NewProjectModal userId={session.user.id} />
-            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
+            {rows.map(({ project, isLocked }) =>
+              isLocked ? (
+                <LockedProjectCard key={project.id} id={project.id} name={project.name} />
+              ) : (
+                <ProjectCard key={project.id} project={project} />
+              )
+            )}
           </div>
         )}
       </section>

@@ -1,40 +1,25 @@
 // app/api/projects/[id]/members/route.js
 //
-// POST — staff a user onto this project (or change their role if
-// they're already staffed — addProjectMember upserts). PROJECT_MANAGER
-// only, same authority level as milestone create/edit.
-//
-// GET — list everyone staffed on this project. Any staffed member can
-// view this (matches GET /api/workspace/invites: only sending/revoking
-// is role-gated, not viewing) — no requireProjectRole call.
-//
-// Shape mirrors app/api/workspace/invites/route.js, with one structural
-// difference: addProjectMember (lib/project.js) already does its OWN
-// requester-permission check internally — createInvite doesn't, which
-// is why the invites route calls requireRole itself before handing
-// off. Here, POST doesn't duplicate that check — addProjectMember
-// throws ForbiddenError itself if the caller isn't PROJECT_MANAGER-or-
-// above, same "don't trust the caller already checked" discipline it
-// documents about itself. GET still needs its own requireProjectMembership
-// call though — listProjectMembers explicitly does NOT check permission
-// itself (see the comment on it in lib/project.js).
+// POST — staff a user onto this project (or change their role: upsert).
+//        addProjectMember checks the caller's manageStaffing itself.
+// GET  — list who's staffed. Needs viewRoster (listProjectMembers does
+//        no permission check of its own). Also tells the panel whether
+//        the caller can manage staffing (canManage), so the UI never has
+//        to work out permissions on its own.
 
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { requireProjectMembership, addProjectMember, listProjectMembers } from '@/lib/project'
+import { can } from '@/lib/project-permissions'
+import { ForbiddenError } from '@/lib/errors'
 import { handleApiError } from '@/lib/http-errors'
 
-// The three ProjectRole values — unlike WorkspaceRole's OWNER (which
-// invites deliberately exclude), none of these need excluding here.
-// A PROJECT_MANAGER staffing another PROJECT_MANAGER, a CONTRIBUTOR,
-// or a read-only VIEWER are all legitimate. This just guards against
-// a typo'd or garbage role string reaching Prisma as a raw enum value.
+// valid ProjectRole values, blocks typo'd/garbage strings reaching prisma
 const STAFFABLE_ROLES = ['PROJECT_MANAGER', 'CONTRIBUTOR', 'VIEWER']
 
 export async function POST(request, { params }) {
   try {
-    // Step 1 — must be logged in
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'You must be logged in' }, { status: 401 })
@@ -42,10 +27,7 @@ export async function POST(request, { params }) {
 
     const { id: projectId } = await params
 
-    // Step 2 — read + validate the request body. Basic shape/presence
-    // checks return 400 directly, same convention as
-    // app/api/workspace/invites/route.js — reserved for things that
-    // depend on database state (membership, roles) below.
+    // shape checks -> 400. anything db-dependent is handled in addProjectMember
     let body
     try {
       body = await request.json()
@@ -67,11 +49,7 @@ export async function POST(request, { params }) {
       )
     }
 
-    // Step 3 — hand off. addProjectMember checks the caller's own
-    // PROJECT_MANAGER-or-above access, confirms the target is already
-    // a WorkspaceMember of this project's workspace, and upserts —
-    // all inside lib/project.js. Throws ForbiddenError/NotFoundError
-    // as appropriate, both handled by handleApiError below.
+    // checks caller's manageStaffing, target is in the workspace, then upserts
     const member = await addProjectMember({
       requestingUserId: session.user.id,
       targetUserId: userId,
@@ -94,16 +72,28 @@ export async function GET(request, { params }) {
 
     const { id: projectId } = await params
 
-    // listProjectMembers itself has no permission check — the "who's
-    // allowed to view" decision lives here in the route, same as GET
-    // /api/workspace/invites calling requireWorkspaceMembership without
-    // a follow-up requireRole. No role check: any staffed member (or
-    // implicit OWNER/ADMIN) can see who else is on the project.
-    await requireProjectMembership(session.user.id, projectId)
+    // 404 outsider, 403 unassigned member, else we get their role
+    const { role } = await requireProjectMembership(session.user.id, projectId)
+
+    // permission comes from the matrix, not a hardcoded role list
+    if (!can(role, 'viewRoster')) {
+      throw new ForbiddenError('You do not have permission to view the team on this project.')
+    }
+
+    // same matrix, second question: may this caller change the roster?
+    // ProjectMembersPanel shows / hides Add and remove from this value.
+    const canManage = can(role, 'manageStaffing')
 
     const members = await listProjectMembers(projectId)
 
-    return NextResponse.json({ members })
+    // emails are NOT hidden from non-managers here on purpose: any
+    // workspace member can already read every member's email from
+    // GET /api/workspace/members, so hiding it here would protect nothing.
+    return NextResponse.json({
+      members,
+      currentUserId: session.user.id, // so the panel can mark "(you)"
+      canManage,
+    })
   } catch (error) {
     return handleApiError(error)
   }

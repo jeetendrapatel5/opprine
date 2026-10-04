@@ -4,15 +4,21 @@
 // page's sidebar via the "Project members" panel button (see
 // app/dashboard/projects/[id]/page.jsx, the
 // <ProjectPanelDialog panelId="members"> block). That dialog already
-// renders the "Project members" title, description, and dimmed/bordered
-// frame — same pattern RecentActivityPanel uses for the "activity"
-// panel — so this component only renders the add-teammate control and
-// the member list, not its own card shell or repeated heading.
+// renders the title, description, and frame, so this component only
+// renders the add-teammate control and the member list.
 //
-// Restyled to match fp-* design tokens and axios after seeing the real
-// files (page.jsx, MilestoneRow.jsx) — the original version used generic
-// slate/red Tailwind classes and native fetch, matching neither
-// convention.
+// PERMISSIONS: this component never decides who is allowed to do what.
+// GET /api/projects/[id]/members returns `canManage`, computed on the
+// server with can(role, 'manageStaffing') from lib/project-permissions.js,
+// and this panel just follows it.
+//   canManage = true  (workspace OWNER / ADMIN, or PROJECT_MANAGER)
+//     -> Add button, assign form, remove buttons
+//   canManage = false (CONTRIBUTOR)
+//     -> read-only list of names and roles; own row is marked "(you)"
+//   A VIEWER gets a 403 from the API (can() allows them nothing yet), so
+//   they see the "no access" message instead of the list.
+// Hiding buttons is only a convenience. The API enforces the same rules,
+// so a direct POST or DELETE from a Contributor still gets a 403.
 //
 // Usage: <ProjectMembersPanel projectId={project.id} /> inside
 // <ProjectPanelDialog panelId="members">.
@@ -30,34 +36,83 @@ const ROLE_LABELS = {
 }
 
 export default function ProjectMembersPanel({ projectId }) {
-  const [members, setMembers] = useState(null)
+  // ── Data that comes from the server ────────────────────────────────
+  const [members, setMembers] = useState(null) // null = still loading
+  const [canManage, setCanManage] = useState(false) // server's answer
+  const [currentUserId, setCurrentUserId] = useState(null) // to mark "(you)"
+  const [loadError, setLoadError] = useState(null) // text, or null
+
+  // Only fetched when canManage is true (needed for the Add dropdown).
   const [workspaceMembers, setWorkspaceMembers] = useState(null)
+
+  // ── Small UI state ─────────────────────────────────────────────────
   const [isAdding, setIsAdding] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState('')
   const [selectedRole, setSelectedRole] = useState('CONTRIBUTOR')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [pendingUserId, setPendingUserId] = useState(null)
 
+  // Fetches the member list AND the permission flag in one request.
+  // Never throws: failures turn into `loadError`, so the panel shows a
+  // message instead of "Loading…" forever.
   const loadMembers = useCallback(async () => {
-    const { data } = await axios.get(`/api/projects/${projectId}/members`)
-    setMembers(data.members)
+    try {
+      const { data } = await axios.get(`/api/projects/${projectId}/members`)
+      setMembers(data.members)
+      setCanManage(Boolean(data.canManage))
+      setCurrentUserId(data.currentUserId ?? null)
+      setLoadError(null)
+    } catch (error) {
+      const status = error.response?.status
+      setCanManage(false)
+      setLoadError(
+        status === 403 || status === 404
+          ? "You don't have access to this project's members."
+          : 'Could not load project members.'
+      )
+    }
   }, [projectId])
 
+  // Runs when the panel opens (and if projectId changes).
   useEffect(() => {
-    loadMembers().catch(() => alert('Could not load project members.'))
+    loadMembers()
+  }, [loadMembers])
+
+  // Load the workspace's people only for someone who can assign them.
+  // A Contributor never triggers this request.
+  useEffect(() => {
+    if (!canManage) {
+      setWorkspaceMembers(null)
+      return
+    }
     axios
       .get('/api/workspace/members')
       .then(({ data }) => setWorkspaceMembers(data.members))
       .catch(() => alert('Could not load workspace members.'))
-  }, [loadMembers])
+  }, [canManage])
 
+  // Workspace people who are not yet on this project.
   const availableToAdd = (workspaceMembers ?? []).filter(
     (wm) => !(members ?? []).some((m) => m.userId === wm.userId)
   )
 
+  // Shows WHY the server said no. For 400 / 403 / 404 the API sends a
+  // clear message (for example "This is the only Project Manager on this
+  // project..."), so we show that text instead of guessing. After a 403
+  // we also reload: if the person was demoted while the panel was open,
+  // the Add and remove buttons disappear.
+  const reportMutationError = async (error, fallbackMessage) => {
+    const status = error.response?.status
+    const serverMessage = [400, 403, 404].includes(status)
+      ? error.response?.data?.error
+      : null
+    alert(serverMessage || fallbackMessage)
+    if (status === 403) await loadMembers()
+  }
+
   const handleAdd = async (e) => {
     e.preventDefault()
-    if (!selectedUserId) return
+    if (!canManage || !selectedUserId) return // UI guard only; the API is the real lock
     setIsSubmitting(true)
     try {
       await axios.post(`/api/projects/${projectId}/members`, {
@@ -68,46 +123,66 @@ export default function ProjectMembersPanel({ projectId }) {
       setIsAdding(false)
       setSelectedUserId('')
       setSelectedRole('CONTRIBUTOR')
-    } catch {
-      alert('Could not add this person to the project.')
+    } catch (error) {
+      await reportMutationError(error, 'Could not add this person to the project.')
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const handleRemove = async (userId) => {
+    if (!canManage) return // UI guard only; the API is the real lock
     setPendingUserId(userId)
     try {
       await axios.delete(`/api/projects/${projectId}/members/${userId}`)
       await loadMembers()
-    } catch {
-      alert('Could not remove this person from the project.')
+    } catch (error) {
+      await reportMutationError(error, 'Could not remove this person from the project.')
     } finally {
       setPendingUserId(null)
     }
   }
 
+  // The server said no (403/404) or the request failed: show why, nothing else.
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-6 text-center">
+        <Users className="w-4 h-4 text-fp-text-tertiary" />
+        <p className="text-xs text-fp-text-tertiary">{loadError}</p>
+      </div>
+    )
+  }
+
   return (
     <div>
+      {/* Top bar. Same height for everyone so the layout never jumps. */}
       <div className="flex items-center justify-end h-8 pr-9">
-        <button
-          type="button"
-          onClick={() => setIsAdding((v) => !v)}
-          className="flex items-center cursor-pointer gap-1 leading-none text-[10px] font-bold uppercase tracking-wider text-fp-accent hover:text-fp-accent-hover transition-colors duration-150"
-        >
-          {isAdding ? (
-            'Cancel'
-          ) : (
-            <>
-              <Plus className="w-3 h-3" />
-              Add
-            </>
-          )}
-        </button>
+        {members !== null && !canManage && (
+          <p className="mr-auto text-[10px] text-fp-text-tertiary">
+            Only a project manager or workspace owner can change who&apos;s on this project.
+          </p>
+        )}
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => setIsAdding((v) => !v)}
+            className="flex items-center cursor-pointer gap-1 leading-none text-[10px] font-bold uppercase tracking-wider text-fp-accent hover:text-fp-accent-hover transition-colors duration-150"
+          >
+            {isAdding ? (
+              'Cancel'
+            ) : (
+              <>
+                <Plus className="w-3 h-3" />
+                Add
+              </>
+            )}
+          </button>
+        )}
       </div>
       <div className="w-full border-b border-fp-border" />
 
-      {isAdding && (
+      {/* Assign form: only exists in the page when canManage is true. */}
+      {canManage && isAdding && (
         <form
           onSubmit={handleAdd}
           className="flex flex-wrap items-center gap-2 py-3 border-b border-fp-border"
@@ -183,23 +258,32 @@ export default function ProjectMembersPanel({ projectId }) {
           {members.map((m) => (
             <li key={m.userId} className="flex items-center justify-between py-2.5 group">
               <div className="min-w-0">
-                <p className="text-xs font-medium text-fp-text-primary truncate">{m.name || m.email}</p>
+                <p className="text-xs font-medium text-fp-text-primary truncate">
+                  {m.name || m.email}
+                  {m.userId === currentUserId && (
+                    <span className="font-normal text-fp-text-tertiary"> (you)</span>
+                  )}
+                </p>
                 <p className="text-[10px] text-fp-text-tertiary">{ROLE_LABELS[m.role] ?? m.role}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => handleRemove(m.userId)}
-                disabled={pendingUserId === m.userId}
-                className="
-                  opacity-0 group-hover:opacity-100 transition-opacity duration-150
-                  text-fp-text-tertiary hover:text-fp-danger p-1 rounded shrink-0 cursor-pointer
-                "
-              >
-                {pendingUserId === m.userId
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : <Trash2 className="w-3.5 h-3.5" />
-                }
-              </button>
+
+              {/* Remove button: only rendered when canManage is true. */}
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => handleRemove(m.userId)}
+                  disabled={pendingUserId === m.userId}
+                  className="
+                    opacity-0 group-hover:opacity-100 transition-opacity duration-150
+                    text-fp-text-tertiary hover:text-fp-danger p-1 rounded shrink-0 cursor-pointer
+                  "
+                >
+                  {pendingUserId === m.userId
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Trash2 className="w-3.5 h-3.5" />
+                  }
+                </button>
+              )}
             </li>
           ))}
         </ul>

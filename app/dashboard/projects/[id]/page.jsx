@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect, notFound } from 'next/navigation'
 import prisma from '@/lib/prisma'
-import { requireProjectMembership } from '@/lib/project'
+import { getProjectAccess } from '@/lib/project'
 import { requireWorkspaceMembership } from '@/lib/workspace'
 import { can } from '@/lib/project-permissions'
 import Link from 'next/link'
@@ -30,6 +30,7 @@ import GithubConnectPanel from '@/components/GithubConnectPanel'
 import ProjectPanelDialog from '@/components/ProjectPanelDialog'
 import RecentActivityPanel from '@/components/project/RecentActivityPanel'
 import ProjectMembersPanel from '@/components/ProjectMembersPanel'
+import ProjectAccessRestricted from '@/components/ProjectAccessRestricted'
 
 //Status config
 
@@ -134,61 +135,15 @@ export default async function ProjectPage({ params }) {
   if (!id) notFound()
 
   const session = await getServerSession(authOptions)
-  if (!session) redirect('/signin')
+  if (!session?.user?.id) redirect('/signin')
 
-  // CHANGED — THE CORE FIX. This used to be requireWorkspaceMembership
-  // followed by prisma.project.findFirst({ where: { id, workspaceId } }).
-  // That checks "is this person in the workspace," which is NOT the
-  // same question as "is this person staffed on THIS project." Every
-  // other route in this codebase (milestones, staffing) already draws
-  // that distinction — this page was the one place that didn't, which
-  // meant project-level staffing provided ZERO protection here: any
-  // workspace member could open any project's full detail page,
-  // client info and all, regardless of whether they were staffed on
-  // it.
-  //
-  // requireProjectMembership throws NotFoundError if the project
-  // doesn't exist, ForbiddenError if this user has no ProjectMember
-  // row on it and isn't OWNER/ADMIN of its workspace (implicit
-  // access). Both map to notFound() below — deliberately not
-  // distinguishing "doesn't exist" from "you can't see it" in what
-  // the URL reveals, same reasoning most apps use for BOLA prevention:
-  // a 404 tells a curious teammate nothing about whether a project ID
-  // they don't have access to even exists.
-  let membership
-  try {
-    membership = await requireProjectMembership(session.user.id, id)
-  } catch (err) {
-    if (err.name === 'NotFoundError' || err.name === 'ForbiddenError') {
-      notFound()
-    }
-    throw err
-  }
+  // missing / outsider -> 404, unassigned workspace member -> restricted screen
+  const access = await getProjectAccess(session.user.id, id)
+  if (access.status === 'missing') notFound()
 
-  // NEW — active-workspace guard. requireProjectMembership above answers
-  // "is this user allowed to open this project at all" — it checks real
-  // staffing on the PROJECT itself, or OWNER/ADMIN of the project's OWN
-  // workspace. It deliberately does NOT check which workspace the user
-  // currently has selected in the UI, because access someone was granted
-  // shouldn't disappear just because they clicked a different workspace
-  // in a dropdown.
-  //
-  // That's correct for authorization, but it means switching the active
-  // workspace does not, by itself, stop this page from rendering a
-  // project that belongs to a DIFFERENT workspace — e.g. someone who
-  // owns both Workspace A and Workspace B can still open a Workspace-A
-  // project after switching to B. This check catches exactly that case:
-  // it runs AFTER authorization, never grants anything, and only
-  // decides whether THIS page, right now, is the right place to show
-  // this project. Covers direct links, page refreshes, and a second
-  // browser tab — none of which go through the workspace switcher's
-  // own client-side redirect.
-  //
-  // Kept as a light, separate query (workspaceId only) rather than
-  // folding into requireProjectMembership, so the project's client and
-  // invoice data is never fetched at all when the workspace doesn't
-  // match — satisfies "don't fetch the previous workspace's project"
-  // literally, not just "don't display it."
+  // active-workspace guard: runs after authz, grants nothing.
+  // stops another workspace's project rendering after a switch
+  // (direct link, refresh, 2nd tab). light query: no client/invoice data loaded.
   const activeWorkspace = await requireWorkspaceMembership(session.user.id)
   const projectWorkspace = await prisma.project.findUnique({
     where: { id },
@@ -198,7 +153,10 @@ export default async function ProjectPage({ params }) {
     redirect('/dashboard')
   }
 
-  const role = membership.role
+  // in workspace but not assigned: nothing else is loaded
+  if (access.status === 'restricted') return <ProjectAccessRestricted />
+
+  const role = access.role
 
   // What this specific page is allowed to show, computed ONCE up
   // front — every gate below (the query itself, and every sidebar
@@ -480,7 +438,8 @@ export default async function ProjectPage({ params }) {
             />
 
             <div className="bg-fp-surface border border-fp-border rounded-xl overflow-hidden">
-              <ProjectTabs project={project} permissions={permissions} />
+              {/* displayProject: webhook secret redacted for non-owners */}
+              <ProjectTabs project={displayProject} permissions={permissions} />
             </div>
           </section>
 
@@ -638,7 +597,7 @@ export default async function ProjectPage({ params }) {
               </Link>
             )}
 
-            <ClientReviewCard project={project} permissions={permissions} />
+            <ClientReviewCard project={displayProject} permissions={permissions} />
 
             {/* Dialogs opened from the sidebar's project panel buttons
                 (lib/project-panels.js). Add a new button there, then add a
