@@ -28,7 +28,7 @@
 
 'use client'
 
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Check, Search, User } from 'lucide-react'
 
 function getInitials(name, email) {
@@ -72,39 +72,38 @@ export default function AssigneeSelect({
     }
   }, [isOpen])
 
-  useEffect(() => {
-    if (!isOpen) setQuery('')
-  }, [isOpen])
-
   const selectedMember = members.find((m) => m.userId === value)
 
   // Current user pinned to the top, everyone else alphabetical — the
   // scanning aid that matters most ("where am I") comes before the
   // more general one (search, below).
-  const sortedMembers = useMemo(() => {
-    const list = [...members]
-    list.sort((a, b) => {
+  const sortedMembers = [...members].sort((a, b) => {
       const aIsMe = a.userId === currentUserId
       const bIsMe = b.userId === currentUserId
       if (aIsMe && !bIsMe) return -1
       if (bIsMe && !aIsMe) return 1
       return (a.name || a.email || '').localeCompare(b.name || b.email || '')
-    })
-    return list
-  }, [members, currentUserId])
+  })
 
-  const filteredMembers = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return sortedMembers
-    return sortedMembers.filter(
-      (m) =>
-        (m.name || '').toLowerCase().includes(q) ||
-        (m.email || '').toLowerCase().includes(q)
-    )
-  }, [sortedMembers, query])
+  const q = query.trim().toLowerCase()
+  const filteredMembers = !q
+    ? sortedMembers
+    : sortedMembers.filter(
+        (m) =>
+          (m.name || '').toLowerCase().includes(q) ||
+          (m.email || '').toLowerCase().includes(q)
+      )
 
   // Only worth the extra chrome once there's actually a list to search.
   const showSearch = members.length > 6
+
+  // Open/close from the button. The search box is only visible while the
+  // popover is open, so clearing it at the moment it OPENS gives exactly
+  // the same result the old effect did, with no effect needed.
+  const handleToggle = () => {
+    if (!isOpen) setQuery('')
+    setIsOpen((v) => !v)
+  }
 
   const handleSelect = (userId) => {
     onChange(userId)
@@ -116,7 +115,7 @@ export default function AssigneeSelect({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setIsOpen((v) => !v)}
+        onClick={handleToggle}
         className="
           flex items-center gap-2 w-full
           bg-fp-base border border-fp-border cursor-pointer text-left
@@ -199,7 +198,7 @@ export default function AssigneeSelect({
 
             {filteredMembers.length === 0 ? (
               <p className="px-2.5 py-3 text-[11px] text-fp-text-tertiary text-center">
-                No members match "{query}"
+                No members match &quot;{query}&quot;
               </p>
             ) : (
               filteredMembers.map((m) => {

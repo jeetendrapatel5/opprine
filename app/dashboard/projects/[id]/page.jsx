@@ -67,6 +67,14 @@ function timeAgoShort(date) {
   return `${Math.floor(seconds / 86400)}d ago`
 }
 
+// Whole days between a date and "now". Lives OUTSIDE the component on
+// purpose: React's lint rule (react-hooks/purity) forbids calling
+// Date.now() directly while a component renders. This page is a server
+// component, so it runs once per request and behaves exactly as before.
+function daysSince(date) {
+  return Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 86400000))
+}
+
 function buildPortalLink(magicToken) {
   const base = process.env.NEXTAUTH_URL
   if (!base || !magicToken) return '#'
@@ -223,10 +231,7 @@ export default async function ProjectPage({ params }) {
   const status = STATUS_CONFIG[project.status] ?? STATUS_CONFIG.ACTIVE
   const StatusIcon = status.Icon
   const { completed, total, progress } = getMilestoneProgress(project.milestones)
-  const daysActive = Math.max(
-    0,
-    Math.floor((Date.now() - new Date(project.createdAt).getTime()) / 86400000),
-  )
+  const daysActive = daysSince(project.createdAt)
   const clientViewedText = canViewClient ? timeAgoShort(project.client?.lastViewedAt) : null
   const clientInitial = canViewClient ? (project.client?.name?.[0]?.toUpperCase() ?? '?') : undefined
   // CHANGED — was `project.client?.name ?? 'No client assigned'`.

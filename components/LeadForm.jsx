@@ -27,7 +27,7 @@ export default function LeadForm({ projectId, freelancerName }) {
       <div className="bg-white/10 p-8 rounded-3xl border border-white/20 text-center backdrop-blur-sm">
         <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-4" />
         <h3 className="text-xl font-bold text-white mb-2">Inquiry Sent!</h3>
-        <p className="text-gray-300">We've notified {freelancerName}. They will be in touch shortly.</p>
+        <p className="text-gray-300">We&apos;ve notified {freelancerName}. They will be in touch shortly.</p>
       </div>
     )
   }

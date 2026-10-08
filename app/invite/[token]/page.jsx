@@ -113,7 +113,7 @@ export default async function InvitePage({ params }) {
           <div className="mt-6">
             {emailMismatch && (
               <p className="text-xs text-fp-warning mb-3 leading-relaxed">
-                You're logged in as {session.user.email}, but this invite was sent to {invite.email}.
+                You&apos;re logged in as {session.user.email}, but this invite was sent to {invite.email}.
                 You can still accept it with your current account.
               </p>
             )}

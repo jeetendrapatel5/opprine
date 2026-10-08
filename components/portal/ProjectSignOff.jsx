@@ -86,7 +86,7 @@ export default function ProjectSignOff({
             font-display italic text-sm text-fp-portal-text-secondary leading-relaxed
             bg-fp-portal-raised border border-fp-portal-border rounded-lg px-4 py-3
           ">
-            "{existingTestimonial}"
+            &quot;{existingTestimonial}&quot;
           </p>
         )}
       </div>

@@ -353,7 +353,7 @@ function LivePreview({ data, project }) {
                 ))}
               </div>
               <p className="text-xs text-gray-700 italic leading-relaxed line-clamp-3">
-                "{project.testimonial}"
+                &quot;{project.testimonial}&quot;
               </p>
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mt-1.5">
                  {clientName}
@@ -731,7 +731,7 @@ export default function StoryEditor({ project }) {
                 </span>
               </button>
               <p className="text-fp-text-tertiary text-[10px] mt-2 leading-relaxed">
-                If left empty, we'll use your first milestone delivery image as the hero.
+                If left empty, we&apos;ll use your first milestone delivery image as the hero.
               </p>
             </div>
           )}
@@ -895,7 +895,7 @@ export default function StoryEditor({ project }) {
 
         {/* Hint below the preview */}
         <p className="text-fp-text-tertiary text-[10px] mt-3 leading-relaxed text-center">
-          Preview updates as you type. Click "Save changes" to persist.
+          Preview updates as you type. Click &quot;Save changes&quot; to persist.
         </p>
 
       </div>

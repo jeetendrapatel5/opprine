@@ -111,7 +111,7 @@ function FallbackPreview({ file }) {
         </div>
 
         <p className="text-sm text-fp-portal-text-secondary leading-relaxed">
-          This file type can't be previewed in the browser.
+          This file type can&apos;t be previewed in the browser.
         </p>
 
         {/* Download CTA */}

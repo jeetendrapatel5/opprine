@@ -18,6 +18,7 @@ import {
   Star, CheckCircle2, Quote, Briefcase,
   MapPin, ExternalLink, Code2,
 } from 'lucide-react'
+import Link from 'next/link'
 
 // ── SEO metadata ──────────────────────────────────────────────────────────────
 
@@ -143,7 +144,7 @@ function MvpLayout({ project }) {
                 <StarRating rating={project.clientRating} />
               </div>
               <p className="text-xl md:text-2xl font-medium text-gray-800 leading-relaxed italic mb-5">
-                "{project.testimonial}"
+                &quot;{project.testimonial}&quot;
               </p>
               <p className="text-sm font-bold text-gray-700 uppercase tracking-wider">
                 — {clientLabel}
@@ -162,7 +163,7 @@ function MvpLayout({ project }) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {visualAssets.map(asset => (
               
-              <a key={asset.id}
+              <Link key={asset.id}
                 href={asset.url}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -175,7 +176,7 @@ function MvpLayout({ project }) {
                   loading="lazy"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-              </a>
+              </Link>
             ))}
           </div>
         </section>
@@ -195,9 +196,9 @@ function MvpLayout({ project }) {
 
       <footer className="py-8 text-center bg-black text-xs text-gray-500 border-t border-gray-800">
         Powered by{' '}
-        <a href="/" className="font-bold text-white hover:text-blue-400 transition-colors">
-          Freeport
-        </a>
+        <Link href="/" className="font-bold text-white hover:text-blue-400 transition-colors">
+          Opprine
+        </Link>
         . The client portal for freelance web developers.
       </footer>
     </div>
@@ -315,7 +316,7 @@ function FullStoryLayout({ project }) {
             </div>
             <Quote className="w-8 h-8 text-amber-200 mx-auto mb-4" />
             <p className="text-2xl md:text-3xl font-medium text-gray-800 leading-relaxed italic mb-6">
-              "{project.testimonial}"
+              &quot;{project.testimonial}&quot;
             </p>
             <div className="flex items-center justify-center gap-3">
               {/* Avatar — initial letter in amber */}
@@ -444,7 +445,7 @@ function FullStoryLayout({ project }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {visualAssets.map(asset => (
                 
-                <a key={asset.id}
+                <Link key={asset.id}
                   href={asset.url}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -457,7 +458,7 @@ function FullStoryLayout({ project }) {
                     loading="lazy"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -489,22 +490,22 @@ function FullStoryLayout({ project }) {
               <div className="flex flex-wrap items-center gap-3 mt-1.5">
                 {project.user.username && (
                   
-                  <a href={`/u/${project.user.username}`}
+                  <Link href={`/u/${project.user.username}`}
                     className="text-xs text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
                   >
                     View portfolio →
-                  </a>
+                  </Link>
                 )}
                 {project.user.portfolioUrl && (
                   
-                  <a href={project.user.portfolioUrl}
+                  <Link href={project.user.portfolioUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 transition-colors"
                   >
                     <ExternalLink className="w-3 h-3" />
                     {project.user.portfolioUrl.replace(/^https?:\/\//, '')}
-                  </a>
+                  </Link>
                 )}
               </div>
             </div>
@@ -527,9 +528,9 @@ function FullStoryLayout({ project }) {
 
       <footer className="py-8 text-center bg-black text-xs text-gray-500 border-t border-gray-800">
         Powered by{' '}
-        <a href="/" className="font-bold text-white hover:text-blue-400 transition-colors">
+        <Link href="/" className="font-bold text-white hover:text-blue-400 transition-colors">
           Freeport
-        </a>
+        </Link>
         . The client portal for freelance web developers.
       </footer>
     </div>

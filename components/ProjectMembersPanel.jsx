@@ -249,7 +249,7 @@ export default function ProjectMembersPanel({ projectId }) {
       {members?.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <Users className="w-4 h-4 text-fp-text-tertiary" />
-          <p className="text-xs text-fp-text-tertiary">No one's staffed on this project yet.</p>
+          <p className="text-xs text-fp-text-tertiary">No one&apos;s staffed on this project yet.</p>
         </div>
       )}
 

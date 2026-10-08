@@ -58,7 +58,7 @@ export default function NotificationList({
         <div className="mb-3 flex items-center justify-center w-11 h-11 rounded-[12px] bg-[var(--color-fp-surface-2,var(--color-fp-surface))]">
           <WifiOff className="w-[18px] h-[18px] text-[var(--color-fp-text-tertiary)]" strokeWidth={1.75} />
         </div>
-        <p className="text-sm text-[var(--color-fp-text-secondary)]">Couldn't load notifications.</p>
+        <p className="text-sm text-[var(--color-fp-text-secondary)]">Couldn&apos;t load notifications.</p>
         <p className="mt-1 text-xs text-[var(--color-fp-text-tertiary)]">Check your connection and try again.</p>
       </div>
     )
@@ -73,7 +73,7 @@ export default function NotificationList({
         <div className="mb-3 flex items-center justify-center w-11 h-11 rounded-[12px] bg-[var(--color-fp-accent)]/8">
           <Bell className="w-[18px] h-[18px] text-[var(--color-fp-accent)]/60" strokeWidth={1.75} />
         </div>
-        <p className="text-sm font-medium text-[var(--color-fp-text-primary)]">You're all caught up</p>
+        <p className="text-sm font-medium text-[var(--color-fp-text-primary)]">You&apos;re all caught up</p>
         <p className="mt-1 text-xs text-[var(--color-fp-text-tertiary)]">New activity will show up here.</p>
       </div>
     )

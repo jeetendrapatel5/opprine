@@ -104,7 +104,7 @@ function InvoiceRow({ invoice, onCancel, canEdit }) {
             </p>
           )}
           {invoice.note && (
-            <p className="text-xs text-gray-500 mt-1">"{invoice.note}"</p>
+            <p className="text-xs text-gray-500 mt-1">&quot;{invoice.note}&quot;</p>
           )}
         </div>
         <p className="text-base font-bold text-gray-400 shrink-0">
