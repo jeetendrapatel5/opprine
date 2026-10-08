@@ -123,14 +123,14 @@ export default async function FreelancerProfilePage({ params }) {
               {user.portfolioUrl && (
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-4">
                   
-                  <a href={user.portfolioUrl}
+                  <Link href={user.portfolioUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
                   >
                     <ExternalLink className="w-4 h-4" />
                     {user.portfolioUrl.replace(/^https?:\/\//, '')}
-                  </a>
+                  </Link>
                 </div>
               )}
             </div>
@@ -151,7 +151,7 @@ export default async function FreelancerProfilePage({ params }) {
               No case studies yet
             </h2>
             <p className="text-gray-400 text-sm">
-              {user.name} hasn't published any case studies yet. Check back soon.
+              {user.name} hasn&apos;t published any case studies yet. Check back soon.
             </p>
           </div>
         ) : (
@@ -263,9 +263,9 @@ export default async function FreelancerProfilePage({ params }) {
       {/* Footer */}
       <footer className="py-8 text-center bg-white border-t border-gray-100 text-xs text-gray-400">
         Powered by{' '}
-        <a href="/" className="font-bold text-gray-700 hover:text-indigo-600 transition-colors">
+        <Link href="/" className="font-bold text-gray-700 hover:text-indigo-600 transition-colors">
           Freeport
-        </a>
+        </Link>
         . The client portal for freelance web developers.
       </footer>
     </div>

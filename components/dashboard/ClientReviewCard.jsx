@@ -135,7 +135,7 @@ export default function ClientReviewCard({ project }) {
           {/* Testimonial — display/italic font for editorial feel */}
           {project.testimonial && (
             <p className="font-display italic text-xs leading-relaxed text-fp-text-secondary mb-4">
-              "{project.testimonial}"
+              &quot;{project.testimonial}&quot;
             </p>
           )}
 

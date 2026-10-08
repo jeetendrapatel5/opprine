@@ -189,7 +189,7 @@ export default function DeliveryModal({ milestone, fileOptions = [], onSuccess, 
               Send for Client Review
             </h2>
             <p className="text-fp-text-tertiary text-xs mt-0.5">
-              "{milestone.title}"
+              &quot;{milestone.title}&quot;
             </p>
           </div>
           <button

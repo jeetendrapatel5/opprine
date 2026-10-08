@@ -9,6 +9,17 @@ import { z } from 'zod'
 import Link from 'next/link'
 import axios from 'axios'
 
+// Turns whatever was thrown into a message we can show on screen.
+// axios.isAxiosError() tells TypeScript "this really is an axios error",
+// so we can safely read error.response.data.error WITHOUT using `any`.
+// Anything else (a normal JS error) just gets the fallback message.
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError<{ error?: string }>(error)) {
+    return error.response?.data?.error || fallback
+  }
+  return fallback
+}
+
 // ─────────────────────────────────────────────────────────────
 // STYLES — copied from app/(auth)/signin/page.tsx so this page
 // matches it exactly, as requested. If you ever pull these into a
@@ -225,8 +236,8 @@ function EmailStep({ onSent, serverError, setServerError, isLoading, setIsLoadin
       // shouldn't have a way) to know which case just happened.
       await axios.post('/api/auth/forgot-password', { email: data.email })
       onSent(data.email)
-    } catch (error: any) {
-      setServerError(error.response?.data?.error || 'Something went wrong. Please try again.')
+    } catch (error) {
+      setServerError(getErrorMessage(error, 'Something went wrong. Please try again.'))
     } finally {
       setIsLoading(false)
     }
@@ -239,7 +250,7 @@ function EmailStep({ onSent, serverError, setServerError, isLoading, setIsLoadin
           Forgot password?
         </h1>
         <p className="text-zinc-500 text-md text-center">
-          Enter your email and we'll send you a code to reset it
+          Enter your email and we&apos;ll send you a code to reset it
         </p>
       </div>
 
@@ -312,8 +323,10 @@ function OtpStep({ email, cooldown, onVerified, onChangeEmail, onResent, serverE
     try {
       const res = await axios.post('/api/auth/verify-reset-otp', { email, otp: data.otp })
       onVerified(res.data.resetToken)
-    } catch (error: any) {
-      setServerError(error.response?.data?.error || 'That code is invalid or has expired. Please request a new one.')
+    } catch (error) {
+      setServerError(
+        getErrorMessage(error, 'That code is invalid or has expired. Please request a new one.')
+      )
     } finally {
       setIsLoading(false)
     }
@@ -326,7 +339,7 @@ function OtpStep({ email, cooldown, onVerified, onChangeEmail, onResent, serverE
     try {
       await axios.post('/api/auth/forgot-password', { email })
       onResent()
-    } catch (error: any) {
+    } catch {
       setServerError('Could not resend the code. Please try again in a moment.')
     } finally {
       setIsResending(false)
@@ -431,10 +444,12 @@ function PasswordStep({ email, resetToken, onSuccess, serverError, setServerErro
         password: data.password,
       })
       onSuccess()
-    } catch (error: any) {
+    } catch (error) {
       setServerError(
-        error.response?.data?.error ||
-        'This reset session is invalid or has expired. Please start over.'
+        getErrorMessage(
+          error,
+          'This reset session is invalid or has expired. Please start over.'
+        )
       )
     } finally {
       setIsLoading(false)

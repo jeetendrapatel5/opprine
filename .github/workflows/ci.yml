@@ -24,11 +24,52 @@ jobs:
 
     env:
       NEXT_TELEMETRY_DISABLED: "1"
-      # Dummy values so the build can run. Real secrets live ONLY in Vercel.
-      # If the build complains about another missing variable, add a fake one here.
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
-      NEXTAUTH_SECRET: ci-only-not-a-real-secret
-      NEXTAUTH_URL: http://localhost:3000
+
+      # ── FAKE values, only so `next build` can load your code ──────────────
+      # Next.js imports every route while building, and some libraries
+      # (Resend, Stripe, Razorpay, Supabase) throw an error if their key is
+      # empty. Your REAL secrets live ONLY in Vercel. NEVER put a real key in
+      # this file: it is committed to git and visible to anyone with repo access.
+
+      # Database
+      DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+
+      # Auth
+      NEXTAUTH_SECRET: "ci-only-not-a-real-secret"
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+
+      # Supabase
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co"
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "ci-dummy-publishable-key"
+
+      # Email (Resend)
+      RESEND_API_KEY: "re_ci_dummy_key"
+      FROM_EMAIL: "ci@example.com"
+
+      # Payments
+      STRIPE_SECRET_KEY: "sk_test_ci_dummy"
+      STRIPE_WEBHOOK_SECRET: "whsec_ci_dummy"
+      RAZORPAY_KEY_ID: "rzp_test_ci_dummy"
+      RAZORPAY_KEY_SECRET: "ci_dummy_secret"
+      RAZORPAY_WEBHOOK_SECRET: "ci_dummy_webhook_secret"
+      RAZORPAY_PLAN_PRO_MONTHLY: "plan_ci_dummy"
+      RAZORPAY_PLAN_PRO_YEARLY: "plan_ci_dummy"
+      RAZORPAY_PLAN_TEAM_MONTHLY: "plan_ci_dummy"
+      RAZORPAY_PLAN_TEAM_YEARLY: "plan_ci_dummy"
+
+      # Cloudinary
+      CLOUDINARY_CLOUD_NAME: "ci-dummy"
+      CLOUDINARY_API_KEY: "ci-dummy"
+      CLOUDINARY_API_SECRET: "ci-dummy"
+      NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: "ci-dummy"
+
+      # Other
+      GEMINI_API_KEY: "ci-dummy"
+      CRON_SECRET: "ci-dummy"
+      # 64 hex characters (32 bytes). If your code expects a different shape,
+      # the build error will say so and we adjust this one value.
+      BANK_ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
 
     steps:
       - name: Checkout code

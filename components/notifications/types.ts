@@ -15,6 +15,6 @@ export type NotificationData = {
   read: boolean
   readAt: string | null
   projectId: string | null
-  metadata: Record<string, any> | null
+  metadata: Record<string, unknown> | null
   createdAt: string
 }

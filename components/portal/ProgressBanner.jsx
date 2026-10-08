@@ -75,7 +75,7 @@ export default function ProgressBanner({ progress, projectName, clientName, mile
           <div>
             {/* Addressed to the client — personal, possessive */}
             <p className="text-fp-portal-text-tertiary text-xs font-semibold uppercase tracking-widest mb-1.5">
-              {clientName}'s Portal
+              {clientName}&apos;s Portal
             </p>
             {/* Project name — Fraunces, the display headline */}
             <h1 className="font-display text-2xl sm:text-3xl font-medium text-fp-portal-text-primary leading-tight tracking-tight">

@@ -30,9 +30,15 @@ export default function InvoicesTab({ project, permissions = DEFAULT_PERMISSIONS
   const [invoices, setInvoices] = useState(project.invoices ?? [])
 
   // ── Sync local state when server data refreshes ────────────────────────────
-  useEffect(() => {
+  // Same behaviour as the old useEffect, done the way React recommends:
+  // remember which server data we last copied, and when the prop changes
+  // to something new, update local state right here during render (before
+  // anything is painted) instead of in an effect after paint.
+  const [lastServerInvoices, setLastServerInvoices] = useState(project.invoices)
+  if (project.invoices !== lastServerInvoices) {
+    setLastServerInvoices(project.invoices)
     setInvoices(project.invoices ?? [])
-  }, [project.invoices])
+  }
 
   // Whether any invoice is still waiting on payment. Reused for two things:
   // deciding whether to poll below, and showing a small "syncing" hint so

@@ -290,11 +290,11 @@ function AnnotationViewer({ imageUrl, imageName, annotations }) {
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <div>
             <p className="text-sm font-medium text-emerald-700">
-              You've reviewed all {annotations.length}{' '}
+              You&apos;ve reviewed all {annotations.length}{' '}
               {annotations.length === 1 ? 'decision note' : 'decision notes'}.
             </p>
             <p className="text-xs text-emerald-600 mt-0.5">
-              You're ready to approve.
+              You&apos;re ready to approve.
             </p>
           </div>
         </div>

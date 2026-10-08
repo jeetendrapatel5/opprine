@@ -459,7 +459,7 @@ export default function ClientsView({ clients, pendingRevenue }) {
                 {filtered.length === 0 && (
                     <div className="py-12 text-center">
                         <p className="text-fp-text-tertiary text-sm">
-                            No clients match <span className="text-fp-text-secondary">"{search}"</span>
+                            No clients match <span className="text-fp-text-secondary">&quot;{search}&quot;</span>
                         </p>
                     </div>
                 )}
