@@ -7,6 +7,7 @@
 //   Full-width: ProgressBanner — immediate reassurance ("work is happening")
 //   Full-width: CurrentlyWorkingOn — what's being built RIGHT NOW
 //   Full-width: ActionPanel — if a milestone needs approval (most important CTA)
+//   Full-width: ClientRequests — things the team needs FROM the client (answer inline)
 //   Left 2/3:  ProjectMilestones (timeline) + UpdateFeed (work log)
 //   Right 1/3: ProjectTeam + InvoicePanel + FileDeliverables + ProjectSignOff
 //
@@ -27,10 +28,12 @@ import { notFound } from 'next/navigation'
 import prisma from '@/lib/prisma'
 import { getProjectProgress } from '@/lib/projectProgress'
 import { listProjectMembersForPortal } from '@/lib/project'
+import { listPortalRequests, markRequestsViewed } from '@/lib/client-requests'
 
 import ProgressBanner      from '@/components/portal/ProgressBanner'
 import CurrentlyWorkingOn  from '@/components/portal/CurrentlyWorkingOn'
 import ActionPanel         from '@/components/portal/ActionPanel'
+import ClientRequests      from '@/components/portal/ClientRequests'
 import ProjectMilestones   from '@/components/portal/ProjectMilestones'
 import UpdateFeed          from '@/components/portal/UpdateFeed'
 import ProjectTeam         from '@/components/portal/ProjectTeam'
@@ -117,6 +120,27 @@ export default async function PortalPage({ params }) {
 
   const progress = getProjectProgress(safeMilestones)
 
+  // Client requests: what the team needs FROM the client (lib/client-requests.js).
+  // The lib decides what the client may see (no internal flags, no cancelled
+  // requests). Wrapped in try/catch so a problem in this feature (for example
+  // the database migration not applied yet) can never take down the whole
+  // portal: the page simply renders without the requests card.
+  // markRequestsViewed is awaited (not fire-and-forget) so serverless hosts
+  // can't cut it off, and its own failure is only logged.
+  let requestData = {
+    requests: [],
+    blocked: { blockedDays: 0, openBlockingCount: 0, oldestOpenSince: null },
+  }
+  try {
+    const [data] = await Promise.all([
+      listPortalRequests(token),
+      markRequestsViewed(token).catch((err) => console.error('[portal] markRequestsViewed failed:', err)),
+    ])
+    requestData = data
+  } catch (err) {
+    console.error('[portal] Could not load client requests:', err)
+  }
+
   // Update-level action items (legacy Update model, not milestones)
   const actionItems = project.updates.filter(u => u.status === 'IN_REVIEW')
 
@@ -146,6 +170,15 @@ export default async function PortalPage({ params }) {
         {/* Only shown when there are Update-level items needing approval.
             Milestone-level approvals live inside ProjectMilestones → DeliveryCard. */}
         <ActionPanel items={actionItems} token={token} />
+
+        {/* ── Zone 3b: Client requests ── */}
+        {/* Renders nothing unless the team has asked this client for something,
+            so portals that never use requests look exactly as before. */}
+        <ClientRequests
+          requests={requestData.requests}
+          blocked={requestData.blocked}
+          token={token}
+        />
 
         {/* ── Zone 4: Main 2-column grid ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">

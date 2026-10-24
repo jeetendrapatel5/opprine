@@ -5,6 +5,8 @@ import Link from 'next/link'
 import prisma from '@/lib/prisma'
 import { requireWorkspaceMembership } from '@/lib/workspace'
 import { hasImplicitProjectAccess } from '@/lib/project'
+import { can } from '@/lib/project-permissions'
+import { getOpenRequestSummaries } from '@/lib/client-request-ledger'
 import NewProjectModal from '@/components/NewProjectModal'
 import ProjectCard from '@/components/ProjectCard'
 import { Briefcase, AlertCircle, ChevronDown, ChevronRight, Lock } from 'lucide-react'
@@ -19,12 +21,18 @@ const CARD_INCLUDE = {
   milestones: { select: { id: true, title: true, status: true } },
 }
 
-// attention panel row: project with a milestone in review, links to the project
-function AttentionRow({ project }) {
+const DAY_MS = 24 * 60 * 60 * 1000
+const daysSince = (date) => Math.floor((Date.now() - new Date(date).getTime()) / DAY_MS)
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+// attention panel row: project with a milestone in review and/or client requests
+// still waiting on the client; links to the project
+function AttentionRow({ project, requests }) {
   const inReview = (project.milestones ?? []).filter(
     (milestone) => milestone.status === 'IN_REVIEW'
   )
   const [first, ...rest] = inReview
+  const waitingDays = requests ? daysSince(requests.oldestOpenSince) : 0
 
   return (
     <li>
@@ -36,12 +44,20 @@ function AttentionRow({ project }) {
           <p className="truncate text-sm font-medium text-fp-text-primary">
             {project.name}
           </p>
-          <p className="mt-0.5 flex items-baseline gap-1 text-xs text-fp-text-secondary">
-            <span className="truncate">{first?.title ?? 'Untitled milestone'}</span>
-            {rest.length > 0 && (
-              <span className="shrink-0 tabular-nums">+{rest.length} more</span>
-            )}
-          </p>
+          {(first || !requests) && (
+            <p className="mt-0.5 flex items-baseline gap-1 text-xs text-fp-text-secondary">
+              <span className="truncate">{first?.title ?? 'Untitled milestone'}</span>
+              {rest.length > 0 && (
+                <span className="shrink-0 tabular-nums">+{rest.length} more</span>
+              )}
+            </p>
+          )}
+          {requests && (
+            <p className="mt-0.5 text-xs text-fp-text-secondary">
+              {plural(requests.openCount, 'request')} waiting on client
+              {waitingDays >= 1 ? ` · ${plural(waitingDays, 'day')}` : ''}
+            </p>
+          )}
         </div>
         <ChevronRight
           className="h-4 w-4 shrink-0 text-fp-text-tertiary transition-colors group-hover/row:text-fp-text-secondary"
@@ -112,8 +128,30 @@ export default async function DashboardPage() {
   // stats only cover projects the user can open
   const activeProjects = openable.filter((project) => project.status === 'ACTIVE').length
 
-  const projectsNeedingAttention = openable.filter((project) =>
-    project.milestones?.some((milestone) => milestone.status === 'IN_REVIEW')
+  // Open client requests that block work, only for projects where this user's role
+  // may see client requests (can() decides). A failure here must never break the
+  // dashboard, so it falls back to "nothing waiting".
+  let requestSummaries = new Map()
+  try {
+    let visibleIds = []
+    if (seesAll) {
+      if (can(membership.role, 'viewClientRequests')) visibleIds = openable.map((project) => project.id)
+    } else if (openable.length > 0) {
+      const roles = await prisma.projectMember.findMany({
+        where: { userId, projectId: { in: openable.map((project) => project.id) } },
+        select: { projectId: true, role: true },
+      })
+      visibleIds = roles.filter((r) => can(r.role, 'viewClientRequests')).map((r) => r.projectId)
+    }
+    requestSummaries = await getOpenRequestSummaries(visibleIds)
+  } catch (err) {
+    console.error('[dashboard] Could not load open client requests:', err)
+  }
+
+  const projectsNeedingAttention = openable.filter(
+    (project) =>
+      project.milestones?.some((milestone) => milestone.status === 'IN_REVIEW') ||
+      requestSummaries.has(project.id)
   )
 
   const attentionCount = projectsNeedingAttention.length
@@ -127,7 +165,7 @@ export default async function DashboardPage() {
   } else if (openable.length === 0) {
     subtitle = "You're not assigned to any projects yet."
   } else if (attentionCount > 0) {
-    subtitle = `${attentionCount} project${attentionCount > 1 ? 's' : ''} waiting on client review.`
+    subtitle = `${attentionCount} project${attentionCount > 1 ? 's' : ''} waiting on your client.`
   } else if (activeProjects > 0) {
     subtitle = `${activeProjects} active project${activeProjects > 1 ? 's' : ''} in progress`
   } else {
@@ -167,7 +205,7 @@ export default async function DashboardPage() {
               />
               <span className="min-w-0 flex gap-2 items-center">
                 <span className="block text-sm font-medium leading-5 text-fp-text-primary">
-                  Waiting on client approval
+                  Waiting on your client
                 </span>
                 <span className="mt-0.5 block text-xs leading-relaxed text-fp-text-secondary">
                   Follow up to keep delivery on schedule.
@@ -189,7 +227,11 @@ export default async function DashboardPage() {
 
           <ul className="divide-y divide-fp-border border-t border-fp-border animate-in fade-in slide-in-from-top-1 duration-200 motion-reduce:animate-none">
             {projectsNeedingAttention.map((project) => (
-              <AttentionRow key={project.id} project={project} />
+              <AttentionRow
+                key={project.id}
+                project={project}
+                requests={requestSummaries.get(project.id)}
+              />
             ))}
           </ul>
         </details>

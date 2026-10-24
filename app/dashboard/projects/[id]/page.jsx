@@ -7,6 +7,7 @@ import prisma from '@/lib/prisma'
 import { getProjectAccess } from '@/lib/project'
 import { requireWorkspaceMembership } from '@/lib/workspace'
 import { can } from '@/lib/project-permissions'
+import { getProjectBlockedLedger } from '@/lib/client-request-ledger'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -30,6 +31,7 @@ import GithubConnectPanel from '@/components/GithubConnectPanel'
 import ProjectPanelDialog from '@/components/ProjectPanelDialog'
 import RecentActivityPanel from '@/components/project/RecentActivityPanel'
 import ProjectMembersPanel from '@/components/ProjectMembersPanel'
+import ClientRequestsPanel from '@/components/dashboard/requests/ClientRequestsPanel'
 import ProjectAccessRestricted from '@/components/ProjectAccessRestricted'
 
 //Status config
@@ -271,6 +273,19 @@ export default async function ProjectPage({ params }) {
     canViewInvoices,
     canCreateInvoices: can(role, 'createInvoices'),
     canEditInvoices: can(role, 'editInvoices'),
+    // Client Requests panel (see lib/project-permissions.js)
+    canViewClientRequests: can(role, 'viewClientRequests'),
+    canManageClientRequests: can(role, 'manageClientRequests'),
+  }
+
+  // "Waiting on client" ledger for the milestone badges (null when this role may
+  // not view client requests). A problem here, for example the database migration
+  // not applied yet, must never break the project page: it just shows no badges.
+  let blockedLedger = null
+  try {
+    blockedLedger = await getProjectBlockedLedger({ projectId: project.id, role })
+  } catch (err) {
+    console.error('[project page] Could not load the blocked-time ledger:', err)
   }
 
   return (
@@ -428,6 +443,7 @@ export default async function ProjectPage({ params }) {
               clientName={canViewClient ? (project.client?.name ?? 'Client') : 'Client'}
               currentUserId={session.user.id}
               permissions={permissions}
+              blockedLedger={blockedLedger}
             />
           </section>
 
@@ -633,6 +649,25 @@ export default async function ProjectPage({ params }) {
               description="A quick look at the latest updates on this project."
             >
               <RecentActivityPanel updates={project.updates} />
+            </ProjectPanelDialog>
+
+            {/* Client Requests — the team's side of requests sent to the client.
+                Only id + title of each milestone are passed down (the form's
+                "for milestone" picker); permissions decide what the panel shows,
+                the API routes enforce it. project.client is undefined for roles
+                without viewClient, which is fine: those roles can't create requests. */}
+            <ProjectPanelDialog
+              panelId="requests"
+              title="Client requests"
+              description="Ask your client for answers or approvals, and see what is blocking the project."
+              className="sm:max-w-2xl"
+            >
+              <ClientRequestsPanel
+                projectId={project.id}
+                milestones={project.milestones.map((m) => ({ id: m.id, title: m.title }))}
+                hasClient={Boolean(project.client)}
+                permissions={permissions}
+              />
             </ProjectPanelDialog>
 
             <ProjectPanelDialog

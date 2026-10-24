@@ -18,6 +18,7 @@ import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { sendEmail } from '@/lib/email'
 import { milestoneReminderEmail } from '@/lib/emailTemplates'
+import { sendDueRequestReminders } from '@/lib/client-request-reminders'
 
 export async function GET(request) {
   try {
@@ -139,6 +140,19 @@ export async function GET(request) {
       }
     }
 
+    // ── Step 4b: Client request reminders ────────────────────────────────────
+    // Reminders for client requests (lib/client-request-reminders.js) run in
+    // the same daily invocation, after the milestone reminders above. They
+    // get their own try/catch so a problem here can never turn the milestone
+    // part of this run into a 500 (or the other way round).
+    let requestReminders
+    try {
+      requestReminders = await sendDueRequestReminders()
+    } catch (err) {
+      console.error('[Cron] Client request reminders failed:', err)
+      requestReminders = { error: true }
+    }
+
     // ── Step 5: Return a summary ─────────────────────────────────────────────
     // The scheduler receives this JSON response.
     // Most schedulers log the response body — this gives you a clear audit
@@ -148,6 +162,7 @@ export async function GET(request) {
       total:    staleMilestones.length,
       sent,
       failed,
+      requests: requestReminders,
       ranAt:    new Date().toISOString(),
     })
 

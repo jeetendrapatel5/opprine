@@ -42,6 +42,9 @@ export default function MilestoneManager({
   clientName,
   currentUserId,
   permissions = DEFAULT_PERMISSIONS,
+  // Client Requests ledger for the whole project (lib/client-request-ledger.js),
+  // or null when this role can't see requests. Only used for the row badges.
+  blockedLedger = null,
 }) {
   // NEW — one flag read everywhere below. IMPORTANT: this is UI
   // polish, not the security boundary. The actual boundary is the
@@ -353,6 +356,7 @@ export default function MilestoneManager({
                 // to know who's currently looking at the row).
                 permissions={permissions}
                 currentUserId={currentUserId}
+                blocked={blockedLedger?.milestones?.[milestone.id] ?? null}
                 // Drag props — computed here so MilestoneRow stays a pure display component:
                 // isDragging: this row is being dragged → render it semi-transparent
                 // isOver:     this row is the current drop target → render accent border

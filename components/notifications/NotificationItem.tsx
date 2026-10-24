@@ -43,6 +43,7 @@ const TYPE_ICON: Record<string, string> = {
   TASK_COMPLETED: 'CheckCircle2',
   PROJECT_UPDATE_POSTED: 'MessageSquareText',
   PROJECT_FILE_UPLOADED: 'Paperclip',
+  CLIENT_REQUEST_SUBMITTED: 'MessageSquareText',
 }
 
 // Mirrors buildHref() per type in NOTIFICATION_META
@@ -62,6 +63,7 @@ function buildHref(n: NotificationData): string | null {
     case 'TASK_COMPLETED':
     case 'PROJECT_UPDATE_POSTED':
     case 'PROJECT_FILE_UPLOADED':
+    case 'CLIENT_REQUEST_SUBMITTED':
       return n.projectId ? `/dashboard/projects/${n.projectId}` : null
     default:
       return null
@@ -101,9 +103,8 @@ export default function NotificationItem({ notification: n, onClick }: Props) {
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline justify-between gap-3">
           <p
-            className={`truncate text-[13px] leading-snug text-[var(--color-fp-text-primary)] ${
-              n.read ? 'font-medium' : 'font-semibold'
-            }`}
+            className={`truncate text-[13px] leading-snug text-[var(--color-fp-text-primary)] ${n.read ? 'font-medium' : 'font-semibold'
+              }`}
           >
             {n.title}
           </p>

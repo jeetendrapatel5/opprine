@@ -9,18 +9,19 @@
 //   3. Looks up the Razorpay Plan ID for the requested plan+cycle from
 //      our centralized config (lib/billing/plans.js).
 //   4. Creates (or reuses) a Razorpay Customer for this workspace.
+//      - `fail_existing: 0` makes Razorpay RETURN the existing customer
+//        (matched by email/contact) instead of throwing
+//        "Customer already exists for the merchant".
+//      - The customer id is saved to our DB immediately, so a failure in
+//        a later step can never make us forget it.
 //   5. Creates a Razorpay Subscription against that plan.
 //   6. Saves a Subscription row locally with status PENDING — NOT
 //      ACTIVE. We do not trust anything from this API response to mean
-//      "they've paid." Only the webhook (next file) is allowed to mark
-//      a subscription ACTIVE, because only the webhook is signed proof
+//      "they've paid." Only the webhook is allowed to mark a
+//      subscription ACTIVE, because only the webhook is signed proof
 //      that Razorpay actually processed a real payment.
 //   7. Returns just enough info (subscription id + public key) for the
 //      frontend to open Razorpay's Checkout widget.
-//
-// ASSUMPTION FLAGGED: this imports `authOptions` from '@/lib/auth' and
-// uses NextAuth's getServerSession. Tell me the real path/export name
-// if that's wrong and I'll fix this one import line.
 
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -37,6 +38,70 @@ import { handleApiError } from '@/lib/http-errors'
 const TOTAL_COUNT_BY_CYCLE = {
   monthly: 120,
   yearly: 10,
+}
+
+// Razorpay SDK errors look like:
+//   { statusCode: 400, error: { code, description, ... } }
+// They are NOT Error instances, so a generic handler turns them into an
+// opaque 500. This pulls out the real message for 4xx errors that are
+// safe to show the user. 401/403 are excluded on purpose: those mean OUR
+// Razorpay API keys are wrong, which is a server problem — not something
+// to report to the frontend as "you are not authenticated".
+function getRazorpayClientError(error) {
+  const statusCode = error?.statusCode
+  const description = error?.error?.description
+  if (
+    typeof statusCode === 'number' &&
+    statusCode >= 400 &&
+    statusCode < 500 &&
+    statusCode !== 401 &&
+    statusCode !== 403 &&
+    description
+  ) {
+    return description
+  }
+  return null
+}
+
+// Looks through the Razorpay customer list for one with this email.
+// Razorpay has no "search by email" endpoint, so we page through the list
+// (100 at a time, capped at 1000 customers) and match the email ourselves.
+async function findRazorpayCustomerByEmail(email) {
+  const target = email.trim().toLowerCase()
+  const PAGE_SIZE = 100
+  for (let skip = 0; skip < 1000; skip += PAGE_SIZE) {
+    const result = await razorpay.customers.all({ count: PAGE_SIZE, skip })
+    const items = result?.items ?? []
+    const match = items.find((c) => c.email?.trim().toLowerCase() === target)
+    if (match) return match
+    if (items.length < PAGE_SIZE) break
+  }
+  return null
+}
+
+// Creates the customer, or returns the existing one.
+//   1. `fail_existing: '0'` (STRING) asks Razorpay to return the existing
+//      customer instead of erroring.
+//   2. If Razorpay still says "already exists", we look the customer up by
+//      email ourselves. Only if that also finds nothing do we rethrow.
+async function getOrCreateRazorpayCustomer({ name, email, workspaceId }) {
+  try {
+    return await razorpay.customers.create({
+      name,
+      email,
+      fail_existing: '0',
+      notes: { workspaceId },
+    })
+  } catch (error) {
+    const alreadyExists =
+      error?.statusCode === 400 &&
+      /already exists/i.test(error?.error?.description ?? '')
+    if (!alreadyExists) throw error
+
+    const existing = await findRazorpayCustomerByEmail(email)
+    if (existing) return existing
+    throw error
+  }
 }
 
 export async function POST(request) {
@@ -94,12 +159,28 @@ export async function POST(request) {
 
     if (!razorpayCustomerId) {
       const user = await prisma.user.findUnique({ where: { id: session.user.id } })
-      const customer = await razorpay.customers.create({
+
+      // Returns the existing Razorpay customer if one already exists for
+      // this email, instead of throwing "Customer already exists".
+      const customer = await getOrCreateRazorpayCustomer({
         name: user.name,
         email: user.email,
-        notes: { workspaceId: workspace.id },
+        workspaceId: workspace.id,
       })
       razorpayCustomerId = customer.id
+
+      // Persist the customer id RIGHT AWAY. If step 5 (creating the
+      // subscription) fails, we still remember the customer, so the next
+      // attempt reuses it instead of creating/looking it up again.
+      // plan / billingCycle / status all have schema defaults
+      // (FREE / NONE / ACTIVE), so creating a bare row is safe. If a
+      // row already exists we ONLY touch razorpayCustomerId and leave
+      // the current plan and status alone.
+      await prisma.subscription.upsert({
+        where: { workspaceId: workspace.id },
+        create: { workspaceId: workspace.id, razorpayCustomerId },
+        update: { razorpayCustomerId },
+      })
     }
 
     // 5. Create the actual Razorpay Subscription.
@@ -143,6 +224,15 @@ export async function POST(request) {
       razorpayKeyId: process.env.RAZORPAY_KEY_ID,
     })
   } catch (error) {
+    // Razorpay 4xx errors (bad plan id, invalid total_count, etc.) carry a
+    // useful description — surface it instead of a generic 500. Always log
+    // the full error server-side too, so the terminal shows what happened.
+    const razorpayMessage = getRazorpayClientError(error)
+    if (razorpayMessage) {
+      console.error('Razorpay checkout error:', JSON.stringify(error?.error ?? error))
+      return Response.json({ error: razorpayMessage }, { status: 400 })
+    }
+
     return handleApiError(error)
   }
 }
