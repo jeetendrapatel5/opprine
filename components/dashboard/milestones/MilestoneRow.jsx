@@ -11,6 +11,7 @@ import MilestoneUpdateFeed from './MilestoneUpdateFeed'
 import MilestoneUpdateForm from './MilestoneUpdateForm'
 import DeliveryModal       from './DeliveryModal'
 import TaskBoard            from './TaskBoard'
+import BlockedBadge        from './BlockedBadge'
 import axios from 'axios'
 // CHANGED — shadcn's own Calendar/Popover, replacing the native
 // <input type="date"> below. Aliased the lucide icon above to
@@ -82,6 +83,9 @@ export default function MilestoneRow({
   // which isn't part of this upload yet.
   permissions = DEFAULT_PERMISSIONS,
   currentUserId,
+  // Client Requests ledger for THIS milestone ({ blockedDays, openBlockingCount,
+  // oldestOpenSince }) or null. Display only: see ./BlockedBadge.jsx.
+  blocked = null,
   // ── Drag props from MilestoneManager ──────────────────────────────────────
   // isDragging: this row is the one being dragged — render semi-transparent
   // isOver:     a dragged row is hovering over this row — show accent border
@@ -248,6 +252,8 @@ export default function MilestoneRow({
                 {dueDateDisplay.label}
               </span>
             )}
+
+            <BlockedBadge blocked={blocked} completed={milestone.status === 'COMPLETED'} />
 
             {totalItems > 0 && (
               <span className="

@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from "@/lib/auth"
 import prisma from '@/lib/prisma'
 import crypto from 'crypto'
+import { generateMagicToken } from '@/lib/magic-token'
 import { assertWithinLimit } from '@/lib/billing/entitlements'
 import { requireWorkspaceMembership } from '@/lib/workspace'
 import { LimitExceededError } from '@/lib/errors'
@@ -14,7 +15,10 @@ export async function POST(request) {
   try {
     // Step 1 — Make sure user is logged in
     const session = await getServerSession(authOptions)
-    if (!session) {
+    // session?.user?.id (not just !session): after a password reset, lib/auth.js
+    // returns a session object whose user is null, and `!session` alone would let
+    // it through to a crash on session.user.id below (a 500 instead of a 401).
+    if (!session?.user?.id) {
       return NextResponse.json(
         { error: 'You must be logged in' },
         { status: 401 }
@@ -65,6 +69,9 @@ export async function POST(request) {
             create: {
               name: clientName,
               email: clientEmail.toLowerCase(),
+              // The portal link is the client's only credential: a 256-bit random
+              // token, not the schema's fallback default (see lib/magic-token.js).
+              magicToken: generateMagicToken(),
             },
           },
         },
