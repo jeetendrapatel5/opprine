@@ -15,17 +15,51 @@
 //
 // The 5d is the CURRENT wait (oldest open item); the 7d is the lifetime total.
 
+import { useEffect, useState } from 'react'
 import { Clock } from 'lucide-react'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export default function BlockedBadge({ blocked, completed = false }) {
+  // Keep time in state so rendering stays pure. The clock is read in a timer
+  // callback, then refreshed when the current wait reaches another full day.
+  const [now, setNow] = useState(null)
+  const isWaiting = Boolean(
+    !completed && blocked?.openBlockingCount > 0 && blocked?.oldestOpenSince,
+  )
+  const oldestOpenSinceTime = isWaiting
+    ? new Date(blocked.oldestOpenSince).getTime()
+    : Number.NaN
+
+  useEffect(() => {
+    if (!isWaiting || !Number.isFinite(oldestOpenSinceTime)) return undefined
+
+    let timeoutId
+
+    const updateClock = () => {
+      const currentTime = Date.now()
+      setNow(currentTime)
+
+      const elapsedDays = Math.max(
+        0,
+        Math.floor((currentTime - oldestOpenSinceTime) / DAY_MS),
+      )
+      const nextUpdateAt = oldestOpenSinceTime + (elapsedDays + 1) * DAY_MS
+      timeoutId = setTimeout(updateClock, Math.max(1000, nextUpdateAt - currentTime))
+    }
+
+    // Defer the initial update so the effect doesn't synchronously trigger a render.
+    timeoutId = setTimeout(updateClock, 0)
+
+    return () => clearTimeout(timeoutId)
+  }, [isWaiting, oldestOpenSinceTime])
+
   if (!blocked) return null
 
   // A completed milestone is no longer "waiting" on anything.
   if (!completed && blocked.openBlockingCount > 0) {
-    const days = blocked.oldestOpenSince
-      ? Math.floor((Date.now() - new Date(blocked.oldestOpenSince).getTime()) / DAY_MS)
+    const days = Number.isFinite(oldestOpenSinceTime) && now !== null
+      ? Math.max(0, Math.floor((now - oldestOpenSinceTime) / DAY_MS))
       : 0
 
     return (
