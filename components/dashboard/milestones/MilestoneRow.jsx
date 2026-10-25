@@ -185,7 +185,7 @@ export default function MilestoneRow({
 
         {/* ── Collapsed row ── */}
         <div className={`
-          flex items-center gap-2.5 px-3 py-2.5 bg-fp-raised group
+          flex items-center gap-2.5 px-3 py-2 bg-fp-raised group
           ${isOpen ? 'border-b border-fp-border' : ''}
         `}>
 

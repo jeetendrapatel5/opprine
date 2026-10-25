@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
@@ -34,17 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import ProjectPanelNavItem from '@/components/dashboard/ProjectPanelNavItem'
-import { visibleProjectPanels } from '@/lib/project-panels'
 import WorkspaceSwitcher from '@/components/dashboard/WorkspaceSwitcher'
-
-// Minimal shape of what getEntitlements() returns — just enough for the
-// filtering this file does. lib/project-panels.js stays plain JS (used by
-// .jsx files too), so this type lives here rather than being imported
-// from there.
-type Entitlements = {
-  features?: Record<string, boolean>
-}
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -60,11 +49,6 @@ const SETTINGS_ITEMS = [
   { label: 'Plans', href: '/dashboard/settings/billing', icon: CreditCard },
 ]
 
-// Matches /dashboard/projects/:id exactly — NOT /dashboard/projects (the
-// list page) and NOT nested routes like /dashboard/projects/:id/story.
-// PROJECT_PANELS buttons only make sense on the project detail page itself.
-const PROJECT_DETAIL_PATTERN = /^\/dashboard\/projects\/[^/]+\/?$/
-
 type Props = {
   user: {
     name?: string | null
@@ -76,26 +60,6 @@ type Props = {
 export default function DashboardSidebar({ user }: Props) {
   const pathname = usePathname()
 
-  // Start with only the panels that need no feature flag — the safe,
-  // restrictive default. This is deliberate: if we started with the
-  // FULL list and narrowed it once entitlements arrive, a Free-plan
-  // user would see the GitHub tab flash on screen, then vanish. Starting
-  // narrow means gated panels can only ever APPEAR as data loads in,
-  // never appear-then-disappear.
-  const [visiblePanels, setVisiblePanels] = useState(() => visibleProjectPanels(undefined))
-
-  useEffect(() => {
-    fetch('/api/workspace')
-      .then((res) => res.json())
-      .then((data: { entitlements?: Entitlements }) => {
-        setVisiblePanels(visibleProjectPanels(data.entitlements))
-      })
-      .catch(() => {
-        // Network hiccup — stay on the safe default list rather than
-        // risk showing a gated panel by accident.
-      })
-  }, [])
-
   const isActive = (href: string) =>
     href === '/dashboard'
       ? pathname === '/dashboard'
@@ -105,8 +69,6 @@ export default function DashboardSidebar({ user }: Props) {
     active
       ? 'bg-[var(--color-fp-accent)]/10 text-[var(--color-fp-accent)] hover:bg-[var(--color-fp-accent)]/15 hover:text-[var(--color-fp-accent)] cursor-pointer'
       : 'text-[var(--color-fp-text-secondary)] hover:text-[var(--color-fp-text-primary)] hover:bg-[var(--color-fp-surface-2,var(--color-fp-surface))] cursor-pointer'
-
-  const isProjectDetailRoute = PROJECT_DETAIL_PATTERN.test(pathname ?? '')
 
   return (
     <Sidebar collapsible="icon" className="border-[var(--color-fp-border)]">
@@ -181,20 +143,6 @@ export default function DashboardSidebar({ user }: Props) {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-
-              <div className="mt-7">
-                {isProjectDetailRoute &&
-                  visiblePanels.map(({ id, label, icon }) => (
-                    <ProjectPanelNavItem
-                      key={id}
-                      panelId={id}
-                      label={label}
-                      icon={icon}
-                      activeClassName={navButtonClass(true)}
-                      inactiveClassName={navButtonClass(false)}
-                    />
-                  ))}
-              </div>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

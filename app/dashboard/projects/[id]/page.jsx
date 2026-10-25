@@ -8,20 +8,10 @@ import { getProjectAccess } from '@/lib/project'
 import { requireWorkspaceMembership } from '@/lib/workspace'
 import { can } from '@/lib/project-permissions'
 import { getProjectBlockedLedger } from '@/lib/client-request-ledger'
+import { getEntitlements } from '@/lib/billing/entitlements'
+import { visibleProjectPanels } from '@/lib/project-panels'
 import Link from 'next/link'
-import {
-  ArrowLeft,
-  ChevronRight,
-  Briefcase,
-  Circle,
-  CheckCircle2,
-  PauseCircle,
-  ExternalLink,
-  BookOpen,
-  Mail,
-  Lock,
-  Star,
-} from 'lucide-react'
+import { ArrowLeft, ChevronRight, Briefcase, ExternalLink, Star } from 'lucide-react'
 
 import ProjectTabs from '@/components/project/ProjectTabs'
 import MilestoneManager from '@/components/dashboard/milestones'
@@ -33,6 +23,8 @@ import RecentActivityPanel from '@/components/project/RecentActivityPanel'
 import ProjectMembersPanel from '@/components/ProjectMembersPanel'
 import ClientRequestsPanel from '@/components/dashboard/requests/ClientRequestsPanel'
 import ProjectAccessRestricted from '@/components/ProjectAccessRestricted'
+import ProjectSidebar from '@/components/project/ProjectSidebar'
+import ProjectInfoPanel from '@/components/project/ProjectInfoPanel'
 
 //Status config
 
@@ -40,17 +32,14 @@ const STATUS_CONFIG = {
   ACTIVE: {
     label: 'Active',
     className: 'text-fp-success',
-    Icon: Circle,
   },
   COMPLETED: {
     label: 'Completed',
     className: 'text-fp-accent',
-    Icon: CheckCircle2,
   },
   ON_HOLD: {
     label: 'On Hold',
     className: 'text-fp-warning',
-    Icon: PauseCircle,
   },
 }
 
@@ -63,7 +52,7 @@ function timeAgoShort(date) {
   const diffMs = Date.now() - new Date(date).getTime()
   if (Number.isNaN(diffMs)) return null
   const seconds = Math.floor(diffMs / 1000)
-  if (seconds < 60) return 'Just now'
+  if (seconds < 60) return 'just now'
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
   return `${Math.floor(seconds / 86400)}d ago`
@@ -75,6 +64,12 @@ function timeAgoShort(date) {
 // component, so it runs once per request and behaves exactly as before.
 function daysSince(date) {
   return Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 86400000))
+}
+
+// "Less than a day" / "1 day" / "12 days". The old code printed "1 days".
+function formatDuration(days) {
+  if (days < 1) return 'Less than a day'
+  return `${days} ${days === 1 ? 'day' : 'days'}`
 }
 
 function buildPortalLink(magicToken) {
@@ -110,35 +105,6 @@ function SectionHeader({ title, badge, trailing }) {
   )
 }
 
-function PanelCard({ label, children }) {
-  return (
-    <div className="bg-fp-surface border border-fp-border rounded-xl overflow-hidden">
-      {label && (
-        <div className="px-4 py-3 border-b border-fp-border">
-          <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest">
-            {label}
-          </p>
-        </div>
-      )}
-      {children}
-    </div>
-  )
-}
-
-// NEW — a small reusable stand-in for panel content the current
-// viewer isn't allowed to see. Used in place of "No client assigned"
-// style fallbacks, which would be a LIE for a Contributor: the data
-// exists, they just don't have the role for it. Saying so plainly is
-// both more honest and less confusing than an empty-looking panel.
-function RestrictedNotice({ text }) {
-  return (
-    <div className="flex items-center gap-2 px-4 py-4 text-xs text-fp-text-tertiary">
-      <Lock className="w-3.5 h-3.5 shrink-0" />
-      {text}
-    </div>
-  )
-}
-
 export default async function ProjectPage({ params }) {
   const resolvedParams = await params
   const id = resolvedParams?.id
@@ -169,15 +135,14 @@ export default async function ProjectPage({ params }) {
   const role = access.role
 
   // What this specific page is allowed to show, computed ONCE up
-  // front — every gate below (the query itself, and every sidebar
-  // panel) reads from these same five booleans instead of each
-  // re-deriving its own role check. That's the actual point of
+  // front — every gate below (the query itself, and the sidebar)
+  // reads from these same booleans instead of each re-deriving its
+  // own role check. That's the actual point of
   // can() living in one file: this page never compares `role` to a
   // string anywhere past this block.
   const canViewClient = can(role, 'viewClient')
   const canViewInvoices = can(role, 'viewInvoices')
   const canManageGithubSecret = can(role, 'manageGithubWebhook')
-  const canLinkGithub = can(role, 'linkGithubRepo')
   const canDraftShowcase = can(role, 'draftShowcase')
 
   // CHANGED — client and invoices are now only INCLUDED in the query
@@ -231,7 +196,6 @@ export default async function ProjectPage({ params }) {
 
   const portalLink = buildPortalLink(project.client?.magicToken)
   const status = STATUS_CONFIG[project.status] ?? STATUS_CONFIG.ACTIVE
-  const StatusIcon = status.Icon
   const { completed, total, progress } = getMilestoneProgress(project.milestones)
   const daysActive = daysSince(project.createdAt)
   const clientViewedText = canViewClient ? timeAgoShort(project.client?.lastViewedAt) : null
@@ -287,6 +251,43 @@ export default async function ProjectPage({ params }) {
   } catch (err) {
     console.error('[project page] Could not load the blocked-time ledger:', err)
   }
+
+  // Which sidebar panels this viewer may open. This ONE list decides both which
+  // rows are shown and which dialogs are mounted below (lib/project-panels.js
+  // applies the plan gate and the role gate). A failure here must not break the
+  // page: with no entitlements, plan-gated panels (GitHub) are simply hidden.
+  let entitlements = null
+  try {
+    entitlements = await getEntitlements(activeWorkspace.workspaceId)
+  } catch (err) {
+    console.error('[project page] Could not load plan entitlements:', err)
+  }
+  const panels = visibleProjectPanels(entitlements, role)
+  const hasPanel = (panelId) => panels.some((panel) => panel.id === panelId)
+
+  // Small value shown at the right edge of a sidebar row. Panels not listed
+  // here simply show no value.
+  const panelMeta = {
+    activity: { text: String(project.updates.length) },
+    github: project.githubRepoName ? { text: 'Linked', dot: true } : { text: 'Not linked' },
+  }
+
+  // Client info for the sidebar card and the Project info dialog. null means
+  // "this role may not see it": both places then show a restricted notice.
+  const clientInfo = canViewClient
+    ? {
+        name: clientName,
+        email: project.client?.email ?? null,
+        initial: clientInitial,
+        lastSeen: clientViewedText,
+        lastSeenDate:
+          clientViewedText && project.client?.lastViewedAt
+            ? new Date(project.client.lastViewedAt).toLocaleDateString('en-GB', {
+                day: 'numeric', month: 'long', year: 'numeric',
+              })
+            : null,
+      }
+    : null
 
   return (
     <div>
@@ -368,7 +369,7 @@ export default async function ProjectPage({ params }) {
                   `displayProject` above — I didn't add that myself
                   since it would silently change who sees a review that
                   everyone can already see today. */}
-              <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md bg-fp-warning/10 text-fp-warning">
+              <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-fp-warning/10 text-fp-warning">
                 <Star className="w-3 h-3" />
                 {project.clientRating ? `${project.clientRating}/5` : 'No review yet'}
               </span>
@@ -467,240 +468,118 @@ export default async function ProjectPage({ params }) {
         </div>
 
         {/* CONTEXT PANEL */}
-
-        <aside className="lg:col-span-4 space-y-4 lg:sticky lg:top-24">
-
-          {/* Client Panel — CHANGED: the body is now gated behind
-              canViewClient. A Contributor sees a plain "Restricted"
-              notice instead of an empty-looking identity block. */}
-          <PanelCard label="Client">
-            {!canViewClient ? (
-              <RestrictedNotice text="Client details are restricted for your role on this project." />
-            ) : (
-              <div className="px-4 py-4 space-y-4">
-
-                {/* Identity */}
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-fp-accent/15 border border-fp-accent/20 flex items-center justify-center shrink-0">
-                    <span className="text-sm font-bold text-fp-accent leading-none">
-                      {clientInitial}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-fp-text-primary truncate">
-                      {clientName}
-                    </p>
-                    {project.client?.email && (
-                      <p className="flex items-center gap-1 text-[11px] text-fp-text-tertiary truncate mt-0.5">
-                        <Mail className="w-3 h-3 shrink-0" />
-                        {project.client.email}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Last activity */}
-                <div className="flex items-center gap-2.5 px-3 py-2 bg-fp-raised rounded-lg">
-                  <span
-                    className={`w-2 h-2 rounded-full shrink-0 ${clientViewedText
-                      ? 'bg-fp-success ring-2 ring-fp-success/25'
-                      : 'bg-fp-border'
-                      }`}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-fp-text-primary">
-                      {clientViewedText ? `Last seen ${clientViewedText}` : 'Portal not opened yet'}
-                    </p>
-                    {clientViewedText && project.client?.lastViewedAt && (
-                      <p className="text-[10px] text-fp-text-tertiary">
-                        {new Date(project.client.lastViewedAt).toLocaleDateString('en-GB', {
-                          day: 'numeric', month: 'long', year: 'numeric',
-                        })}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-              </div>
-            )}
-          </PanelCard>
-
-          {/* Project Details Panel — CHANGED: dropped the Status row.
-              The header now shows status, the client chip, and the
-              review badge together, so repeating "Active" a second
-              time down here was exactly the "same fact, two places"
-              problem — the reader has to wonder if the two could ever
-              disagree. Dates, milestone progress %, and update/file
-              COUNTS stay: none of those appear anywhere else on the
-              page, so they're not duplicates, just detail that's fine
-              to keep one click into the scroll rather than in the
-              header. Still visible to every role that reaches this
-              page at all; none of this is client- or invoice-specific
-              per the matrix. */}
-          <PanelCard label="Project details">
-            <div className="px-4 py-1 divide-y divide-fp-border">
-
-              <DetailRow label="Started">
-                <span className="text-xs font-medium text-fp-text-secondary">
-                  {startedLabel}
-                </span>
-              </DetailRow>
-
-              <DetailRow label="Duration">
-                <span className="text-xs font-medium text-fp-text-secondary">
-                  {daysActive} days
-                </span>
-              </DetailRow>
-
-              <DetailRow label="Milestones">
-                <div className="flex items-center gap-2">
-                  <div className="w-14 h-1.5 bg-fp-raised rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-fp-accent rounded-full"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <span className="text-xs font-semibold text-fp-accent tabular-nums">
-                    {progress}%
-                  </span>
-                </div>
-              </DetailRow>
-
-              <DetailRow label="Updates">
-                <span className="text-xs font-medium text-fp-text-secondary tabular-nums">
-                  {project.updates.length}
-                </span>
-              </DetailRow>
-
-              <DetailRow label="Files">
-                <span className="text-xs font-medium text-fp-text-secondary tabular-nums">
-                  {project.files.length}
-                </span>
-              </DetailRow>
-
-            </div>
-          </PanelCard>
-
-          {/* Actions ───────────────────────────────────────────────────── */}
-          <div className="space-y-2">
-
-            {/* Project Story — CHANGED: hidden entirely for a role
-                without draftShowcase (Contributor). Publish itself is
-                gated inside /story, which wasn't part of this upload —
-                flagged below. */}
-            {canDraftShowcase && (
-              <Link
-                href={`/dashboard/projects/${project.id}/story`}
-                className="
-                  group flex items-center gap-3 w-full
-                  bg-fp-surface border border-fp-border
-                  hover:border-fp-accent/30 hover:bg-fp-surface
-                  rounded-xl px-4 py-3.5 transition-colors duration-150
-                "
-              >
-                <div className="
-                  w-8 h-8 rounded-lg bg-fp-raised border border-fp-border
-                  flex items-center justify-center shrink-0
-                ">
-                  <BookOpen className="w-4 h-4 text-fp-text-tertiary group-hover:text-fp-accent transition-colors" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-fp-text-primary group-hover:text-fp-accent transition-colors">
-                    Project Story
-                  </p>
-                  <p className="text-[11px] text-fp-text-tertiary mt-0.5">
-                    {project.caseStudyEnabled
-                      ? 'Story is live — view or edit'
-                      : 'Turn this project into a case study'}
-                  </p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-fp-text-tertiary group-hover:text-fp-accent transition-colors shrink-0" />
-              </Link>
-            )}
-
+        <aside
+          aria-label="Project overview and management"
+          className="lg:col-span-4 lg:sticky lg:top-20"
+        >
+          {/* Project Story is hidden entirely for a role without
+              draftShowcase (Contributor). Publish itself is gated inside
+              /story. ClientReviewCard still receives displayProject, so
+              nothing that was redacted above reaches it. */}
+          <ProjectSidebar
+            summary={{ progress, client: clientInfo }}
+            panels={panels}
+            panelMeta={panelMeta}
+            story={
+              canDraftShowcase
+                ? {
+                    href: `/dashboard/projects/${project.id}/story`,
+                    enabled: Boolean(project.caseStudyEnabled),
+                  }
+                : null
+            }
+          >
             <ClientReviewCard project={displayProject} permissions={permissions} />
+          </ProjectSidebar>
 
-            {/* Dialogs opened from the sidebar's project panel buttons
-                (lib/project-panels.js). Add a new button there, then add a
-                matching <ProjectPanelDialog panelId="..."> here — no other
-                wiring needed. */}
-
-            {/* CHANGED — GitHub dialog hidden entirely for a role
-                without linkGithubRepo (Contributor gets no access at
-                all here, matching the matrix). PM still gets the
-                dialog (they can link a repo) but the panel now
-                receives displayProject, not project — the real secret
-                never reaches its props unless canManageGithubSecret
-                is true. */}
-            {canLinkGithub && (
-              <ProjectPanelDialog
-                panelId="github"
-                title="Connect GitHub repository"
-                description="Add a webhook so pushes to this project automatically appear in the client's update feed."
-                bare
-              >
-                <GithubConnectPanel project={displayProject} canManageSecret={canManageGithubSecret} />
-              </ProjectPanelDialog>
-            )}
-
-            <ProjectPanelDialog
-              panelId="activity"
-              title="Recent activity"
-              description="A quick look at the latest updates on this project."
-            >
-              <RecentActivityPanel updates={project.updates} />
-            </ProjectPanelDialog>
-
-            {/* Client Requests — the team's side of requests sent to the client.
-                Only id + title of each milestone are passed down (the form's
-                "for milestone" picker); permissions decide what the panel shows,
-                the API routes enforce it. project.client is undefined for roles
-                without viewClient, which is fine: those roles can't create requests. */}
-            <ProjectPanelDialog
-              panelId="requests"
-              title="Client requests"
-              description="Ask your client for answers or approvals, and see what is blocking the project."
-              className="sm:max-w-2xl"
-            >
-              <ClientRequestsPanel
-                projectId={project.id}
-                milestones={project.milestones.map((m) => ({ id: m.id, title: m.title }))}
-                hasClient={Boolean(project.client)}
-                permissions={permissions}
-              />
-            </ProjectPanelDialog>
-
-            <ProjectPanelDialog
-              panelId="members"
-              title="Project members"
-              description="See who's staffed on this project, and add or remove teammates."
-            >
-              <ProjectMembersPanel projectId={project.id} permissions={permissions} />
-            </ProjectPanelDialog>
-
-          </div>
-
-          {/* TaskBoard intentionally not rendered here. It needs one
-              specific milestoneId, and this level of the page only has
-              project.milestones (an array of possibly several) — there's
-              no single "current milestone" to bind it to. Belongs inside
-              MilestoneManager, once per milestone, not once per project
-              down here in the sidebar. */}
-
+          {/* TaskBoard intentionally not rendered here. It needs one specific
+              milestoneId, and this level of the page only has
+              project.milestones (an array). It belongs inside
+              MilestoneManager, once per milestone. */}
         </aside>
 
       </div>
-    </div>
-  )
-}
 
-// ─── DetailRow — used only inside Project Details Panel ─────────────────────
+      {/* Dialogs opened from the sidebar. The rows come from
+          lib/project-panels.js. To add one: add the panel there, then add a
+          matching <ProjectPanelDialog panelId="..."> here. "info" is the one
+          exception: the summary card opens it, so it is not in that list. */}
+      <ProjectPanelDialog
+        panelId="info"
+        title="Project info"
+        description={`Client details and key numbers for ${project.name}.`}
+        bare
+        className="max-h-[90dvh] overflow-y-auto"
+      >
+        <ProjectInfoPanel
+          projectName={project.name}
+          status={status}
+          client={clientInfo}
+          stats={{
+            startedLabel,
+            durationLabel: formatDuration(daysActive),
+            progress,
+            updates: project.updates.length,
+            files: project.files.length,
+          }}
+        />
+      </ProjectPanelDialog>
 
-function DetailRow({ label, children }) {
-  return (
-    <div className="flex items-center justify-between py-2.5">
-      <span className="text-xs text-fp-text-tertiary">{label}</span>
-      {children}
+      {/* GitHub: the panel list already applied the plan gate AND the role
+          gate (Contributor gets none). A PM still gets the dialog (they can
+          link a repo) but the panel receives displayProject, so the real
+          secret never reaches its props unless canManageGithubSecret. */}
+      {hasPanel('github') && (
+        <ProjectPanelDialog
+          panelId="github"
+          title="Connect GitHub repository"
+          description="Add a webhook so pushes to this project automatically appear in the client's update feed."
+          bare
+        >
+          <GithubConnectPanel project={displayProject} canManageSecret={canManageGithubSecret} />
+        </ProjectPanelDialog>
+      )}
+
+      {hasPanel('activity') && (
+        <ProjectPanelDialog
+          panelId="activity"
+          title="Project activity"
+          description="A quick look at the latest updates on this project."
+        >
+          <RecentActivityPanel updates={project.updates} />
+        </ProjectPanelDialog>
+      )}
+
+      {/* Client Requests: the team's side of requests sent to the client.
+          Only id + title of each milestone are passed down (the form's "for
+          milestone" picker); permissions decide what the panel shows, the API
+          routes enforce it. project.client is undefined for roles without
+          viewClient, which is fine: those roles can't create requests. */}
+      {hasPanel('requests') && (
+        <ProjectPanelDialog
+          panelId="requests"
+          title="Client requests"
+          description="Ask your client for answers or approvals, and see what is blocking the project."
+          className="sm:max-w-2xl"
+        >
+          <ClientRequestsPanel
+            projectId={project.id}
+            milestones={project.milestones.map((m) => ({ id: m.id, title: m.title }))}
+            hasClient={Boolean(project.client)}
+            permissions={permissions}
+          />
+        </ProjectPanelDialog>
+      )}
+
+      {hasPanel('members') && (
+        <ProjectPanelDialog
+          panelId="members"
+          title="Project members"
+          description="See who's staffed on this project, and add or remove teammates."
+        >
+          <ProjectMembersPanel projectId={project.id} permissions={permissions} />
+        </ProjectPanelDialog>
+      )}
     </div>
   )
 }
