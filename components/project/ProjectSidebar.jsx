@@ -157,7 +157,7 @@ export default function ProjectSidebar({ summary, panels, panelMeta = {}, story,
           {panels.map((panel) => (
             <li key={panel.id}>
               <PanelTrigger panelId={panel.id} className={ROW}>
-                <RowBody icon={panel.icon} label={panel.label} meta={panelMeta[panel.id]} />
+                <RowBody icon={panel.icon} label={panel.label} meta={panelMeta[panel.id]}/>
               </PanelTrigger>
             </li>
           ))}

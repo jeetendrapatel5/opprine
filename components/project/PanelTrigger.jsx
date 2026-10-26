@@ -10,6 +10,7 @@
 // server renders the button's contents and passes them in as `children`.
 
 import { useProjectPanel } from '@/hooks/use-project-panel'
+import { cn } from '@/lib/utils' 
 
 export default function PanelTrigger({ panelId, className, children }) {
   const { open } = useProjectPanel(panelId)
@@ -17,7 +18,7 @@ export default function PanelTrigger({ panelId, className, children }) {
   return (
     // Arrow function on purpose: it calls open() with no arguments, instead of
     // handing the click event to the hook as if it were an argument.
-    <button type="button" aria-haspopup="dialog" onClick={() => open()} className={className}>
+    <button type="button" aria-haspopup="dialog" onClick={() => open()} className={cn('cursor-pointer', className)}>
       {children}
     </button>
   )
