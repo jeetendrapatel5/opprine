@@ -108,7 +108,7 @@ function RowBody({ icon: Icon, label, meta }) {
         className="h-4 w-4 shrink-0 text-fp-text-secondary transition-colors group-hover:text-fp-accent motion-reduce:transition-none"
         aria-hidden="true"
       />
-      <span className="min-w-0 flex-1 truncate text-sm font-medium text-fp-text-primary">
+      <span className="min-w-0 flex-1 truncate text-sm font-medium text-fp-text-primary font-[roboto]">
         {label}
       </span>
       {meta && (
