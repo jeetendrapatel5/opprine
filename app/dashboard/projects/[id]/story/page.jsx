@@ -3,20 +3,27 @@
 // Server Component. Auth-gated. Fetches the project and passes it to
 // the StoryEditor client component.
 //
-// Why we fetch completed milestones here:
-// The StoryEditor's live preview shows the milestone timeline.
-// The cover image auto-selection logic needs the first completed milestone
-// with a delivery image. Fetching this data server-side means StoryEditor
-// starts with everything it needs — no loading states for the initial render.
+// What this file does, in order:
+//   1. Reads the project id from the URL.
+//   2. Checks the visitor is signed in (otherwise → /signin).
+//   3. Loads the project, but ONLY if it belongs to this user. The `userId`
+//      inside `where` is the ownership check: someone else's project returns
+//      null here, and we answer with a 404.
+//   4. Renders the breadcrumb, the page header and the editor.
+//
+// Why completed milestones and files are loaded here:
+//   The editor's preview shows the milestone list and falls back to a
+//   milestone/file image when no cover is uploaded. Loading them on the server
+//   means the editor has everything on first paint — no loading states.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { getServerSession } from 'next-auth'
-import { authOptions } from "@/lib/auth"
+import { authOptions } from '@/lib/auth'
 import { redirect, notFound } from 'next/navigation'
-import prisma               from '@/lib/prisma'
-import Link                 from 'next/link'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
-import StoryEditor          from '@/components/dashboard/story/StoryEditor'
+import prisma from '@/lib/prisma'
+import Link from 'next/link'
+import { ChevronRight } from 'lucide-react'
+import StoryEditor from '@/components/dashboard/story/StoryEditor'
 
 export default async function ProjectStoryPage({ params }) {
   const { id } = await params
@@ -24,23 +31,17 @@ export default async function ProjectStoryPage({ params }) {
 
   if (!session) redirect('/signin')
 
-  // Fetch the project with all the data StoryEditor needs.
-  // The nested where on userId is our ownership check — if the project
-  // doesn't belong to this user, findFirst returns null and we call notFound().
   const project = await prisma.project.findFirst({
     where: {
       id,
       userId: session.user.id,
     },
     include: {
-      // user — StoryEditor needs username to check if the public profile is set up
+      // user — the preview shows "By {name}"
       user: {
-        select: {
-          username:  true,
-          name:      true,
-        },
+        select: { name: true },
       },
-      // client — needed for the "hide client" toggle preview
+      // client — needed for the "hide client name" preview
       client: {
         select: { name: true },
       },
@@ -48,13 +49,8 @@ export default async function ProjectStoryPage({ params }) {
       milestones: {
         where:   { status: 'COMPLETED' },
         orderBy: { completedAt: 'asc' },
-        include: {
-          milestoneUpdates: {
-            orderBy: { createdAt: 'asc' },
-          },
-        },
       },
-      // Files — used for the deliverables section in the preview
+      // Files — only used to pick a fallback hero image
       files: {
         orderBy: { createdAt: 'desc' },
       },
@@ -64,45 +60,47 @@ export default async function ProjectStoryPage({ params }) {
   if (!project) notFound()
 
   return (
-    <div className="pb-24">
+    <div className="mx-auto max-w-7xl pb-24">
 
-      {/* ── Breadcrumb bar ── */}
-      <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 mb-6">
-        <div className="max-w-7xl mx-auto flex items-center gap-1.5 text-xs font-medium">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-1 text-fp-text-tertiary hover:text-fp-text-secondary transition-colors duration-150"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Dashboard
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-fp-border" />
-          <Link
-            href={`/dashboard/projects/${id}`}
-            className="text-fp-text-tertiary hover:text-fp-text-secondary transition-colors duration-150 truncate max-w-[160px]"
-          >
-            {project.name}
-          </Link>
-          <ChevronRight className="w-3.5 h-3.5 text-fp-border" />
-          <span className="text-fp-text-secondary">Project Story</span>
-        </div>
-      </div>
+      {/* ── Breadcrumb ── */}
+      <nav aria-label="Breadcrumb" className="mb-6">
+        <ol className="flex items-center gap-1.5 text-xs font-medium">
+          <li className="flex items-center gap-1.5">
+            <Link
+              href="/dashboard"
+              className="text-fp-text-secondary transition-colors duration-150 hover:text-fp-text-primary"
+            >
+              Dashboard
+            </Link>
+            <ChevronRight className="size-3.5 shrink-0 text-fp-text-tertiary" aria-hidden="true" />
+          </li>
+          <li className="flex min-w-0 items-center gap-1.5">
+            <Link
+              href={`/dashboard/projects/${id}`}
+              className="block max-w-40 truncate text-fp-text-secondary transition-colors duration-150 hover:text-fp-text-primary sm:max-w-64"
+            >
+              {project.name}
+            </Link>
+            <ChevronRight className="size-3.5 shrink-0 text-fp-text-tertiary" aria-hidden="true" />
+          </li>
+          <li aria-current="page" className="text-fp-text-primary">
+            Project Story
+          </li>
+        </ol>
+      </nav>
 
       {/* ── Page header ── */}
-      <div className="max-w-7xl mx-auto mb-6">
-        <h1 className="font-display text-2xl font-medium text-fp-text-primary tracking-tight">
+      <header className="mb-8">
+        <h1 className="font-display text-2xl font-medium tracking-tight text-fp-text-primary sm:text-3xl">
           Project Story
         </h1>
-        <p className="text-fp-text-secondary text-sm mt-1 leading-relaxed">
+        <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-fp-text-secondary">
           Turn this project into a public case study that wins you the next client.
         </p>
-      </div>
+      </header>
 
-      {/* ── Story editor — full width ── */}
-      <div className="max-w-7xl mx-auto">
-        <StoryEditor project={project}/>
-      </div>
-
+      {/* ── Editor ── */}
+      <StoryEditor project={project} />
     </div>
   )
 }

@@ -1,492 +1,280 @@
-// components/dashboard/story/StoryEditor.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// The two-column story editor.
-//
-// LEFT column — settings panel with four sections:
-//   1. Publish Settings — enable/disable toggle, slug input
-//   2. Cover Image — upload or auto-select from milestones
-//   3. The Project — industry, tech stack, hide client toggle
-//   4. Your Story — problem and outcome narratives
-//
-// RIGHT column — live preview panel.
-//   Updates in real time as the freelancer types.
-//   Renders a compact version of what /showcase/[slug] will look like.
-//   NOT an iframe — it's a React component rendering local state.
-//
-// Save pattern:
-//   Every section change updates local state immediately (instant UI feedback).
-//   The freelancer clicks "Save changes" to persist — one PATCH request.
-//   The save button shows "Saving..." then "Saved ✓" for 2 seconds.
-//
-// Cover image upload pattern:
-//   File pick → POST to cover route → get URL back → store in local state.
-//   The URL is sent as a plain string in the story save JSON.
-//   This keeps the story PATCH route simple (JSON only, no multipart).
-// ─────────────────────────────────────────────────────────────────────────────
 'use client'
 
-import { useState, useRef } from 'react'
-import {
-  Loader2, CheckCircle2, Copy, Check, ExternalLink,
-  Upload, X, Plus, Star, ImageIcon, Globe, Eye, EyeOff, ChevronRight,
-  CheckIcon
-} from 'lucide-react'
+/* eslint-disable @next/next/no-img-element --
+   The cover image is a user-supplied URL (Cloudinary), so next/image's fixed
+   remote-host allow-list does not fit here. */
+
+// components/dashboard/story/StoryEditor.jsx
+// ─────────────────────────────────────────────────────────────────────────────
+// The Project Story editor: settings on the left, live preview on the right.
+//
+// Files in this folder
+//   StoryEditor.jsx   (this file) state, saving, cover upload, page layout
+//   StoryFields.jsx   form building blocks (Section, Field, Toggle, TagInput…)
+//   StoryPreview.jsx  the read-only mock of the public page
+//   story-config.js   constants + pure helpers (form <-> API shape)
+//
+// How data flows
+//   1. The server page loads the project and passes it in as `project`.
+//   2. `form` holds what is on screen. `saved` holds what is in the database.
+//      Every keystroke changes `form` only.
+//   3. "Unsaved changes" is simply form !== saved.
+//   4. Save sends ONE PATCH with the form values. On success, `saved` is set
+//      to the values that were sent, so the page goes back to "all saved".
+//   5. A cover image is uploaded the moment it is picked (POST to the cover
+//      route). The returned URL goes into `form` and is stored on Save, so the
+//      story PATCH stays plain JSON.
+//
+// Layout
+//   xl and wider  — editor and preview side by side.
+//   below xl      — one at a time, switched with an Editor/Preview control.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import axios from 'axios'
+import {
+  Check, CheckCircle2, ChevronDown, Copy, ExternalLink,
+  Globe, Loader2, Upload, X,
+} from 'lucide-react'
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import StoryPreview from './StoryPreview'
+import {
+  Section, Field, Counter, Toggle, NarrativeField, TagInput,
+  buttonStyles, controlSurface, inputClass,
+} from './StoryFields'
+import {
+  MAX_TECH_TAGS, MAX_NARRATIVE, SLUG_PATTERN, INDUSTRY_OPTIONS,
+  toFormValues, toPayload, getAutoHeroImage,
+} from './story-config'
 
-const MAX_TECH_TAGS  = 12
-const MAX_NARRATIVE  = 600
-
-const INDUSTRY_OPTIONS = [
-  'E-commerce',
-  'SaaS',
-  'Healthcare',
-  'Education',
-  'Real Estate',
-  'Finance',
-  'Agency / Brand',
-  'Other',
+const VIEWS = [
+  { id: 'editor',  label: 'Editor'  },
+  { id: 'preview', label: 'Preview' },
 ]
 
-// ── Small reusable pieces ─────────────────────────────────────────────────────
+// ── Small helpers ─────────────────────────────────────────────────────────────
 
-// SectionCard — wraps each settings section with consistent visual treatment.
-// The title is in the fp- uppercase tracking style used throughout the dashboard.
-function SectionCard({ title, children }) {
-  return (
-    <div className="bg-fp-surface rounded-xl p-5 space-y-4">
-      <p className="text-fp-text-secondary text-[10px] font-bold uppercase tracking-widest">
-        {title}
-      </p>
-      {children}
-    </div>
-  )
+// Reads the site's host name (e.g. "opprine.vercel.app") in the browser.
+// useSyncExternalStore gives "" on the server and the real value after
+// hydration, so server and client HTML always match.
+const subscribeNoop = () => () => {}
+const getHost       = () => window.location.host
+const getServerHost = () => ''
+
+// A true/false flag that switches itself off after `ms` milliseconds.
+// Used for the "Saved" and "Copied" confirmations. The timer is cleared if the
+// component unmounts or the flag is set again.
+function useFlash(ms) {
+  const [on, setOn] = useState(false)
+
+  useEffect(() => {
+    if (!on) return
+    const timer = setTimeout(() => setOn(false), ms)
+    return () => clearTimeout(timer)
+  }, [on, ms])
+
+  return [on, setOn]
 }
 
-// Toggle — a styled boolean switch.
-// Why not a checkbox: checkboxes are hard to style consistently across browsers.
-// A div-based toggle is visually precise and uses our fp- tokens exactly.
-function Toggle({ enabled, onChange, label, helper }) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="flex-1">
-        <p className="text-fp-text-primary text-sm font-medium leading-snug">
-          {label}
-        </p>
-        {helper && (
-          <p className="text-fp-text-tertiary text-xs mt-0.5 leading-relaxed">
-            {helper}
-          </p>
-        )}
-      </div>
-      {/* The button acts as the toggle — accessible via keyboard */}
-      <button
-        type="button"
-        onClick={() => onChange(!enabled)}
-        className={`
-          relative shrink-0 w-10 h-5.5 rounded-full transition-colors duration-200
-          focus:outline-none focus:ring-2 focus:ring-fp-accent/30
-          ${enabled ? 'bg-fp-accent' : 'bg-fp-border'}
-        `}
-        style={{ height: '22px' }}
-        aria-pressed={enabled}
-      >
-        {/* The sliding knob */}
-        <span
-          className={`
-            absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow-sm
-            transition-transform duration-200
-            ${enabled ? 'translate-x-[18px]' : 'translate-x-0'}
-          `}
-        />
-      </button>
-    </div>
-  )
+// Helper text under the "Enable Project Story" switch. It compares what is on
+// screen with what is saved, so it never claims the story is live before the
+// freelancer has actually saved.
+function getPublishHelper(formEnabled, savedEnabled) {
+  if (formEnabled === savedEnabled) {
+    return formEnabled
+      ? 'Live. Anyone with the link can view it.'
+      : 'Turn this on to make your story public.'
+  }
+  return formEnabled ? 'Will go live when you save.' : 'Will go offline when you save.'
 }
 
-// TechTagInput — tag-style input for the tech stack.
-// Press Enter or comma to add a tag. Backspace on empty input removes the last tag.
-// Max MAX_TECH_TAGS tags.
-function TechTagInput({ tags, onChange }) {
-  const [inputValue, setInputValue] = useState('')
-
-  const addTag = (raw) => {
-    const value = raw.trim().replace(/,+$/, '').trim()
-    if (!value)                     return
-    if (tags.length >= MAX_TECH_TAGS) return
-    if (tags.includes(value))       return  // no duplicates
-    onChange([...tags, value])
-  }
-
-  const removeTag = (index) => {
-    onChange(tags.filter((_, i) => i !== index))
-  }
-
-  const handleKeyDown = (e) => {
-    // Enter or comma → add the current input as a tag
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault()
-      addTag(inputValue)
-      setInputValue('')
-    }
-    // Backspace on empty input → remove the last tag
-    if (e.key === 'Backspace' && inputValue === '' && tags.length > 0) {
-      onChange(tags.slice(0, -1))
-    }
-  }
-
-  const handleBlur = () => {
-    if (inputValue.trim()) {
-      addTag(inputValue)
-      setInputValue('')
-    }
-  }
-
+// Industry picker. A shadcn DropdownMenu in place of the native <select>, so the
+// open list matches the dashboard theme instead of the browser's default one.
+//
+//  - `fp-dark-popover` (globals.css) re-maps the shadcn tokens to the dark
+//    dashboard palette. The menu renders in a portal, so the class has to sit
+//    on the content element itself.
+//  - The list is as wide as the trigger (--radix-dropdown-menu-trigger-width),
+//    so it fits any screen size, and it scrolls if the screen is short.
+//  - Radix handles arrow keys, Home/End, type-to-select, Escape and focus
+//    return. Radio items announce the selected option to screen readers.
+//  - The chosen value is stored as a plain string, exactly as before.
+function IndustrySelect({ id, value, onChange, options }) {
   return (
-    <div>
-      {/* Tag display + input field — all inside one container */}
-      <div className="
-        flex flex-wrap gap-1.5 min-h-[42px]
-        bg-fp-base border border-fp-border rounded-lg px-3 py-2
-        focus-within:ring-2 focus-within:ring-fp-accent/30 focus-within:border-fp-accent/50
-        transition-colors duration-150 cursor-text
-      "
-        onClick={(e) => {
-          // Clicking anywhere in the container focuses the text input
-          e.currentTarget.querySelector('input')?.focus()
-        }}
-      >
-        {/* Rendered tags */}
-        {tags.map((tag, index) => (
-          <span
-            key={index}
-            className="
-              inline-flex items-center gap-1 px-2 py-0.5
-              bg-fp-accent-muted text-fp-accent text-xs font-medium rounded-md
-              border border-fp-accent/20
-            "
+    // modal={false}: by default Radix locks page scroll while a menu is open,
+    // which removes the page scrollbar and leaves a gap on the right that shows
+    // the (white) body background. Non-modal keeps the page exactly as it is;
+    // Escape, outside click and focus return to the trigger still work.
+    <DropdownMenu modal={false}>
+      <div className="relative">
+        <DropdownMenuTrigger asChild>
+          <button
+            id={id}
+            type="button"
+            className={`${inputClass} peer cursor-pointer pr-9 text-left data-[state=open]:border-fp-accent/60 data-[state=open]:ring-2 data-[state=open]:ring-fp-accent/30`}
           >
-            {tag}
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); removeTag(index) }}
-              className="text-fp-accent/60 hover:text-fp-accent transition-colors"
+            <span className={`block truncate ${value ? '' : 'text-fp-text-tertiary'}`}>
+              {value || 'Select an industry'}
+            </span>
+          </button>
+        </DropdownMenuTrigger>
+        <ChevronDown
+          className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-fp-text-secondary transition-transform duration-200 peer-data-[state=open]:rotate-180"
+          aria-hidden="true"
+        />
+      </div>
+
+      <DropdownMenuContent
+        align="start"
+        sideOffset={6}
+        collisionPadding={12}
+        className={
+          'fp-dark-popover max-h-[min(18rem,var(--radix-dropdown-menu-content-available-height))] w-(--radix-dropdown-menu-trigger-width) overscroll-contain rounded-lg border-fp-text-tertiary/30 p-1.5 shadow-xl shadow-black/40 ' +
+          // Slim scrollbar: Firefox and current Chrome/Edge use the standard
+          // properties, older Safari falls back to the -webkit- rules.
+          '[scrollbar-width:thin] [scrollbar-color:var(--color-fp-text-tertiary)_transparent] ' +
+          '[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent ' +
+          '[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-fp-text-tertiary/60 ' +
+          '[&::-webkit-scrollbar-thumb:hover]:bg-fp-text-secondary'
+        }
+      >
+        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+          <DropdownMenuRadioItem
+            value=""
+            className="cursor-pointer rounded-md py-2 pl-2.5 pr-8 text-fp-text-secondary [&>span:first-child]:hidden"
+          >
+            No industry
+          </DropdownMenuRadioItem>
+
+          <DropdownMenuSeparator className="my-1.5 bg-fp-text-tertiary/30" />
+
+          {options.map((option) => (
+            <DropdownMenuRadioItem
+              key={option}
+              value={option}
+              className="cursor-pointer rounded-md py-2 pl-2.5 pr-8 text-fp-text-primary transition-colors duration-150 data-[state=checked]:bg-fp-accent-muted/60 data-[state=checked]:font-medium [&>span:first-child]:hidden"
             >
-              <X className="w-2.5 h-2.5" />
-            </button>
-          </span>
-        ))}
-
-        {/* Text input — grows to fill remaining space */}
-        {tags.length < MAX_TECH_TAGS && (
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onBlur={handleBlur}
-            placeholder={tags.length === 0 ? 'e.g. Next.js, PostgreSQL, Stripe' : 'Add more...'}
-            className="
-              flex-1 min-w-[100px] bg-transparent text-fp-text-primary text-sm
-              placeholder:text-fp-text-tertiary outline-none
-            "
-          />
-        )}
-      </div>
-
-      <div className="flex items-center justify-between mt-1">
-        <p className="text-fp-text-tertiary text-[10px]">
-          Press Enter or comma to add. Press Backspace to remove the last one.
-        </p>
-        <p className={`text-[10px] font-medium ${
-          tags.length >= MAX_TECH_TAGS ? 'text-fp-warning' : 'text-fp-text-tertiary'
-        }`}>
-          {tags.length} / {MAX_TECH_TAGS}
-        </p>
-      </div>
-    </div>
-  )
-}
-
-// CharCount — shows remaining characters below a textarea.
-function CharCount({ current, max }) {
-  const remaining = max - current
-  const isNearLimit = remaining < 80
-  return (
-    <p className={`text-[10px] font-medium text-right mt-1 ${
-      isNearLimit ? 'text-fp-warning' : 'text-fp-text-tertiary'
-    }`}>
-      {current} / {max}
-    </p>
-  )
-}
-
-// ── Live preview ──────────────────────────────────────────────────────────────
-// Compact read-only preview of the public showcase page.
-// Renders inside the right column of the editor.
-// All data comes from the parent's local state — updates instantly as the
-// freelancer types.
-
-function LivePreview({ data, project }) {
-  const {
-    caseStudyEnabled,
-    publicSlug,
-    caseStudyCoverImage,
-    caseStudyIndustry,
-    caseStudyTechStack,
-    caseStudyHideClient,
-    caseStudyProblem,
-    caseStudyOutcome,
-  } = data
-
-  // Determine the hero image:
-  // 1. Use the explicit cover image if set
-  // 2. Otherwise use the first completed milestone's delivery image
-  // 3. Otherwise use the first project file that is an image
-  const autoHeroImage = (() => {
-    for (const m of project.milestones) {
-      if (m.deliveryFileUrl && m.deliveryFileType?.startsWith('image/')) {
-        return m.deliveryFileUrl
-      }
-    }
-    const imgFile = project.files.find(f => f.fileType?.startsWith('image/'))
-    return imgFile?.url ?? null
-  })()
-
-  const heroImage  = caseStudyCoverImage || autoHeroImage
-  const clientName = caseStudyHideClient
-    ? 'A satisfied client'
-    : (project.client?.name ?? 'A satisfied client')
-
-  return (
-    <div className="
-      bg-white rounded-xl border border-fp-border overflow-hidden
-      text-gray-900 text-sm
-    ">
-      {/* Mini browser chrome — makes it feel like a real page preview */}
-      <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-        <div className="flex gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-gray-200" />
-          <div className="w-2.5 h-2.5 rounded-full bg-gray-200" />
-          <div className="w-2.5 h-2.5 rounded-full bg-gray-200" />
-        </div>
-        <div className="flex-1 bg-gray-100 rounded-md px-2.5 py-1 text-[10px] text-gray-400 truncate font-mono">
-          {publicSlug
-            ? `freeport.app/showcase/${publicSlug}`
-            : 'freeport.app/showcase/your-project-name'
-          }
-        </div>
-      </div>
-
-      {/* Preview content — scrollable */}
-      <div className="overflow-y-auto max-h-[600px]">
-
-        {/* Hero image */}
-        {heroImage ? (
-          <div className="w-full h-36 bg-gray-100 overflow-hidden">
-            <img
-              src={heroImage}
-              alt="Cover"
-              className="w-full h-full object-cover"
-            />
-          </div>
-        ) : (
-          <div className="w-full h-36 bg-fp-raised flex items-center justify-center">
-            <div className="text-center">
-              <ImageIcon className="w-6 h-6 text-fp-border mx-auto mb-1" />
-              <p className="text-fp-text-tertiary text-[10px]">
-                Cover image will appear here
-              </p>
-            </div>
-          </div>
-        )}
-
-        <div className="p-5 space-y-4">
-
-          {/* Project name + badges */}
-          <div>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              <span className="text-[10px] font-bold uppercase flex tracking-wider px-2 py-0.5 rounded-full bg-green-50 text-green-700">
-                <CheckIcon className="w-3 h-3 mr-1" />
-                Completed Project
-              </span>
-              {caseStudyIndustry && (
-                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
-                  {caseStudyIndustry}
-                </span>
+              {option}
+              {value === option && (
+                <Check
+                  className="absolute right-2.5 size-4 text-fp-accent"
+                  aria-hidden="true"
+                />
               )}
-            </div>
-            <h1 className="font-bold text-base text-gray-900 leading-snug">
-              {project.name}
-            </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
-              by {project.user.name} · for {clientName}
-            </p>
-          </div>
-
-          {/* Tech stack badges */}
-          {caseStudyTechStack.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {caseStudyTechStack.map((tech, i) => (
-                <span
-                  key={i}
-                  className="text-[10px] font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-600"
-                >
-                  {tech}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Testimonial */}
-          {project.testimonial && (
-            <div className=" rounded-lg p-3">
-              <div className="flex gap-0.5 mb-1.5">
-                {[1,2,3,4,5].map(s => (
-                  <Star
-                    key={s}
-                    className="w-3 h-3"
-                    fill={s <= (project.clientRating ?? 5) ? '#B07633' : 'transparent'}
-                    color={s <= (project.clientRating ?? 5) ? '#B07633' : '#d1d5db'}
-                  />
-                ))}
-              </div>
-              <p className="text-xs text-gray-700 italic leading-relaxed line-clamp-3">
-                &quot;{project.testimonial}&quot;
-              </p>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mt-1.5">
-                 {clientName}
-              </p>
-            </div>
-          )}
-
-          {/* Problem */}
-          {caseStudyProblem ? (
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
-                The Challenge
-              </p>
-              <p className="text-xs text-gray-700 leading-relaxed line-clamp-4">
-                {caseStudyProblem}
-              </p>
-            </div>
-          ) : (
-            <div className="border border-dashed border-gray-200 rounded-lg p-3">
-              <p className="text-[10px] text-gray-400 text-center">
-                The Challenge will appear here
-              </p>
-            </div>
-          )}
-
-          {/* Outcome */}
-          {caseStudyOutcome ? (
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
-                The Outcome
-              </p>
-              <p className="text-xs text-gray-700 leading-relaxed line-clamp-4">
-                {caseStudyOutcome}
-              </p>
-            </div>
-          ) : (
-            <div className="border border-dashed border-gray-200 rounded-lg p-3">
-              <p className="text-[10px] text-gray-400 text-center">
-                The Outcome will appear here
-              </p>
-            </div>
-          )}
-
-          {/* Milestones */}
-          {project.milestones.length > 0 && (
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
-                How We Got There
-              </p>
-              <div className="space-y-1.5">
-                {project.milestones.slice(0, 4).map((m, i) => (
-                  <div key={m.id} className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                      <CheckCircle2 className="w-2.5 h-2.5 text-green-600" />
-                    </div>
-                    <p className="text-xs text-gray-700 truncate">{m.title}</p>
-                  </div>
-                ))}
-                {project.milestones.length > 4 && (
-                  <p className="text-[10px] text-gray-400 pl-6">
-                    +{project.milestones.length - 4} more milestones
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-        </div>
-      </div>
-
-      {/* Footer — not published notice or "looks good" */}
-      <div className={`
-        px-4 py-2.5 border-t text-center text-[10px] font-semibold
-        ${caseStudyEnabled
-          ? 'bg-green-50 border-green-100 text-green-700'
-          : 'bg-fp-raised border-fp-border text-fp-text-tertiary'
-        }
-      `}>
-        {caseStudyEnabled
-          ? 'This story is public'
-          : 'Enable the toggle to publish this story'
-        }
-      </div>
-    </div>
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
+}
+
+// "Live" / "Draft" pill shown in the Publish settings header.
+function StatusBadge({ isLive }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-fp-border bg-fp-base px-2.5 py-1 text-xs font-medium text-fp-text-primary">
+      <span
+        className={`size-1.5 rounded-full ${isLive ? 'bg-fp-success' : 'bg-fp-text-tertiary'}`}
+        aria-hidden="true"
+      />
+      {isLive ? 'Live' : 'Draft'}
+    </span>
+  )
+}
+
+// The message on the left of the save bar. One message at a time, in priority
+// order: error → saving → unsaved → just saved → nothing to save.
+function SaveStatus({ error, isSaving, isDirty, justSaved }) {
+  if (error) {
+    return <span className="text-fp-danger">{error}</span>
+  }
+  if (isSaving) {
+    return <span className="text-fp-text-secondary">Saving…</span>
+  }
+  if (isDirty) {
+    return (
+      <span className="flex items-center gap-2 text-fp-text-primary">
+        <span className="size-1.5 rounded-full bg-fp-warning" aria-hidden="true" />
+        Unsaved changes
+      </span>
+    )
+  }
+  if (justSaved) {
+    return (
+      <span className="flex items-center gap-1.5 text-fp-success">
+        <CheckCircle2 className="size-4" aria-hidden="true" />
+        Changes saved
+      </span>
+    )
+  }
+  return <span className="text-fp-text-secondary">All changes saved</span>
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function StoryEditor({ project }) {
 
-  // ── Form state ─────────────────────────────────────────────────────────────
-  // Initialize from the project prop. All fields update locally as the
-  // freelancer types — nothing saves until they click "Save changes".
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [form,  setForm]  = useState(() => toFormValues(project)) // what is on screen
+  const [saved, setSaved] = useState(form)                        // what is in the database
 
-  const [caseStudyEnabled,    setCaseStudyEnabled]    = useState(project.caseStudyEnabled    ?? false)
-  const [publicSlug,          setPublicSlug]          = useState(project.publicSlug          ?? '')
-  const [caseStudyCoverImage, setCaseStudyCoverImage] = useState(project.caseStudyCoverImage ?? null)
-  const [caseStudyIndustry,   setCaseStudyIndustry]   = useState(project.caseStudyIndustry   ?? '')
-  const [caseStudyTechStack,  setCaseStudyTechStack]  = useState(project.caseStudyTechStack  ?? [])
-  const [caseStudyHideClient, setCaseStudyHideClient] = useState(project.caseStudyHideClient ?? true)
-  const [caseStudyProblem,    setCaseStudyProblem]    = useState(project.caseStudyProblem    ?? '')
-  const [caseStudyOutcome,    setCaseStudyOutcome]    = useState(project.caseStudyOutcome    ?? '')
-
-  // ── UI state ───────────────────────────────────────────────────────────────
-  const [isSaving,       setIsSaving]       = useState(false)
-  const [saveStatus,     setSaveStatus]     = useState('idle') // 'idle' | 'saving' | 'saved' | 'error'
-  const [slugError,      setSlugError]      = useState('')
+  const [isSaving,         setIsSaving]         = useState(false)
+  const [saveError,        setSaveError]        = useState('')
+  const [serverSlugError,  setServerSlugError]  = useState('')   // e.g. "slug already taken"
   const [isCoverUploading, setIsCoverUploading] = useState(false)
-  const [isSlugCopied,   setIsSlugCopied]   = useState(false)
+  const [coverError,       setCoverError]       = useState('')
+  const [justSaved,  setJustSaved]  = useFlash(2000)
+  const [linkCopied, setLinkCopied] = useFlash(2000)
+  const [view, setView] = useState('editor')                      // only used below xl
 
   const coverInputRef = useRef(null)
+  const host = useSyncExternalStore(subscribeNoop, getHost, getServerHost)
 
-  // ── Slug validation ────────────────────────────────────────────────────────
+  // ── Derived values (computed on every render, never stored) ────────────────
+  const autoHeroImage = useMemo(() => getAutoHeroImage(project), [project])
+
+  const isDirty = JSON.stringify(form) !== JSON.stringify(saved)
+
+  // The format rule is checked right here; the server's rule (uniqueness) is
+  // stored separately and shown if the server rejects the slug.
+  const formatSlugError =
+    form.publicSlug && !SLUG_PATTERN.test(form.publicSlug)
+      ? 'Only lowercase letters, numbers, and hyphens.'
+      : ''
+  const slugError = formatSlugError || serverSlugError
+
+  // "Live" means the SAVED version is enabled and has a URL.
+  const isLive = saved.caseStudyEnabled && Boolean(saved.publicSlug)
+
+  // ── Form updates ───────────────────────────────────────────────────────────
+  const update = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
+    setSaveError('') // an old error no longer applies once they edit
+  }
+
+  // Force lowercase and turn spaces into hyphens as the freelancer types.
   const handleSlugChange = (value) => {
-    // Force lowercase and replace spaces with hyphens as the freelancer types
-    const cleaned = value.toLowerCase().replace(/\s+/g, '-')
-    setPublicSlug(cleaned)
-
-    if (cleaned && !/^[a-z0-9-]+$/.test(cleaned)) {
-      setSlugError('Only lowercase letters, numbers, and hyphens.')
-    } else {
-      setSlugError('')
-    }
+    setServerSlugError('')
+    update('publicSlug', value.toLowerCase().replace(/\s+/g, '-'))
   }
 
   // ── Cover image upload ─────────────────────────────────────────────────────
   const handleCoverFileChange = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    e.target.value = '' // reset input so same file can be re-selected
+    e.target.value = '' // lets the same file be picked again later
 
     setIsCoverUploading(true)
+    setCoverError('')
+
     try {
       const formData = new FormData()
       formData.append('cover', file)
@@ -497,407 +285,334 @@ export default function StoryEditor({ project }) {
         { headers: { 'Content-Type': 'multipart/form-data' } }
       )
 
-      // Store the URL in local state — it will be saved with the form
-      setCaseStudyCoverImage(response.data.url)
-    } catch {
-      alert('Failed to upload cover image. Please try again.')
+      update('caseStudyCoverImage', response.data.url)
+    } catch (error) {
+      setCoverError(
+        error.response?.data?.error ?? 'Could not upload the image. Please try again.'
+      )
     } finally {
       setIsCoverUploading(false)
     }
   }
 
-  const removeCoverImage = () => {
-    setCaseStudyCoverImage(null)
-  }
-
   // ── Save ───────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (slugError) return
+    if (slugError || isSaving) return
+
+    // Remember exactly what we send. If the freelancer keeps typing while the
+    // request is in flight, those newer edits must stay "unsaved".
+    const submitted = form
 
     setIsSaving(true)
-    setSaveStatus('saving')
+    setSaveError('')
 
     try {
-      await axios.patch(`/api/projects/${project.id}/story`, {
-        caseStudyEnabled,
-        publicSlug:          publicSlug || null,
-        caseStudyCoverImage: caseStudyCoverImage || null,
-        caseStudyIndustry:   caseStudyIndustry  || null,
-        caseStudyTechStack,
-        caseStudyHideClient,
-        caseStudyProblem:    caseStudyProblem   || null,
-        caseStudyOutcome:    caseStudyOutcome   || null,
-        // Mark the project as public when the story is enabled.
-        // isPublic controls whether /showcase/[slug] is accessible at all.
-        // We also make sure publicSlug is set if it isn't already.
-      })
-
-      setSaveStatus('saved')
-      setTimeout(() => setSaveStatus('idle'), 2000)
-
+      await axios.patch(`/api/projects/${project.id}/story`, toPayload(submitted))
+      setSaved(submitted)
+      setServerSlugError('')
+      setJustSaved(true)
     } catch (error) {
       const message = error.response?.data?.error
-      if (message?.includes('slug')) {
-        setSlugError(message)
+      if (message?.toLowerCase().includes('slug')) {
+        setServerSlugError(message)
+        setSaveError('Check your story URL and try again.')
+      } else {
+        setSaveError(message ?? 'Could not save your changes. Please try again.')
       }
-      setSaveStatus('error')
-      setTimeout(() => setSaveStatus('idle'), 3000)
     } finally {
       setIsSaving(false)
     }
   }
 
-  // ── Copy slug URL ──────────────────────────────────────────────────────────
-  const handleCopySlugUrl = () => {
-    const url = `${window.location.origin}/showcase/${publicSlug}`
-    navigator.clipboard.writeText(url)
-    setIsSlugCopied(true)
-    setTimeout(() => setIsSlugCopied(false), 2000)
+  // ── Copy link ──────────────────────────────────────────────────────────────
+  // Always copies the SAVED address, because that is the one that is live.
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/showcase/${saved.publicSlug}`
+      )
+      setLinkCopied(true)
+    } catch {
+      // Clipboard can be blocked (insecure page, denied permission).
+      // Nothing useful to show, and the link is also visible to copy by hand.
+    }
   }
 
-  // ── Shared input class ─────────────────────────────────────────────────────
-  const inputClass = `
-    w-full bg-fp-base border border-fp-border text-fp-text-primary
-    text-sm rounded-lg px-3 py-2.5
-    placeholder:text-fp-text-tertiary
-    focus:outline-none focus:ring-2 focus:ring-fp-accent/30 focus:border-fp-accent/50
-    transition-colors duration-150
-  `
-
-  // ── Local state snapshot for the preview ───────────────────────────────────
-  // Passed as a single object so LivePreview doesn't need a dozen props
-  const previewData = {
-    caseStudyEnabled,
-    publicSlug,
-    caseStudyCoverImage,
-    caseStudyIndustry,
-    caseStudyTechStack,
-    caseStudyHideClient,
-    caseStudyProblem,
-    caseStudyOutcome,
-  }
-
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+    <div>
 
-      {/* ════════════════════════════════════════════════════════
-          LEFT COLUMN — Settings panel
-      ════════════════════════════════════════════════════════ */}
-      <div className="space-y-4">
-
-        {/* ── Section 1: Publish Settings ── */}
-        <SectionCard title="Publish Settings">
-
-          {/* Enable toggle */}
-          <Toggle
-            enabled={caseStudyEnabled}
-            onChange={setCaseStudyEnabled}
-            label="Enable Project Story"
-            helper={
-              caseStudyEnabled
-                ? 'Your story is live. Anyone with the link can view it.'
-                : 'Turn this on to make your story public.'
-            }
-          />
-
-          {/* URL slug input — shown regardless of enabled state so the
-              freelancer can set it up before publishing */}
-          <div>
-            <label className="block text-fp-text-secondary text-xs font-semibold mb-1.5">
-              Your URL
-            </label>
-
-            {/* Prefix + input side by side */}
-            <div className="flex rounded-lg overflow-hidden border border-fp-border focus-within:ring-2 focus-within:ring-fp-accent/30 focus-within:border-fp-accent/50 transition-colors duration-150">
-              {/* Non-editable prefix */}
-              <span className="
-                flex items-center px-3 bg-fp-raised
-                text-fp-text-tertiary text-xs font-mono border-r border-fp-border
-                whitespace-nowrap shrink-0
-              ">
-                /showcase/
-              </span>
-              {/* Editable slug part */}
-              <input
-                type="text"
-                value={publicSlug}
-                onChange={(e) => handleSlugChange(e.target.value)}
-                placeholder="your-project-name"
-                className="
-                  flex-1 bg-fp-base text-fp-text-primary text-sm px-3 py-2.5
-                  placeholder:text-fp-text-tertiary outline-none min-w-0
-                "
-              />
-            </div>
-
-            {/* Validation error */}
-            {slugError && (
-              <p className="text-fp-danger text-[10px] mt-1">{slugError}</p>
-            )}
-
-            {/* Live URL + copy button — only shown when slug + enabled */}
-            {caseStudyEnabled && publicSlug && !slugError && (
-              <div className="flex items-center gap-2 mt-2 p-2 bg-fp-raised border border-fp-border rounded-lg">
-                <Globe className="w-3 h-3 text-fp-accent shrink-0" />
-                <span className="text-[10px] text-fp-text-secondary font-mono truncate flex-1">
-                  /showcase/{publicSlug}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleCopySlugUrl}
-                  className="text-fp-text-tertiary hover:text-fp-accent transition-colors shrink-0"
-                >
-                  {isSlugCopied
-                    ? <Check className="w-3 h-3 text-fp-success" />
-                    : <Copy  className="w-3 h-3" />
-                  }
-                </button>
-                
-                <a href={`/showcase/${publicSlug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-fp-text-tertiary hover:text-fp-accent transition-colors shrink-0"
-                >
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-            )}
-          </div>
-
-        </SectionCard>
-
-        {/* ── Section 2: Cover Image ── */}
-        <SectionCard title="Cover Image">
-
-          {caseStudyCoverImage ? (
-            // Cover is set — show thumbnail + remove option
-            <div>
-              <div className="relative rounded-lg overflow-hidden border border-fp-border">
-                <img
-                  src={caseStudyCoverImage}
-                  alt="Cover preview"
-                  className="w-full h-32 object-cover"
-                />
-                {/* Remove button — top right corner */}
-                <button
-                  type="button"
-                  onClick={removeCoverImage}
-                  className="
-                    absolute top-2 right-2
-                    bg-black/50 hover:bg-black/70 text-white
-                    rounded-full p-1 transition-colors duration-150
-                  "
-                  title="Remove cover image"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-              {/* Allow re-uploading a different image */}
-              <button
-                type="button"
-                onClick={() => coverInputRef.current?.click()}
-                disabled={isCoverUploading}
-                className="
-                  mt-2 flex items-center gap-2 text-xs text-fp-text-tertiary
-                  hover:text-fp-accent transition-colors duration-150
-                  disabled:opacity-50
-                "
-              >
-                <Upload className="w-3 h-3" />
-                Replace image
-              </button>
-            </div>
-          ) : (
-            // No cover — show upload button
-            <div>
-              <button
-                type="button"
-                onClick={() => coverInputRef.current?.click()}
-                disabled={isCoverUploading}
-                className="
-                  w-full flex flex-col items-center gap-2 py-6
-                  border border-dashed border-fp-border rounded-lg
-                  text-fp-text-tertiary hover:text-fp-accent hover:border-fp-accent/30
-                  transition-colors duration-150 disabled:opacity-50
-                "
-              >
-                {isCoverUploading ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-fp-accent" />
-                ) : (
-                  <Upload className="w-5 h-5" />
-                )}
-                <span className="text-xs font-medium">
-                  {isCoverUploading ? 'Uploading...' : 'Upload cover image'}
-                </span>
-              </button>
-              <p className="text-fp-text-tertiary text-[10px] mt-2 leading-relaxed">
-                If left empty, we&apos;ll use your first milestone delivery image as the hero.
-              </p>
-            </div>
-          )}
-
-          {/* Hidden file input */}
-          <input
-            type="file"
-            ref={coverInputRef}
-            onChange={handleCoverFileChange}
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-          />
-
-        </SectionCard>
-
-        {/* ── Section 3: The Project ── */}
-        <SectionCard title="The Project">
-
-          {/* Industry dropdown */}
-          <div>
-            <label className="block text-fp-text-secondary text-xs font-semibold mb-1.5">
-              Industry
-              <span className="text-fp-text-tertiary font-normal ml-1">(optional)</span>
-            </label>
-            <select
-              value={caseStudyIndustry}
-              onChange={(e) => setCaseStudyIndustry(e.target.value)}
-              className={`${inputClass} cursor-pointer`}
-            >
-              <option value="">Select an industry...</option>
-              {INDUSTRY_OPTIONS.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Tech stack */}
-          <div>
-            <label className="block text-fp-text-secondary text-xs font-semibold mb-1.5">
-              Tech Stack
-              <span className="text-fp-text-tertiary font-normal ml-1">(optional)</span>
-            </label>
-            <TechTagInput
-              tags={caseStudyTechStack}
-              onChange={setCaseStudyTechStack}
-            />
-          </div>
-
-          {/* Hide client name toggle */}
-          <Toggle
-            enabled={caseStudyHideClient}
-            onChange={setCaseStudyHideClient}
-            label="Hide client name"
-            helper={
-              caseStudyHideClient
-                ? 'Showing "A satisfied client" — toggle off to show their real name.'
-                : `Showing "${project.client?.name ?? 'client name'}". Toggle on for privacy.`
-            }
-          />
-
-        </SectionCard>
-
-        {/* ── Section 4: Your Story ── */}
-        <SectionCard title="Your Story">
-
-          {/* The Challenge */}
-          <div>
-            <label className="block text-fp-text-secondary text-xs font-semibold mb-1.5">
-              The Challenge
-            </label>
-            <textarea
-              value={caseStudyProblem}
-              onChange={(e) => setCaseStudyProblem(e.target.value.slice(0, MAX_NARRATIVE))}
-              rows={4}
-              placeholder="What was the client's situation before this project? What problem were they trying to solve? Write 2–4 sentences in plain English — no jargon."
-              className={`${inputClass} resize-none`}
-            />
-            <CharCount current={caseStudyProblem.length} max={MAX_NARRATIVE} />
-          </div>
-
-          {/* The Outcome */}
-          <div>
-            <label className="block text-fp-text-secondary text-xs font-semibold mb-1.5">
-              The Outcome
-            </label>
-            <textarea
-              value={caseStudyOutcome}
-              onChange={(e) => setCaseStudyOutcome(e.target.value.slice(0, MAX_NARRATIVE))}
-              rows={4}
-              placeholder="What changed after you delivered? What can the client do now that they couldn't before? If you have specific numbers, use them — they are the most persuasive part of any case study."
-              className={`${inputClass} resize-none`}
-            />
-            <CharCount current={caseStudyOutcome.length} max={MAX_NARRATIVE} />
-          </div>
-
-        </SectionCard>
-
-        {/* ── Save button ── */}
-        <div className="flex items-center gap-4">
+      {/* Editor / Preview switch — only below xl, where there is no room for both */}
+      <div className="mb-5 inline-flex rounded-full border border-fp-border bg-fp-surface p-1 xl:hidden">
+        {VIEWS.map(({ id, label }) => (
           <button
+            key={id}
             type="button"
-            onClick={handleSave}
-            disabled={isSaving || !!slugError}
-            className="
-              flex items-center gap-2
-              bg-fp-accent hover:bg-fp-accent-hover text-fp-base
-              text-sm font-semibold px-6 py-2.5 rounded-lg
-              transition-colors duration-150 disabled:opacity-50
-            "
+            aria-pressed={view === id}
+            onClick={() => setView(id)}
+            className={`cursor-pointer rounded-full px-4 py-1.5 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fp-accent/50 ${
+              view === id
+                ? 'bg-fp-raised text-fp-text-primary'
+                : 'text-fp-text-secondary hover:text-fp-text-primary'
+            }`}
           >
-            {isSaving
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
-              : 'Save changes'
-            }
+            {label}
           </button>
-
-          {/* Status feedback — brief, non-disruptive */}
-          {saveStatus === 'saved' && (
-            <div className="flex items-center gap-1.5 text-sm text-fp-success font-medium">
-              <CheckCircle2 className="w-4 h-4" />
-              Saved
-            </div>
-          )}
-          {saveStatus === 'error' && (
-            <p className="text-sm text-fp-danger font-medium">
-              Failed to save. Check the URL slug.
-            </p>
-          )}
-        </div>
-
+        ))}
       </div>
 
-      {/* ════════════════════════════════════════════════════════
-          RIGHT COLUMN — Live preview panel
-      ════════════════════════════════════════════════════════ */}
-      <div className="lg:sticky lg:top-6">
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-5">
 
-        {/* Panel header */}
-        <div className="flex items-center justify-between mb-5">
-          <p className="text-fp-text-secondary text-[10px] font-bold uppercase tracking-widest">
-            Live Preview
-          </p>
-          {caseStudyEnabled && publicSlug && (
-            
-            <a href={`/showcase/${publicSlug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="
-                flex items-center text-xs text-fp-accent
-                hover:text-fp-accent-hover transition-colors duration-150
-              "
+        {/* ═════════════ LEFT — settings ═════════════ */}
+        <div className={`space-y-4 xl:col-span-3 ${view === 'preview' ? 'hidden xl:block' : ''}`}>
+
+          {/* 1 — Publish settings */}
+          <Section
+            title="Publish settings"
+            description="Choose whether this story is public and where it lives."
+            aside={<StatusBadge isLive={isLive} />}
+          >
+            <Toggle
+              enabled={form.caseStudyEnabled}
+              onChange={(value) => update('caseStudyEnabled', value)}
+              label="Enable Project Story"
+              helper={getPublishHelper(form.caseStudyEnabled, saved.caseStudyEnabled)}
+            />
+
+            {/* The URL can be set up before publishing, so it is always shown */}
+            <Field
+              id="story-slug"
+              label="Your URL"
+              error={slugError}
+              hint={
+                form.caseStudyEnabled && !form.publicSlug
+                  ? 'Choose a URL so your story can be shared.'
+                  : 'Lowercase letters, numbers, and hyphens.'
+              }
             >
-              Open
-              <ChevronRight className="w-5 h-5" />
-            </a>
-          )}
+              <div className={`${controlSurface} flex overflow-hidden`}>
+                <span className="flex shrink-0 items-center whitespace-nowrap border-r border-fp-text-tertiary/30 bg-fp-raised px-3 text-xs text-fp-text-secondary">
+                  /showcase/
+                </span>
+                <input
+                  id="story-slug"
+                  type="text"
+                  value={form.publicSlug}
+                  onChange={(e) => handleSlugChange(e.target.value)}
+                  placeholder="your-project-name"
+                  autoComplete="off"
+                  spellCheck={false}
+                  className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-fp-text-primary outline-none placeholder:text-fp-text-tertiary"
+                />
+              </div>
+            </Field>
+
+            {/* Live link — only once the saved version is actually public */}
+            {isLive && (
+              <div className="flex flex-col gap-3 rounded-lg border border-fp-border bg-fp-base p-3 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 flex-1 items-center gap-2 text-xs text-fp-text-secondary">
+                  <Globe className="size-3.5 shrink-0" aria-hidden="true" />
+                  <span className="truncate">{host}/showcase/{saved.publicSlug}</span>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button type="button" onClick={handleCopyLink} className={buttonStyles.secondary}>
+                    {linkCopied
+                      ? <Check className="size-3.5 text-fp-success" aria-hidden="true" />
+                      : <Copy className="size-3.5" aria-hidden="true" />}
+                    {linkCopied ? 'Copied' : 'Copy link'}
+                  </button>
+                  <a
+                    href={`/showcase/${saved.publicSlug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={buttonStyles.secondary}
+                  >
+                    <ExternalLink className="size-3.5" aria-hidden="true" />
+                    Open
+                  </a>
+                </div>
+              </div>
+            )}
+          </Section>
+
+          {/* 2 — Cover image */}
+          <Section title="Cover image" description="The large image at the top of your story.">
+            {form.caseStudyCoverImage ? (
+              <div className="space-y-3">
+                <div className="overflow-hidden rounded-lg border border-fp-border bg-fp-base">
+                  <img
+                    src={form.caseStudyCoverImage}
+                    alt="Cover preview"
+                    className="aspect-video w-full object-cover"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => coverInputRef.current?.click()}
+                    disabled={isCoverUploading}
+                    className={buttonStyles.secondary}
+                  >
+                    {isCoverUploading
+                      ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                      : <Upload className="size-3.5" aria-hidden="true" />}
+                    {isCoverUploading ? 'Uploading…' : 'Replace image'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => update('caseStudyCoverImage', null)}
+                    disabled={isCoverUploading}
+                    className={buttonStyles.secondary}
+                  >
+                    <X className="size-3.5" aria-hidden="true" />
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => coverInputRef.current?.click()}
+                  disabled={isCoverUploading}
+                  className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed border-fp-text-tertiary/40 py-8 text-fp-text-secondary transition-colors duration-150 hover:border-fp-accent/60 hover:text-fp-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fp-accent/50 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  {isCoverUploading
+                    ? <Loader2 className="size-5 animate-spin text-fp-accent" aria-hidden="true" />
+                    : <Upload className="size-5" aria-hidden="true" />}
+                  <span className="text-sm font-medium">
+                    {isCoverUploading ? 'Uploading…' : 'Upload cover image'}
+                  </span>
+                </button>
+                <p className="mt-2 text-xs leading-relaxed text-fp-text-secondary">
+                  JPG, PNG, or WebP.{' '}
+                  {autoHeroImage
+                    ? 'Without one, we use your first milestone image.'
+                    : 'Without one, your story has no hero image.'}
+                </p>
+              </div>
+            )}
+
+            {coverError && (
+              <p role="alert" className="text-xs text-fp-danger">{coverError}</p>
+            )}
+
+            {/* Hidden picker, shared by "Upload" and "Replace" */}
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleCoverFileChange}
+              className="hidden"
+              tabIndex={-1}
+              aria-hidden="true"
+            />
+          </Section>
+
+          {/* 3 — The project */}
+          <Section title="The project" description="Context that helps visitors place this work.">
+            <Field id="story-industry" label="Industry" optional>
+              <IndustrySelect
+                id="story-industry"
+                value={form.caseStudyIndustry ?? ''}
+                onChange={(value) => update('caseStudyIndustry', value)}
+                options={INDUSTRY_OPTIONS}
+              />
+            </Field>
+
+            <Field
+              id="story-tech"
+              label="Tech stack"
+              optional
+              hint="Press Enter or comma to add."
+              meta={<Counter current={form.caseStudyTechStack.length} max={MAX_TECH_TAGS} />}
+            >
+              <TagInput
+                id="story-tech"
+                tags={form.caseStudyTechStack}
+                onChange={(tags) => update('caseStudyTechStack', tags)}
+                max={MAX_TECH_TAGS}
+                placeholder="e.g. Next.js, PostgreSQL, Stripe"
+              />
+            </Field>
+
+            <Toggle
+              enabled={form.caseStudyHideClient}
+              onChange={(value) => update('caseStudyHideClient', value)}
+              label="Hide client name"
+              helper={
+                form.caseStudyHideClient
+                  ? 'Your client appears as “A satisfied client”.'
+                  : `Your client appears as “${project.client?.name ?? 'A satisfied client'}”.`
+              }
+            />
+          </Section>
+
+          {/* 4 — The story itself */}
+          <Section
+            title="Your story"
+            description="Two short paragraphs, in plain language. Specific numbers persuade most."
+          >
+            <NarrativeField
+              id="story-problem"
+              label="The challenge"
+              value={form.caseStudyProblem}
+              onChange={(value) => update('caseStudyProblem', value)}
+              max={MAX_NARRATIVE}
+              placeholder="What was the client's situation before this project? What problem were they trying to solve? Write 2–4 sentences in plain English, no jargon."
+            />
+            <NarrativeField
+              id="story-outcome"
+              label="The outcome"
+              value={form.caseStudyOutcome}
+              onChange={(value) => update('caseStudyOutcome', value)}
+              max={MAX_NARRATIVE}
+              placeholder="What changed after you delivered? What can the client do now that they couldn't before? Use specific numbers if you have them."
+            />
+          </Section>
+
+          {/* Save — sits right after the last field */}
+          <div className="flex flex-wrap items-center gap-4 pt-1">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving || !isDirty || Boolean(slugError)}
+              className={buttonStyles.primary}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Saving…
+                </>
+              ) : (
+                'Save changes'
+              )}
+            </button>
+            <p aria-live="polite" className="min-w-0 text-sm">
+              <SaveStatus
+                error={saveError}
+                isSaving={isSaving}
+                isDirty={isDirty}
+                justSaved={justSaved}
+              />
+            </p>
+          </div>
         </div>
 
-        {/* The preview component — receives local state, updates live */}
-        <LivePreview data={previewData} project={project} />
+        {/* ═════════════ RIGHT — live preview ═════════════ */}
+        <div className={`xl:sticky xl:top-6 xl:col-span-2 ${view === 'editor' ? 'hidden xl:block' : ''}`}>
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <h2 className="text-sm font-semibold text-fp-text-primary">Preview</h2>
+            <p className="text-xs text-fp-text-secondary">Updates as you type</p>
+          </div>
 
-        {/* Hint below the preview */}
-        <p className="text-fp-text-tertiary text-[10px] mt-3 leading-relaxed text-center">
-          Preview updates as you type. Click &quot;Save changes&quot; to persist.
-        </p>
-
+          <StoryPreview
+            values={form}
+            project={project}
+            autoHeroImage={autoHeroImage}
+            host={host}
+          />
+        </div>
       </div>
     </div>
   )
