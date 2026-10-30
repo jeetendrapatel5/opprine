@@ -375,7 +375,7 @@ export default async function ProjectPage({ params }) {
               </span>
             </div>
             {project.description && (
-              <p className="text-fp-text-tertiary text-sm mt-1.5 max-w-2xl leading-relaxed">
+              <p className="text-fp-text-secondary text-sm mt-1.5 max-w-2xl leading-relaxed">
                 {project.description}
               </p>
             )}

@@ -12,7 +12,7 @@
 // server with can(role, 'manageStaffing') from lib/project-permissions.js,
 // and this panel just follows it.
 //   canManage = true  (workspace OWNER / ADMIN, or PROJECT_MANAGER)
-//     -> Add button, assign form, remove buttons
+//     -> Add button, assign form, a role dropdown on every row, remove buttons
 //   canManage = false (CONTRIBUTOR)
 //     -> read-only list of names and roles; own row is marked "(you)"
 //   A VIEWER gets a 403 from the API (can() allows them nothing yet), so
@@ -51,6 +51,7 @@ export default function ProjectMembersPanel({ projectId }) {
   const [selectedRole, setSelectedRole] = useState('CONTRIBUTOR')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [pendingUserId, setPendingUserId] = useState(null)
+  const [roleChangingUserId, setRoleChangingUserId] = useState(null)
 
   // Fetches the member list AND the permission flag in one request.
   // Never throws: failures turn into `loadError`, so the panel shows a
@@ -127,6 +128,31 @@ export default function ProjectMembersPanel({ projectId }) {
       await reportMutationError(error, 'Could not add this person to the project.')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // Changes an existing member's role. There is no separate "update" route:
+  // POST /api/projects/[id]/members is an upsert (addProjectMember), so
+  // posting the same userId with a new role just updates the row. The server
+  // also refuses to demote the only Project Manager (400/403 with a clear
+  // message), which reportMutationError shows. On any failure we reload so
+  // the dropdown snaps back to what the server actually has.
+  const handleRoleChange = async (userId, newRole) => {
+    if (!canManage) return // UI guard only; the API is the real lock
+    const current = members?.find((m) => m.userId === userId)
+    if (!current || current.role === newRole) return
+    setRoleChangingUserId(userId)
+    try {
+      await axios.post(`/api/projects/${projectId}/members`, {
+        userId,
+        role: newRole,
+      })
+      await loadMembers()
+    } catch (error) {
+      await reportMutationError(error, "Could not change this person's role.")
+      await loadMembers()
+    } finally {
+      setRoleChangingUserId(null)
     }
   }
 
@@ -264,25 +290,51 @@ export default function ProjectMembersPanel({ projectId }) {
                     <span className="font-normal text-fp-text-tertiary"> (you)</span>
                   )}
                 </p>
-                <p className="text-[10px] text-fp-text-tertiary">{ROLE_LABELS[m.role] ?? m.role}</p>
+                {/* Read-only label for people who can't manage staffing. */}
+                {!canManage && (
+                  <p className="text-[10px] text-fp-text-tertiary">{ROLE_LABELS[m.role] ?? m.role}</p>
+                )}
               </div>
 
-              {/* Remove button: only rendered when canManage is true. */}
               {canManage && (
-                <button
-                  type="button"
-                  onClick={() => handleRemove(m.userId)}
-                  disabled={pendingUserId === m.userId}
-                  className="
-                    opacity-0 group-hover:opacity-100 transition-opacity duration-150
-                    text-fp-text-tertiary hover:text-fp-danger p-1 rounded shrink-0 cursor-pointer
-                  "
-                >
-                  {pendingUserId === m.userId
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <Trash2 className="w-3.5 h-3.5" />
-                  }
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Role dropdown: only rendered when canManage is true. */}
+                  {roleChangingUserId === m.userId && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-fp-text-tertiary" />
+                  )}
+                  <select
+                    value={m.role}
+                    onChange={(e) => handleRoleChange(m.userId, e.target.value)}
+                    disabled={roleChangingUserId === m.userId || pendingUserId === m.userId}
+                    aria-label={`Role for ${m.name || m.email}`}
+                    className="
+                      bg-fp-base border border-fp-border text-fp-text-secondary
+                      text-[10px] rounded-lg px-2 py-1
+                      focus:outline-none focus:ring-2 focus:ring-fp-accent/30 focus:border-fp-accent/50
+                      disabled:opacity-50 cursor-pointer
+                    "
+                  >
+                    {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+
+                  {/* Remove button: only rendered when canManage is true. */}
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(m.userId)}
+                    disabled={pendingUserId === m.userId || roleChangingUserId === m.userId}
+                    className="
+                      opacity-0 group-hover:opacity-100 transition-opacity duration-150
+                      text-fp-text-tertiary hover:text-fp-danger p-1 rounded shrink-0 cursor-pointer
+                    "
+                  >
+                    {pendingUserId === m.userId
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <Trash2 className="w-3.5 h-3.5" />
+                    }
+                  </button>
+                </div>
               )}
             </li>
           ))}

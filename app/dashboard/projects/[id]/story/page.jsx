@@ -91,7 +91,7 @@ export default async function ProjectStoryPage({ params }) {
 
       {/* ── Page header ── */}
       <header className="mb-8">
-        <h1 className="font-display text-2xl font-medium tracking-tight text-fp-text-primary sm:text-3xl">
+        <h1 className="font-2xl font-medium tracking-tight text-fp-text-primary sm:text-3xl">
           Project Story
         </h1>
         <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-fp-text-secondary">
