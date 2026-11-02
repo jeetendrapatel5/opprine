@@ -8,11 +8,22 @@ import {
 } from '@/components/ui/sidebar'
 import DashboardSidebar from '@/components/DashboardSidebar'
 import NotificationBell from '@/components/notifications/NotificationBell'
+import QueryProvider from '@/components/QueryProvider'
+import { getWorkspaceForUser } from '@/lib/workspace'
 
 export default async function DashboardLayout({ children }) {
 
   const session = await getServerSession(authOptions)
   if (!session) redirect('/signin')
+
+  // Which workspace is active for this user RIGHT NOW (read from the DB, and
+  // validated against a real WorkspaceMember row inside getWorkspaceForUser).
+  // QueryProvider uses it as part of the cache scope: when the user or the
+  // workspace changes, the page content's in-browser cache is thrown away and
+  // rebuilt. getWorkspaceForUser returns null when the user has no workspace,
+  // so we do not throw here; 'none' is just a placeholder scope.
+  const membership = await getWorkspaceForUser(session.user.id)
+  const workspaceId = membership?.workspaceId ?? 'none'
 
   return (
     <SidebarProvider
@@ -53,8 +64,15 @@ export default async function DashboardLayout({ children }) {
           </div>
 
         </header>
+        {/* QueryProvider wraps ONLY the page content, not the sidebar or the
+            header. When the workspace changes, just the page content is rebuilt
+            with an empty cache; the sidebar (and its workspace switcher) keeps
+            its state and does not flicker. If the sidebar or the bell ever
+            need the shared cache, move the provider up to wrap them too. */}
         <main className="w-full px-4 sm:px-6 py-8">
-          {children}
+          <QueryProvider userId={session.user.id} workspaceId={workspaceId}>
+            {children}
+          </QueryProvider>
         </main>
 
       </SidebarInset>

@@ -1,293 +1,170 @@
-'use client'
+// components/project/ProjectSidebar.jsx
+//
+// The right-hand column of the project page. It only DISPLAYS what the page
+// gives it. The page decides what each role may see (via can()), so no
+// permission logic lives here.
+//
+//   <ProjectSidebar summary panels panelMeta story>
+//     <ClientReviewCard />   <- children render at the bottom
+//   </ProjectSidebar>
+//
+// Props
+//   summary   { progress: number, client: null | { name, initial, lastSeen } }
+//             client === null means "this role may not see client details".
+//   panels    The panels this viewer may open, already filtered by the page
+//             (lib/project-panels.js -> visibleProjectPanels).
+//   panelMeta Optional small value per panel id, e.g. { activity: { text: '14' } }.
+//             Shape: { text: string, dot?: boolean }.
+//   story     null (hide the row) or { href, enabled }.
 
-import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { ArrowRight, BookOpen, Briefcase, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import PanelTrigger from '@/components/project/PanelTrigger'
 import {
-  Copy,
-  CheckCircle2,
-  ExternalLink,
-  User,
-  Eye,
-  Link2,
-  ChevronDown,
-} from 'lucide-react'
+  ClientAvatar,
+  ProgressBar,
+  RestrictedNotice,
+  StatusDot,
+} from '@/components/project/SidebarPrimitives'
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// Class strings used more than once live here so every card and row
+// looks and behaves the same.
+const CARD = 'rounded-xl border border-fp-border bg-fp-surface'
 
-function timeAgo(date) {
-  if (!date) return null
-  const diffMs = Date.now() - new Date(date).getTime()
-  if (Number.isNaN(diffMs)) return null
-  const seconds = Math.floor(diffMs / 1000)
-  if (seconds < 60) return 'just now'
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  const days = Math.floor(seconds / 86400)
-  return days === 1 ? 'yesterday' : `${days} days ago`
-}
+const FOCUS_RING =
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fp-accent/70'
 
-// Returns a Tailwind bg color class based on how recently the client was active.
-// Green = last 24 h, amber = older, grey = never
-function activityDotClass(lastViewedAt) {
-  if (!lastViewedAt) return 'bg-fp-border'
-  const hoursSince = (Date.now() - new Date(lastViewedAt).getTime()) / 3_600_000
-  return hoursSince < 24 ? 'bg-fp-success' : 'bg-fp-warning'
-}
+// Rows sit inside an overflow-hidden list, so the focus ring is drawn INSIDE
+// the row (ring-inset). A normal ring would be clipped by the rounded corners.
+const ROW =
+  'group flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left transition-colors ' +
+  'hover:bg-fp-raised motion-reduce:transition-none ' +
+  FOCUS_RING +
+  ' focus-visible:ring-inset'
 
-// ── Sub-components ─────────────────────────────────────────────────────────
+// ─── Summary card: opens the Project info dialog ────────────────────────────
 
-// Tiny uppercase label that prefixes each expanded section
-function SectionLabel({ icon: Icon, children }) {
+function ProjectSummaryCard({ progress, client }) {
   return (
-    <p className="mb-3 flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-fp-text-tertiary">
-      <Icon className="h-3 w-3" />
-      {children}
-    </p>
+    <PanelTrigger
+      panelId="info"
+      className={cn(
+        CARD,
+        'group block w-full p-4 text-left transition-colors hover:border-fp-accent/30 motion-reduce:transition-none',
+        FOCUS_RING,
+      )}
+    >
+      <span className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-fp-accent-muted text-fp-accent">
+          <Briefcase className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-fp-text-primary">Project info</span>
+          <span className="block text-xs text-fp-text-secondary">View all details</span>
+        </span>
+        <ArrowRight
+          className="h-4 w-4 shrink-0 text-fp-text-tertiary transition-transform group-hover:translate-x-0.5 group-hover:text-fp-accent motion-reduce:transition-none"
+          aria-hidden="true"
+        />
+      </span>
+
+      <span className="mt-4 block">
+        <span className="mb-2 flex items-center justify-between text-xs">
+          <span className="text-fp-text-secondary">Milestones</span>
+          <span className="font-semibold tabular-nums text-fp-accent">{progress}%</span>
+        </span>
+        <ProgressBar value={progress} />
+      </span>
+
+      <span className="mt-4 flex items-center justify-between gap-3">
+        {client ? (
+          <>
+            <span className="flex min-w-0 items-center gap-2">
+              <ClientAvatar initial={client.initial} />
+              <span className="truncate text-sm font-medium text-fp-text-primary">
+                {client.name}
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5 text-xs text-fp-text-secondary">
+              <StatusDot active={Boolean(client.lastSeen)} />
+              {client.lastSeen ? `Seen ${client.lastSeen}` : 'Not opened yet'}
+            </span>
+          </>
+        ) : (
+          <RestrictedNotice>Client details are restricted for your role.</RestrictedNotice>
+        )}
+      </span>
+    </PanelTrigger>
   )
 }
 
-// ── Main component ─────────────────────────────────────────────────────────
+// ─── One row of the "Manage project" list ───────────────────────────────────
 
-export default function ProjectSidebar({ project, portalLink }) {
-  const [open, setOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const copyTimeoutRef = useRef(null)
-
-  // Clear the reset-copied timeout when this component unmounts
-  useEffect(() => {
-    return () => {
-      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
-    }
-  }, [])
-
-  const hasClient        = Boolean(project?.client)
-  const lastViewedText   = timeAgo(project?.client?.lastViewedAt)
-  const dotClass         = activityDotClass(project?.client?.lastViewedAt)
-  const canCopyPortalLink = Boolean(hasClient && portalLink && portalLink !== '#')
-
-  // Writes the portal link to the clipboard and briefly shows a check mark.
-  // e.stopPropagation() prevents the click from also toggling the accordion.
-  const copyPortalLink = async (e) => {
-    e.stopPropagation()
-    if (!canCopyPortalLink || !navigator?.clipboard) return
-    try {
-      await navigator.clipboard.writeText(portalLink)
-      setCopied(true)
-      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
-      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setCopied(false)
-    }
-  }
-
+function RowBody({ icon: Icon, label, meta }) {
   return (
-    <div className="overflow-hidden rounded-xl bg-fp-surface">
+    <>
+      <Icon
+        className="h-4 w-4 shrink-0 text-fp-text-secondary transition-colors group-hover:text-fp-accent motion-reduce:transition-none"
+        aria-hidden="true"
+      />
+      <span className="min-w-0 flex-1 truncate text-sm font-medium text-fp-text-primary font-[roboto]">
+        {label}
+      </span>
+      {meta && (
+        <span className="flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-fp-text-secondary">
+          {meta.dot && <StatusDot active />}
+          {meta.text}
+        </span>
+      )}
+      <ChevronRight
+        className="h-4 w-4 shrink-0 text-fp-text-tertiary transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none"
+        aria-hidden="true"
+      />
+    </>
+  )
+}
 
-      {/* ── COLLAPSED HEADER ──
-          Always visible. Shows: client avatar + activity dot + name + quick-copy button.
-          Users can copy the portal link without ever opening the accordion.
-      ── */}
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        aria-expanded={open}
-        aria-controls="project-sidebar-panel"
-        className="flex w-full items-center cursor-pointer justify-between gap-3 px-4 py-3.5 text-left transition-colors duration-150 hover:bg-fp-raised/40"
-      >
-        {/* Left: avatar with activity dot + name */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="relative shrink-0">
-            {hasClient ? (
-              <div className="
-                w-7 h-7 rounded-lg bg-fp-raised border border-fp-border
-                flex items-center justify-center
-                text-xs font-bold text-fp-text-secondary
-              ">
-                {project.client.name?.[0]?.toUpperCase() ?? 'C'}
-              </div>
-            ) : (
-              <div className="
-                w-7 h-7 rounded-lg bg-fp-raised border border-fp-border
-                flex items-center justify-center
-              ">
-                <User className="h-3 w-3 text-fp-text-tertiary" />
-              </div>
-            )}
-            {/* Activity dot anchored to avatar bottom-right */}
-            <span
-              className={`
-                absolute -bottom-0.5 -right-0.5
-                w-2 h-2 rounded-full
-                border-[1.5px] border-fp-surface
-                ${dotClass}
-              `}
-            />
-          </div>
+// ─── The sidebar ────────────────────────────────────────────────────────────
 
-          <div className="min-w-0">
-            <p className="text-[9px] font-bold text-fp-text-tertiary uppercase tracking-widest leading-none mb-0.5">
-              Client
-            </p>
-            <p className="text-xs font-semibold text-fp-text-primary truncate leading-none">
-              {hasClient ? project.client.name : 'No client assigned'}
-            </p>
-          </div>
-        </div>
+export default function ProjectSidebar({ summary, panels, panelMeta = {}, story, children }) {
+  return (
+    <div className="space-y-5">
+      <ProjectSummaryCard progress={summary.progress} client={summary.client} />
 
-        {/* Right: quick-copy icon + chevron */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {canCopyPortalLink && (
-            <span
-              role="button"
-              tabIndex={-1}
-              onClick={copyPortalLink}
-              title={copied ? 'Copied!' : 'Copy magic link'}
-              className="
-                p-1.5 rounded-md
-                text-fp-text-tertiary
-                hover:text-fp-accent hover:bg-fp-raised
-                transition-colors duration-150
-              "
-            >
-              {copied
-                ? <CheckCircle2 className="h-3.5 w-3.5 text-fp-success" />
-                : <Copy className="h-3.5 w-3.5" />
-              }
-            </span>
+      <section aria-labelledby="manage-project-heading">
+        <h2
+          id="manage-project-heading"
+          className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-widest text-fp-text-secondary"
+        >
+          Manage project
+        </h2>
+
+        <ul className={cn(CARD, 'divide-y divide-fp-border overflow-hidden')}>
+          {/* Story is a page (a link). The panels below open dialogs (buttons). */}
+          {story && (
+            <li>
+              <Link href={story.href} className={ROW}>
+                <RowBody
+                  icon={BookOpen}
+                  label="Project Story"
+                  meta={{ text: story.enabled ? 'Live' : 'Off', dot: story.enabled }}
+                />
+              </Link>
+            </li>
           )}
 
-          <ChevronDown
-            className={`
-              h-4 w-4 shrink-0 text-fp-text-tertiary
-              transition-transform duration-300
-              ${open ? 'rotate-180' : 'rotate-0'}
-            `}
-          />
-        </div>
-      </button>
+          {panels.map((panel) => (
+            <li key={panel.id}>
+              <PanelTrigger panelId={panel.id} className={ROW}>
+                <RowBody icon={panel.icon} label={panel.label} meta={panelMeta[panel.id]}/>
+              </PanelTrigger>
+            </li>
+          ))}
+        </ul>
+      </section>
 
-      {/* ── EXPANDED CONTENT ──
-          CSS grid trick: animating grid-template-rows from 0fr → 1fr
-          gives a smooth height transition without a fixed max-height.
-      ── */}
-      <div
-        id="project-sidebar-panel"
-        className={`
-          grid transition-[grid-template-rows,opacity] duration-300 ease-in-out
-          ${open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}
-        `}
-      >
-        <div className="overflow-hidden">
-
-          {/* Client details section */}
-          <div className="border-t border-fp-border px-4 py-4">
-            <SectionLabel icon={User}>Client Details</SectionLabel>
-            {hasClient ? (
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-fp-text-primary leading-snug">
-                  {project.client.name}
-                </p>
-                <p className="text-[11px] text-fp-text-tertiary truncate">
-                  {project.client.email}
-                </p>
-              </div>
-            ) : (
-              <p className="text-xs italic text-fp-text-tertiary">No client assigned.</p>
-            )}
-          </div>
-
-          {hasClient && (
-            <>
-              {/* Portal activity section */}
-              <div className="border-t border-fp-border px-4 py-4">
-                <SectionLabel icon={Eye}>Portal Activity</SectionLabel>
-                <div className="flex items-start gap-2.5">
-                  <div className={`mt-1 h-2 w-2 shrink-0 rounded-full ${dotClass}`} />
-                  <div>
-                    {lastViewedText ? (
-                      <>
-                        <p className="text-xs font-medium leading-snug text-fp-text-primary">
-                          Viewed {lastViewedText}
-                        </p>
-                        <p className="mt-0.5 text-[10px] text-fp-text-tertiary">
-                          {new Date(project.client.lastViewedAt).toLocaleDateString('en-GB', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-xs font-medium leading-snug text-fp-text-secondary">
-                          Portal not opened yet
-                        </p>
-                        <p className="mt-0.5 text-[10px] text-fp-text-tertiary">
-                          Share the magic link below
-                        </p>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Portal link section */}
-              <div className="border-t border-fp-border px-4 py-4">
-                <SectionLabel icon={Link2}>Client Portal</SectionLabel>
-                <p className="mb-3 text-[11px] leading-relaxed text-fp-text-tertiary">
-                  Passwordless link — your client needs no account.
-                </p>
-
-                {/* Primary CTA: copy the magic link */}
-                <button
-                  type="button"
-                  onClick={copyPortalLink}
-                  disabled={!canCopyPortalLink}
-                  className={`
-                    flex w-full items-center justify-center gap-2
-                    rounded-lg px-4 py-2.5 text-xs font-bold
-                    transition-all duration-200
-                    disabled:cursor-not-allowed disabled:opacity-40
-                    ${copied
-                      ? 'border border-fp-success/30 bg-fp-success/10 text-fp-success'
-                      : 'bg-fp-accent text-fp-base hover:bg-fp-accent-hover'
-                    }
-                  `}
-                >
-                  {copied ? (
-                    <>
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Link copied!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3.5 w-3.5" />
-                      Copy Magic Link
-                    </>
-                  )}
-                </button>
-
-                {/* Secondary: open portal in new tab */}
-                <a
-                  href={portalLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="
-                    mt-2 flex w-full items-center justify-center gap-1.5 py-1.5
-                    text-[11px] font-medium text-fp-text-tertiary
-                    hover:text-fp-text-secondary transition-colors duration-150
-                  "
-                >
-                  <ExternalLink className="h-3 w-3" />
-                  Preview portal
-                </a>
-              </div>
-            </>
-          )}
-
-        </div>
-      </div>
+      {children}
     </div>
   )
 }
