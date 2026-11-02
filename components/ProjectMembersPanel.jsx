@@ -7,6 +7,12 @@
 // renders the title, description, and frame, so this component only
 // renders the add-teammate control and the member list.
 //
+// DATA: nothing is fetched in this file any more. hooks/useProjectMembers.js
+// owns the cache. <ProjectMembersPrefetch> on the project page fills it before
+// the button is clicked, so this panel normally renders real data on its very
+// first paint. If cached data is older than 30s it refreshes quietly in the
+// background; the list is never replaced by a loading indicator.
+//
 // PERMISSIONS: this component never decides who is allowed to do what.
 // GET /api/projects/[id]/members returns `canManage`, computed on the
 // server with can(role, 'manageStaffing') from lib/project-permissions.js,
@@ -18,16 +24,21 @@
 //   A VIEWER gets a 403 from the API (can() allows them nothing yet), so
 //   they see the "no access" message instead of the list.
 // Hiding buttons is only a convenience. The API enforces the same rules,
-// so a direct POST or DELETE from a Contributor still gets a 403.
+// so a direct POST or DELETE from a Contributor still gets a 403. A cached
+// `canManage` is never used to authorize anything.
 //
 // Usage: <ProjectMembersPanel projectId={project.id} /> inside
 // <ProjectPanelDialog panelId="members">.
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import axios from 'axios'
+import { useMemo, useState } from 'react'
 import { Plus, Loader2, Trash2, Users } from 'lucide-react'
+import {
+  useProjectMembers,
+  useWorkspaceMembers,
+  useProjectMemberMutations,
+} from '@/hooks/useProjectMembers'
 
 const ROLE_LABELS = {
   PROJECT_MANAGER: 'Project Manager',
@@ -35,146 +46,118 @@ const ROLE_LABELS = {
   VIEWER: 'Viewer',
 }
 
-export default function ProjectMembersPanel({ projectId }) {
-  // ── Data that comes from the server ────────────────────────────────
-  const [members, setMembers] = useState(null) // null = still loading
-  const [canManage, setCanManage] = useState(false) // server's answer
-  const [currentUserId, setCurrentUserId] = useState(null) // to mark "(you)"
-  const [loadError, setLoadError] = useState(null) // text, or null
+// Shows WHY the server said no. For 400 / 403 / 404 the API sends a clear
+// message (for example "This is the only Project Manager on this project..."),
+// so we show that text instead of guessing. The roster is refetched by the
+// mutation hooks after every attempt, so a demoted user's buttons disappear.
+function reportMutationError(error, fallbackMessage) {
+  const status = error.response?.status
+  const serverMessage = [400, 403, 404].includes(status) ? error.response?.data?.error : null
+  alert(serverMessage || fallbackMessage)
+}
 
-  // Only fetched when canManage is true (needed for the Add dropdown).
-  const [workspaceMembers, setWorkspaceMembers] = useState(null)
+export default function ProjectMembersPanel({ projectId }) {
+  // ── Data (from the shared cache) ───────────────────────────────────
+  const {
+    members,
+    canManage,
+    currentUserId,
+    isLoading,
+    accessDenied,
+    loadFailed,
+    refreshFailed,
+    reload,
+  } = useProjectMembers(projectId)
+
+  // Only requested for someone who can assign people. A Contributor never
+  // triggers this request.
+  const { data: workspaceMembers, isError: workspaceMembersFailed } =
+    useWorkspaceMembers(canManage)
+
+  const { addMember, changeRole, removeMember } = useProjectMemberMutations(projectId)
 
   // ── Small UI state ─────────────────────────────────────────────────
   const [isAdding, setIsAdding] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState('')
   const [selectedRole, setSelectedRole] = useState('CONTRIBUTOR')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [pendingUserId, setPendingUserId] = useState(null)
-  const [roleChangingUserId, setRoleChangingUserId] = useState(null)
 
-  // Fetches the member list AND the permission flag in one request.
-  // Never throws: failures turn into `loadError`, so the panel shows a
-  // message instead of "Loading…" forever.
-  const loadMembers = useCallback(async () => {
-    try {
-      const { data } = await axios.get(`/api/projects/${projectId}/members`)
-      setMembers(data.members)
-      setCanManage(Boolean(data.canManage))
-      setCurrentUserId(data.currentUserId ?? null)
-      setLoadError(null)
-    } catch (error) {
-      const status = error.response?.status
-      setCanManage(false)
-      setLoadError(
-        status === 403 || status === 404
-          ? "You don't have access to this project's members."
-          : 'Could not load project members.'
-      )
-    }
-  }, [projectId])
+  // Which row is busy right now (taken from the mutations themselves).
+  const isSubmitting = addMember.isPending
+  const roleChangingUserId = changeRole.isPending ? changeRole.variables?.userId : null
+  const pendingUserId = removeMember.isPending ? removeMember.variables : null
 
-  // Runs when the panel opens (and if projectId changes).
-  useEffect(() => {
-    loadMembers()
-  }, [loadMembers])
-
-  // Load the workspace's people only for someone who can assign them.
-  // A Contributor never triggers this request.
-  useEffect(() => {
-    if (!canManage) {
-      setWorkspaceMembers(null)
-      return
-    }
-    axios
-      .get('/api/workspace/members')
-      .then(({ data }) => setWorkspaceMembers(data.members))
-      .catch(() => alert('Could not load workspace members.'))
-  }, [canManage])
-
-  // Workspace people who are not yet on this project.
-  const availableToAdd = (workspaceMembers ?? []).filter(
-    (wm) => !(members ?? []).some((m) => m.userId === wm.userId)
-  )
-
-  // Shows WHY the server said no. For 400 / 403 / 404 the API sends a
-  // clear message (for example "This is the only Project Manager on this
-  // project..."), so we show that text instead of guessing. After a 403
-  // we also reload: if the person was demoted while the panel was open,
-  // the Add and remove buttons disappear.
-  const reportMutationError = async (error, fallbackMessage) => {
-    const status = error.response?.status
-    const serverMessage = [400, 403, 404].includes(status)
-      ? error.response?.data?.error
-      : null
-    alert(serverMessage || fallbackMessage)
-    if (status === 403) await loadMembers()
-  }
+  // Workspace people who are not yet on this project. A Set makes each
+  // "is this person already here?" check instant; useMemo skips the work when
+  // neither list changed.
+  const availableToAdd = useMemo(() => {
+    const onProject = new Set((members ?? []).map((m) => m.userId))
+    return (workspaceMembers ?? []).filter((wm) => !onProject.has(wm.userId))
+  }, [members, workspaceMembers])
 
   const handleAdd = async (e) => {
     e.preventDefault()
     if (!canManage || !selectedUserId) return // UI guard only; the API is the real lock
-    setIsSubmitting(true)
     try {
-      await axios.post(`/api/projects/${projectId}/members`, {
-        userId: selectedUserId,
-        role: selectedRole,
-      })
-      await loadMembers()
+      await addMember.mutateAsync({ userId: selectedUserId, role: selectedRole })
       setIsAdding(false)
       setSelectedUserId('')
       setSelectedRole('CONTRIBUTOR')
     } catch (error) {
-      await reportMutationError(error, 'Could not add this person to the project.')
-    } finally {
-      setIsSubmitting(false)
+      reportMutationError(error, 'Could not add this person to the project.')
     }
   }
 
-  // Changes an existing member's role. There is no separate "update" route:
-  // POST /api/projects/[id]/members is an upsert (addProjectMember), so
+  // Changes an existing member's role. POST is an upsert on the server, so
   // posting the same userId with a new role just updates the row. The server
   // also refuses to demote the only Project Manager (400/403 with a clear
-  // message), which reportMutationError shows. On any failure we reload so
-  // the dropdown snaps back to what the server actually has.
+  // message). On failure the roster is refetched, so the dropdown snaps back
+  // to what the server actually has.
   const handleRoleChange = async (userId, newRole) => {
     if (!canManage) return // UI guard only; the API is the real lock
     const current = members?.find((m) => m.userId === userId)
     if (!current || current.role === newRole) return
-    setRoleChangingUserId(userId)
     try {
-      await axios.post(`/api/projects/${projectId}/members`, {
-        userId,
-        role: newRole,
-      })
-      await loadMembers()
+      await changeRole.mutateAsync({ userId, role: newRole })
     } catch (error) {
-      await reportMutationError(error, "Could not change this person's role.")
-      await loadMembers()
-    } finally {
-      setRoleChangingUserId(null)
+      reportMutationError(error, "Could not change this person's role.")
     }
   }
 
   const handleRemove = async (userId) => {
     if (!canManage) return // UI guard only; the API is the real lock
-    setPendingUserId(userId)
     try {
-      await axios.delete(`/api/projects/${projectId}/members/${userId}`)
-      await loadMembers()
+      await removeMember.mutateAsync(userId)
     } catch (error) {
-      await reportMutationError(error, 'Could not remove this person from the project.')
-    } finally {
-      setPendingUserId(null)
+      reportMutationError(error, 'Could not remove this person from the project.')
     }
   }
 
-  // The server said no (403/404) or the request failed: show why, nothing else.
-  if (loadError) {
+  // The server said no (403/404): show why, nothing else. Cached data is
+  // deliberately NOT shown here.
+  if (accessDenied) {
     return (
       <div className="flex flex-col items-center gap-2 py-6 text-center">
         <Users className="w-4 h-4 text-fp-text-tertiary" />
-        <p className="text-xs text-fp-text-tertiary">{loadError}</p>
+        <p className="text-xs text-fp-text-tertiary">
+          You don&apos;t have access to this project&apos;s members.
+        </p>
+      </div>
+    )
+  }
+
+  // Nothing cached AND the request failed (network down, server error).
+  if (loadFailed) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-6 text-center">
+        <Users className="w-4 h-4 text-fp-text-tertiary" />
+        <p className="text-xs text-fp-text-tertiary">Could not load project members.</p>
+        <button
+          type="button"
+          onClick={() => reload()}
+          className="text-[10px] font-bold uppercase tracking-wider text-fp-accent hover:text-fp-accent-hover transition-colors duration-150 cursor-pointer"
+        >
+          Try again
+        </button>
       </div>
     )
   }
@@ -206,6 +189,13 @@ export default function ProjectMembersPanel({ projectId }) {
         )}
       </div>
       <div className="w-full border-b border-fp-border" />
+
+      {/* A refresh failed but we still have a saved list: keep it, say so quietly. */}
+      {refreshFailed && (
+        <p className="py-1.5 text-[10px] text-fp-text-tertiary">
+          Showing the last saved list. Couldn&apos;t refresh just now.
+        </p>
+      )}
 
       {/* Assign form: only exists in the page when canManage is true. */}
       {canManage && isAdding && (
@@ -262,10 +252,16 @@ export default function ProjectMembersPanel({ projectId }) {
             }
             Add
           </button>
+          {workspaceMembersFailed && (
+            <p className="w-full text-[10px] text-fp-text-tertiary">
+              Could not load workspace members.
+            </p>
+          )}
         </form>
       )}
 
-      {members === null && (
+      {/* Only when there is NO cached data at all (first ever open, prefetch not done). */}
+      {isLoading && (
         <div className="flex items-center gap-2 text-xs text-fp-text-tertiary py-4">
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
           Loading…

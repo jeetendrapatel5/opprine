@@ -21,6 +21,7 @@ import GithubConnectPanel from '@/components/GithubConnectPanel'
 import ProjectPanelDialog from '@/components/ProjectPanelDialog'
 import RecentActivityPanel from '@/components/project/RecentActivityPanel'
 import ProjectMembersPanel from '@/components/ProjectMembersPanel'
+import ProjectMembersPrefetch from '@/components/ProjectMembersPrefetch'
 import ClientRequestsPanel from '@/components/dashboard/requests/ClientRequestsPanel'
 import ProjectAccessRestricted from '@/components/ProjectAccessRestricted'
 import ProjectSidebar from '@/components/project/ProjectSidebar'
@@ -571,14 +572,22 @@ export default async function ProjectPage({ params }) {
         </ProjectPanelDialog>
       )}
 
+      {/* Project members. <ProjectMembersPrefetch> renders nothing: after the
+          page has painted it fills the shared cache for THIS project, so the
+          panel below opens with its list already loaded. It sits inside the
+          hasPanel('members') check on purpose: only people who can see the
+          "Project members" row ever trigger the request. */}
       {hasPanel('members') && (
-        <ProjectPanelDialog
-          panelId="members"
-          title="Project members"
-          description="See who's staffed on this project, and add or remove teammates."
-        >
-          <ProjectMembersPanel projectId={project.id} permissions={permissions} />
-        </ProjectPanelDialog>
+        <>
+          <ProjectMembersPrefetch projectId={project.id} />
+          <ProjectPanelDialog
+            panelId="members"
+            title="Project members"
+            description="See who's staffed on this project, and add or remove teammates."
+          >
+            <ProjectMembersPanel projectId={project.id} permissions={permissions} />
+          </ProjectPanelDialog>
+        </>
       )}
     </div>
   )
