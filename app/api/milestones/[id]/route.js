@@ -9,9 +9,17 @@ import { sendEmail } from "@/lib/email";
 import { milestoneReadyForReviewEmail } from "@/lib/emailTemplates";
 import { requireProjectMembership } from "@/lib/project";
 import { can } from "@/lib/project-permissions";
-import { ForbiddenError } from "@/lib/errors";
+import { ForbiddenError, ConflictError } from "@/lib/errors";
 import { handleApiError } from "@/lib/http-errors";
 import { notifyMilestoneAwaitingApproval } from "@/lib/notifications/triggers";
+import { recordActivity } from "@/lib/project-activity";
+
+// Staff status changes that are worth a timeline entry. Other moves
+// (e.g. PENDING <-> IN_PROGRESS) are not recorded yet.
+const STATUS_CHANGE_EVENTS = {
+  IN_REVIEW: "MILESTONE_SUBMITTED",
+  COMPLETED: "MILESTONE_COMPLETED",
+};
 
 export async function PATCH(request, { params }) {
   try {
@@ -142,10 +150,46 @@ export async function PATCH(request, { params }) {
       throw new ForbiddenError('You do not have permission to update this milestone.');
     }
 
-    const updated = await prisma.milestone.update({
-      where: { id },
-      data:  updateData,
-    });
+    // Is this request an actual status CHANGE? Re-sending the status the
+    // milestone already has (a retry, a double click) is not a transition,
+    // so it must not create a second timeline entry.
+    const statusChanged =
+      updateData.status !== undefined && updateData.status !== milestone.status;
+    const eventType = statusChanged ? STATUS_CHANGE_EVENTS[updateData.status] : undefined;
+
+    // The update and its activity event are saved in ONE transaction.
+    // For a status change the update only matches if the milestone STILL has
+    // the status we read above. If someone else changed it in the meantime
+    // nothing is written (P2025) and we answer 409 instead of recording a
+    // transition that did not really happen.
+    let updated;
+    try {
+      updated = await prisma.$transaction(async (tx) => {
+        const row = await tx.milestone.update({
+          where: statusChanged ? { id, status: milestone.status } : { id },
+          data:  updateData,
+        });
+
+        if (eventType) {
+          await recordActivity(tx, {
+            projectId:  milestone.projectId,
+            type:       eventType,
+            actor:      { type: "USER", userId: session.user.id, name: session.user.name },
+            entityId:   id,
+            // The committed row's updatedAt: same change -> same dedupe key.
+            occurredAt: row.updatedAt,
+            metadata:   { milestoneTitle: milestone.title },
+          });
+        }
+
+        return row;
+      });
+    } catch (err) {
+      if (statusChanged && err?.code === "P2025") {
+        throw new ConflictError("This milestone was just changed by someone else. Refresh the page and try again.");
+      }
+      throw err;
+    }
 
     if (updateData.status === "IN_REVIEW") {
       const { project } = milestone;

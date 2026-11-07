@@ -12,6 +12,7 @@ import prisma from '@/lib/prisma'
 import cloudinary from '@/lib/cloudinary'
 import { requireProjectMembership } from '@/lib/project'
 import { handleApiError } from '@/lib/http-errors'
+import { recordActivity } from '@/lib/project-activity'
 
 export async function POST(request, { params }) {
   try {
@@ -39,7 +40,7 @@ export async function POST(request, { params }) {
     // milestone routes, it's a one-line addition — flag it back.
     const milestone = await prisma.milestone.findUnique({
       where: { id: milestoneId },
-      select: { projectId: true },
+      select: { projectId: true, title: true },
     })
 
     if (!milestone) {
@@ -83,15 +84,32 @@ export async function POST(request, { params }) {
     }
 
     // ── 5. Save to DB ──────────────────────────────────────────────────────
-    const milestoneUpdate = await prisma.milestoneUpdate.create({
-      data: {
-        note:     note.trim(),
-        fileUrl,
-        fileName,
-        fileType,
-        fileSize,
-        milestoneId,
-      }
+    // The note and its activity event are saved in ONE transaction. (The
+    // Cloudinary upload above stays outside it: it is not a database write.)
+    // A note with a file counts as a deliverable; a note without one is a
+    // plain progress note.
+    const milestoneUpdate = await prisma.$transaction(async (tx) => {
+      const created = await tx.milestoneUpdate.create({
+        data: {
+          note:     note.trim(),
+          fileUrl,
+          fileName,
+          fileType,
+          fileSize,
+          milestoneId,
+        }
+      })
+
+      await recordActivity(tx, {
+        projectId: milestone.projectId,
+        type: fileUrl ? 'DELIVERABLE_UPLOADED' : 'MILESTONE_UPDATE_POSTED',
+        actor: { type: 'USER', userId: session.user.id, name: session.user.name },
+        entityId: created.id,
+        occurredAt: created.createdAt,
+        metadata: { milestoneId, milestoneTitle: milestone.title },
+      })
+
+      return created
     })
 
     return NextResponse.json(milestoneUpdate, { status: 201 })

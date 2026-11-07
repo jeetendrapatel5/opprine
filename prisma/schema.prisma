@@ -336,6 +336,7 @@ model Project {
   inquiries    Inquiry[]
   invoices     Invoice[]
   clientRequests ClientRequest[]
+  activity       ProjectActivity[]
 
   // ── Project Story / Case Study fields ─────────────────────────────────────
   // caseStudyEnabled gates the full story view on /showcase/[slug].
@@ -616,6 +617,93 @@ model ClientRequest {
   @@index([projectId, status])
   @@index([milestoneId])
   @@index([status, lastRemindedAt])
+}
+
+// ── Project activity ───────────────────────────────────────────────────────
+// An append-only record of meaningful things that happened on a project
+// (the "Project Delivery Pulse" timeline). It is NOT a source of truth:
+// Update, Milestone and ClientRequest still own the real state. A row here
+// only says "this happened, at this time, by this actor".
+//
+// RULES (enforced in lib/project-activity.js, not by the database):
+//   - Rows are only ever INSERTED. App code never updates or deletes them;
+//     they disappear only when their project is deleted (cascade).
+//   - Every row is written in the SAME transaction as the change it records.
+//   - `dedupeKey` is built from real ids (e.g. "request:<id>:submitted") so a
+//     retry can never create a second row for the same event.
+//   - Not to be confused with Notification, which is a per-user message.
+enum ProjectActivityType {
+  PROJECT_UPDATE_POSTED
+  GITHUB_PUSH
+  MILESTONE_CREATED
+  MILESTONE_SUBMITTED // status moved to IN_REVIEW
+  MILESTONE_APPROVED // the client approved it
+  MILESTONE_CHANGES_REQUESTED // the client rejected it
+  MILESTONE_COMPLETED // the team marked it COMPLETED directly
+  MILESTONE_UPDATE_POSTED // progress note, no file
+  DELIVERABLE_UPLOADED // progress note with a file attached
+  CLIENT_REQUEST_CREATED
+  CLIENT_REQUEST_SUBMITTED // the client answered
+  CLIENT_REQUEST_ACCEPTED
+  CLIENT_REQUEST_CANCELLED
+}
+
+enum ActivityActorType {
+  USER
+  CLIENT
+  SYSTEM
+  INTEGRATION
+}
+
+enum ActivityVisibility {
+  INTERNAL
+  CLIENT
+}
+
+model ProjectActivity {
+  id String @id @default(cuid())
+
+  // Deleting the project deletes its timeline.
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  type ProjectActivityType
+  // Short, human-readable sentence baked in at write time, e.g.
+  // "Homepage submitted for review". The timeline renders without any join,
+  // and the text stays true even if the milestone is renamed or deleted later.
+  title String
+
+  actorType ActivityActorType
+  // Deliberately NOT a Prisma relation / foreign key (same choice as
+  // Notification.projectId): deleting a user must never alter history.
+  // actorName is a snapshot taken when the event happened. For CLIENT actors
+  // actorUserId stays null and actorName holds the client's name.
+  actorUserId String?
+  actorName   String?
+
+  // The milestone / client request / update this event is about. No foreign
+  // key on purpose, so the event survives deletion of the thing it describes.
+  // What kind of thing it is follows from `type`.
+  entityId String?
+
+  // Small per-type display snapshot (milestone title, request title, commit
+  // sha, ...). Keep it around 1 KB. Never put client-written free text here.
+  metadata Json?
+
+  // Fail-safe default: anything not explicitly marked CLIENT is internal.
+  visibility ActivityVisibility @default(INTERNAL)
+
+  // When the event happened (also the sort key for the timeline).
+  occurredAt DateTime @default(now())
+
+  // Required, unique per project: a second insert with the same key is
+  // skipped, which is what makes retries and webhook redeliveries safe.
+  dedupeKey String
+
+  @@unique([projectId, dedupeKey])
+  // Matches the timeline query exactly: one project, newest first, with a
+  // stable tiebreak on id for cursor pagination.
+  @@index([projectId, occurredAt(sort: Desc), id(sort: Desc)])
 }
 
 model Inquiry {

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import { Check, CheckCircle2, ExternalLink, Loader2, Upload, User } from 'lucide-react'
 import Field from './Field'
 
@@ -17,91 +18,113 @@ export default function ProfileSection({ user }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
-  const [avatarFile, setAvatarFile] = useState(null)
-  const [avatarPreview, setAvatarPreview] = useState(user.avatarUrl || '')
+  const [avatarSelection, setAvatarSelection] = useState(null)
   const fileInputRef = useRef(null)
+  const avatarObjectUrlRef = useRef(null)
+  const savedTimeoutRef = useRef(null)
 
+  const avatarPreview = avatarSelection?.previewUrl || form.avatarUrl || ''
+
+  // Object URLs and timeouts are browser resources: release them on unmount.
   useEffect(() => {
-    if (!avatarFile) {
-      setAvatarPreview(form.avatarUrl || '')
-      return undefined
+    return () => {
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current)
+      }
+      if (savedTimeoutRef.current) {
+        window.clearTimeout(savedTimeoutRef.current)
+      }
     }
+  }, [])
 
-    const objectUrl = URL.createObjectURL(avatarFile)
-    setAvatarPreview(objectUrl)
+  function clearAvatarSelection() {
+    if (avatarObjectUrlRef.current) {
+      URL.revokeObjectURL(avatarObjectUrlRef.current)
+      avatarObjectUrlRef.current = null
+    }
+    setAvatarSelection(null)
+  }
 
-    return () => URL.revokeObjectURL(objectUrl)
-  }, [avatarFile, form.avatarUrl])
-
-  function handleChange(e) {
-    const { name: field, value } = e.target
-    setForm((prev) => ({ ...prev, [field]: value }))
+  function handleChange(event) {
+    const { name: field, value } = event.target
+    setForm((previous) => ({ ...previous, [field]: value }))
     setSaved(false)
     setError(null)
   }
 
-  function handleAvatarPick(e) {
-    const file = e.target.files?.[0]
+  function handleAvatarPick(event) {
+    const file = event.target.files?.[0]
     if (!file) return
-    setAvatarFile(file)
+
+    if (avatarObjectUrlRef.current) {
+      URL.revokeObjectURL(avatarObjectUrlRef.current)
+    }
+
+    const previewUrl = URL.createObjectURL(file)
+    avatarObjectUrlRef.current = previewUrl
+    setAvatarSelection({ file, previewUrl })
     setSaved(false)
     setError(null)
   }
 
   async function handleSave() {
+    if (saving) return
+
     setSaving(true)
     setError(null)
 
     try {
-      let res
+      let response
 
-      if (avatarFile) {
-        const fd = new FormData()
-        fd.append('name', form.name)
-        fd.append('bio', form.bio)
-        fd.append('portfolioUrl', form.portfolioUrl)
-        fd.append('username', form.username)
-        fd.append('profileTagline', form.profileTagline)
-        fd.append('avatar', avatarFile)
-        res = await fetch('/api/settings', { method: 'PATCH', body: fd })
+      if (avatarSelection?.file) {
+        const formData = new FormData()
+        formData.append('name', form.name)
+        formData.append('bio', form.bio)
+        formData.append('portfolioUrl', form.portfolioUrl)
+        formData.append('username', form.username)
+        formData.append('profileTagline', form.profileTagline)
+        formData.append('avatar', avatarSelection.file)
+        response = await fetch('/api/settings', { method: 'PATCH', body: formData })
       } else {
-        res = await fetch('/api/settings', {
+        response = await fetch('/api/settings', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(form),
         })
       }
 
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Something went wrong')
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || 'Something went wrong. Please try again.')
+      }
 
-      setForm((prev) => ({
-        ...prev,
-        name: data.name ?? prev.name,
-        bio: data.bio ?? prev.bio,
-        avatarUrl: data.avatarUrl ?? prev.avatarUrl,
-        portfolioUrl: data.portfolioUrl ?? prev.portfolioUrl,
-        username: data.username ?? prev.username,
-        profileTagline: data.profileTagline ?? prev.profileTagline,
+      setForm((previous) => ({
+        ...previous,
+        name: data.name ?? previous.name,
+        bio: data.bio ?? previous.bio,
+        avatarUrl: data.avatarUrl ?? previous.avatarUrl,
+        portfolioUrl: data.portfolioUrl ?? previous.portfolioUrl,
+        username: data.username ?? previous.username,
+        profileTagline: data.profileTagline ?? previous.profileTagline,
       }))
-      setAvatarFile(null)
+      clearAvatarSelection()
       if (fileInputRef.current) fileInputRef.current.value = ''
       setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+
+      window.clearTimeout(savedTimeoutRef.current)
+      savedTimeoutRef.current = window.setTimeout(() => {
+        setSaved(false)
+        savedTimeoutRef.current = null
+      }, 2000)
     } catch (err) {
-      setError(err.message)
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setSaving(false)
     }
   }
 
   const inputClass =
-    'w-full rounded-xl border border-fp-border bg-fp-base px-3.5 py-2.5 text-sm text-fp-text-primary placeholder:text-fp-text-tertiary outline-none transition-colors duration-150 focus:border-fp-accent/60 focus:ring-2 focus:ring-fp-accent/20'
-
-  const hasPortfolio = Boolean(form.portfolioUrl)
-  const hasBio = Boolean(form.bio?.trim())
-  const hasAvatar = Boolean(avatarPreview)
-  const completionCount = [hasAvatar, Boolean(form.username), hasPortfolio, hasBio].filter(Boolean).length
+    'w-full rounded-xl border border-fp-border bg-fp-base px-3.5 py-2.5 text-sm text-fp-text-primary placeholder:text-fp-text-tertiary outline-none transition-colors duration-150 focus:border-fp-accent/60 focus:ring-2 focus:ring-fp-accent/20 disabled:cursor-not-allowed disabled:opacity-60'
 
   return (
     <section className="overflow-hidden rounded-2xl border border-fp-border bg-fp-surface/90 shadow-[0_1px_0_rgba(255,255,255,0.02)_inset]">
@@ -110,9 +133,12 @@ export default function ProfileSection({ user }) {
           <div className="flex items-center gap-4">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-fp-border bg-fp-raised">
               {avatarPreview ? (
-                <img
+                <Image
                   src={avatarPreview}
                   alt="Avatar preview"
+                  width={80}
+                  height={80}
+                  unoptimized
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -128,7 +154,7 @@ export default function ProfileSection({ user }) {
                 className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold text-fp-accent transition-colors hover:text-fp-accent-hover"
               >
                 <Upload size={14} />
-                {avatarFile ? 'Photo ready to save' : 'Change photo'}
+                {avatarSelection ? 'Photo ready to save' : 'Change photo'}
               </label>
               <input
                 ref={fileInputRef}
@@ -137,6 +163,7 @@ export default function ProfileSection({ user }) {
                 accept="image/*"
                 className="hidden"
                 onChange={handleAvatarPick}
+                disabled={saving}
               />
             </div>
           </div>
@@ -151,6 +178,7 @@ export default function ProfileSection({ user }) {
             onChange={handleChange}
             className={inputClass}
             placeholder="Your name"
+            disabled={saving}
           />
         </Field>
 
@@ -160,8 +188,9 @@ export default function ProfileSection({ user }) {
               name="username"
               value={form.username}
               onChange={handleChange}
-              className="min-w-0 flex-1 bg-fp-base px-3.5 py-2.5 text-sm text-fp-text-primary outline-none placeholder:text-fp-text-tertiary"
+              className="min-w-0 flex-1 bg-fp-base px-3.5 py-2.5 text-sm text-fp-text-primary outline-none placeholder:text-fp-text-tertiary disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="jeetu"
+              disabled={saving}
             />
           </div>
         </Field>
@@ -174,12 +203,14 @@ export default function ProfileSection({ user }) {
               onChange={handleChange}
               className={`${inputClass} pr-10`}
               placeholder="https://jeetu.dev"
+              disabled={saving}
             />
             {form.portfolioUrl && (
               <a
                 href={form.portfolioUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="Open portfolio URL"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-fp-text-tertiary transition-colors hover:text-fp-accent"
               >
                 <ExternalLink size={14} />
@@ -195,6 +226,7 @@ export default function ProfileSection({ user }) {
             onChange={handleChange}
             className={inputClass}
             placeholder="I build fast, conversion-focused SaaS products."
+            disabled={saving}
           />
         </Field>
       </div>
@@ -208,6 +240,7 @@ export default function ProfileSection({ user }) {
             rows={4}
             className={`${inputClass} resize-none`}
             placeholder="Full-stack developer based in Goa"
+            disabled={saving}
           />
         </Field>
       </div>
@@ -221,9 +254,12 @@ export default function ProfileSection({ user }) {
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-fp-border bg-fp-raised">
                 {avatarPreview ? (
-                  <img
+                  <Image
                     src={avatarPreview}
                     alt={form.name || 'Profile preview'}
+                    width={44}
+                    height={44}
+                    unoptimized
                     className="h-full w-full object-cover"
                   />
                 ) : (
@@ -241,7 +277,13 @@ export default function ProfileSection({ user }) {
               </div>
             </div>
 
-            <span className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${form.username ? 'border-fp-success/25 bg-fp-success/10 text-fp-success' : 'border-fp-border bg-fp-raised text-fp-text-tertiary'}`}>
+            <span
+              className={`mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
+                form.username
+                  ? 'border-fp-success/25 bg-fp-success/10 text-fp-success'
+                  : 'border-fp-border bg-fp-raised text-fp-text-tertiary'
+              }`}
+            >
               <span className={`h-1.5 w-1.5 rounded-full ${form.username ? 'bg-fp-success' : 'bg-fp-border'}`} />
               {form.username ? 'Published' : 'Draft'}
             </span>
@@ -271,6 +313,7 @@ export default function ProfileSection({ user }) {
         </div>
 
         <button
+          type="button"
           onClick={handleSave}
           disabled={saving}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-fp-accent px-5 py-2.5 text-sm font-semibold text-fp-base transition-colors duration-150 hover:bg-fp-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
@@ -282,17 +325,3 @@ export default function ProfileSection({ user }) {
     </section>
   )
 }
-
-function MiniStat({ label, value, active }) {
-  return (
-    <div className="rounded-xl border border-fp-border bg-fp-raised px-3 py-3">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-fp-text-tertiary">
-        {label}
-      </p>
-      <p className={`mt-1 text-sm font-semibold ${active ? 'text-fp-text-primary' : 'text-fp-text-secondary'}`}>
-        {value}
-      </p>
-    </div>
-  )
-}
-

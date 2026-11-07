@@ -8,6 +8,7 @@ import { requireProjectMembership } from "@/lib/project";
 import { can } from "@/lib/project-permissions";
 import { ForbiddenError } from "@/lib/errors";
 import { handleApiError } from "@/lib/http-errors";
+import { recordActivity } from "@/lib/project-activity";
 
 export async function POST(request) {
   try {
@@ -50,15 +51,29 @@ export async function POST(request) {
 
     const nextOrder = existingMilestones.length > 0 ? existingMilestones[0].order + 1 : 1;
 
-    // 4. Create the milestone
-    const milestone = await prisma.milestone.create({
-      data: {
-        title,
-        order: nextOrder,
+    // 4. Create the milestone and record its activity event in ONE
+    // transaction, so the timeline and the milestone list always agree.
+    const milestone = await prisma.$transaction(async (tx) => {
+      const created = await tx.milestone.create({
+        data: {
+          title,
+          order: nextOrder,
+          projectId,
+          status: "PENDING",
+          createdByUserId: session.user.id,
+        }
+      });
+
+      await recordActivity(tx, {
         projectId,
-        status: "PENDING",
-        createdByUserId: session.user.id,
-      }
+        type: "MILESTONE_CREATED",
+        actor: { type: "USER", userId: session.user.id, name: session.user.name },
+        entityId: created.id,
+        occurredAt: created.createdAt,
+        metadata: { milestoneTitle: created.title },
+      });
+
+      return created;
     });
 
     return NextResponse.json(milestone, { status: 201 });

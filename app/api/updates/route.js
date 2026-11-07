@@ -7,6 +7,7 @@ import prisma from '@/lib/prisma'
 import { requireProjectMembership } from '@/lib/project'
 import { handleApiError } from '@/lib/http-errors'
 import { notifyProjectUpdatePosted } from '@/lib/notifications/triggers'
+import { recordActivity } from '@/lib/project-activity'
 
 export async function POST(request) {
   try {
@@ -52,13 +53,29 @@ export async function POST(request) {
     // any staffed member can do it, Contributors included.
     await requireProjectMembership(session.user.id, projectId)
 
-    // Step 5 — Create the update
-    const update = await prisma.update.create({
-      data: {
-        text,
-        status: status || 'IN_PROGRESS',
-        projectId
-      }
+    // Step 5 — Create the update AND record its activity event in ONE
+    // transaction: either both are saved or neither is, so the project
+    // timeline can never miss an update (or show one that doesn't exist).
+    // The notification below stays outside the transaction on purpose.
+    const update = await prisma.$transaction(async (tx) => {
+      const created = await tx.update.create({
+        data: {
+          text,
+          status: status || 'IN_PROGRESS',
+          projectId
+        }
+      })
+
+      await recordActivity(tx, {
+        projectId,
+        type: 'PROJECT_UPDATE_POSTED',
+        actor: { type: 'USER', userId: session.user.id, name: session.user.name },
+        entityId: created.id,
+        occurredAt: created.createdAt,
+        metadata: { excerpt: created.text },
+      })
+
+      return created
     })
 
     // Step 6 — Notify the project's PMs, with the full details.
