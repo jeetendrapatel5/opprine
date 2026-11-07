@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useRouter } from 'next/navigation'
@@ -23,14 +23,17 @@ export default function UpdatesTab({ project }) {
     register,
     handleSubmit,
     reset,
-    watch,
+    control,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
     defaultValues: { status: 'IN_PROGRESS' },
   })
 
-  const currentStatus = watch('status')
+  const currentStatus = useWatch({
+    control,
+    name: 'status',
+  })
 
   const onSubmit = async (data) => {
     setIsLoading(true)
@@ -142,7 +145,7 @@ export default function UpdatesTab({ project }) {
       </div>
 
       {/* Composer */}
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={(event) => handleSubmit(onSubmit)(event)}>
         <p className="text-[10px] font-bold text-fp-text-tertiary uppercase tracking-widest mb-2">
           Post an update
         </p>

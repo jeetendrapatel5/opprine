@@ -549,28 +549,67 @@ export default function ClientRequestsPanel({ projectId, milestones = [], hasCli
   const [loading, setLoading] = useState(canView)
   const [loadError, setLoadError] = useState('')
   const [notice, setNotice] = useState(null) // { tone: 'ok' | 'warn', text }
-  const mounted = useRef(true)
+  const mounted = useRef(false)
+  const requestId = useRef(0)
 
+  // User-triggered refreshes share this loader. Request ids prevent an older
+  // response from replacing data returned by a more recent refresh.
   const load = useCallback(async () => {
+    const currentRequestId = ++requestId.current
+
     try {
       const res = await axios.get(`/api/projects/${projectId}/requests`)
-      if (!mounted.current) return
+      if (!mounted.current || currentRequestId !== requestId.current) return
       setData(res.data)
       setLoadError('')
     } catch (err) {
-      if (mounted.current) setLoadError(friendlyError(err))
+      if (currentRequestId === requestId.current && mounted.current) {
+        setLoadError(friendlyError(err))
+      }
     } finally {
-      if (mounted.current) setLoading(false)
+      if (mounted.current && currentRequestId === requestId.current) {
+        setLoading(false)
+      }
     }
   }, [projectId])
 
   useEffect(() => {
     mounted.current = true
-    if (canView) load()
+
+    if (!canView) {
+      return () => {
+        mounted.current = false
+        requestId.current += 1
+      }
+    }
+
+    const controller = new AbortController()
+    const currentRequestId = ++requestId.current
+
+    // Fetching is external work; state changes happen in the HTTP promise
+    // callbacks rather than synchronously in the effect body.
+    axios.get(`/api/projects/${projectId}/requests`, { signal: controller.signal })
+      .then((res) => {
+        if (controller.signal.aborted || !mounted.current || currentRequestId !== requestId.current) return
+        setData(res.data)
+        setLoadError('')
+      })
+      .catch((err) => {
+        if (controller.signal.aborted || axios.isCancel(err) || currentRequestId !== requestId.current) return
+        if (mounted.current) setLoadError(friendlyError(err))
+      })
+      .finally(() => {
+        if (!controller.signal.aborted && mounted.current && currentRequestId === requestId.current) {
+          setLoading(false)
+        }
+      })
+
     return () => {
       mounted.current = false
+      requestId.current += 1
+      controller.abort()
     }
-  }, [canView, load])
+  }, [canView, projectId])
 
   // After any change: reload this list, then refresh server-rendered parts of the page.
   const changed = useCallback(async () => {
