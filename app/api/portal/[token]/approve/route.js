@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { sendEmail } from '@/lib/email'
 import { milestoneApprovedEmail } from '@/lib/emailTemplates'
+import { recordActivity } from '@/lib/project-activity'
 
 export async function PATCH(request, { params }) {
   try {
@@ -53,6 +54,28 @@ export async function PATCH(request, { params }) {
 
     // ── MILESTONE ─────────────────────────────────────────────────────────────
     if (type === 'milestone') {
+      if (action !== 'approve' && action !== 'reject') {
+        return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
+      }
+
+      // Look the milestone up in the list we already fetched above (no extra
+      // query). It must belong to THIS client's project.
+      const current = client.project.milestones.find((m) => m.id === itemId)
+      if (!current) {
+        return NextResponse.json({ error: 'Milestone not found' }, { status: 404 })
+      }
+
+      // GUARD: a milestone can only be approved or sent back while it is
+      // actually waiting for review. This stops stale pages and double clicks
+      // from approving an unsubmitted milestone, re-approving a finished one,
+      // or recording a timeline entry for something that did not happen.
+      const notAwaitingReview = () =>
+        NextResponse.json(
+          { error: 'This milestone is not waiting for your review. Please refresh the page.' },
+          { status: 409 }
+        )
+      if (current.status !== 'IN_REVIEW') return notAwaitingReview()
+
       const milestoneData = action === 'approve'
         ? {
             status:        'COMPLETED',
@@ -67,10 +90,45 @@ export async function PATCH(request, { params }) {
             rejectionNote: reason ?? null,
           }
 
-      const updated = await prisma.milestone.update({
-        where:  { id: itemId, projectId: client.projectId },
-        data:   milestoneData,
-      })
+      // The milestone change, the rejection message (if any) and the activity
+      // event are saved in ONE transaction. The update only matches while the
+      // milestone is STILL IN_REVIEW: if another request got there first,
+      // nothing is written (P2025) and we answer 409.
+      let updated
+      try {
+        updated = await prisma.$transaction(async (tx) => {
+          const row = await tx.milestone.update({
+            where: { id: itemId, projectId: client.projectId, status: 'IN_REVIEW' },
+            data:  milestoneData,
+          })
+
+          // On rejection — save the client message to MilestoneMessage permanently
+          if (action === 'reject' && reason?.trim()) {
+            await tx.milestoneMessage.create({
+              data: {
+                content:     reason.trim(),
+                sender:      'CLIENT',
+                milestoneId: itemId,
+              },
+            })
+          }
+
+          await recordActivity(tx, {
+            projectId:  client.projectId,
+            type:       action === 'approve' ? 'MILESTONE_APPROVED' : 'MILESTONE_CHANGES_REQUESTED',
+            actor:      { type: 'CLIENT', name: client.name },
+            entityId:   itemId,
+            // The committed row's updatedAt: same change -> same dedupe key.
+            occurredAt: row.updatedAt,
+            metadata:   { milestoneTitle: current.title },
+          })
+
+          return row
+        })
+      } catch (err) {
+        if (err?.code === 'P2025') return notAwaitingReview()
+        throw err
+      }
 
       // Strip createdByUserId before this crosses back over the
       // magic-link boundary. This isn't Task data — nothing in this
@@ -84,17 +142,6 @@ export async function PATCH(request, { params }) {
       // change, and there's no reason for the client portal to see
       // which internal user created the milestone.
       const { createdByUserId, ...safeUpdated } = updated
-
-      // On rejection — save the client message to MilestoneMessage permanently
-      if (action === 'reject' && reason?.trim()) {
-        await prisma.milestoneMessage.create({
-          data: {
-            content:     reason.trim(),
-            sender:      'CLIENT',
-            milestoneId: itemId,
-          },
-        })
-      }
 
       // ── Send "milestone approved" email to freelancer ─────────────────────
       // Only fires on approval, not rejection.

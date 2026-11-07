@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { verifyGithubSignature } from '@/lib/verifyWebhook';
 import { summarizeCommitForClient } from '@/lib/ai';
 import { getEntitlements } from '@/lib/billing/entitlements';
+import { recordGithubPush } from '@/lib/github-push';
 
 export async function POST(request, { params }) {
   const { projectId } = await params;
@@ -71,15 +72,16 @@ export async function POST(request, { params }) {
       const summary = await summarizeCommitForClient(latestCommit.message, project.name);
       if (!summary) return;
 
-      const update = await prisma.update.create({
-        data: {
-          projectId: project.id,
-          type: 'AUTO_DEPLOY',
-          text: summary,
-          commitSha: latestCommit.id.substring(0, 7),
-          commitUrl: latestCommit.url,
-        },
-      });
+      // Saves the Update AND its timeline event in one transaction, and only
+      // if this commit hasn't been recorded before. GitHub can deliver the
+      // same push more than once (retries, manual "Redeliver"); that used to
+      // create a duplicate client-facing Update each time. See lib/github-push.js.
+      const result = await recordGithubPush(
+        { project, commit: latestCommit, summary },
+        prisma
+      );
+      if (result.duplicate) return;
+      const update = result.update;
 
       // 9. Optional: reuse your existing Resend function to notify the client
       // await sendUpdateNotification(project, update);
