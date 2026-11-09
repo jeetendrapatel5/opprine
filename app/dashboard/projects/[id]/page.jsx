@@ -544,10 +544,15 @@ export default async function ProjectPage({ params }) {
       {hasPanel('activity') && (
         <ProjectPanelDialog
           panelId="activity"
+          className="sm:max-w-xl"
           title="Project activity"
-          description="A quick look at the latest updates on this project."
+          description="What needs attention on this project, and what has happened so far."
         >
-          <RecentActivityPanel updates={project.updates} />
+          <RecentActivityPanel
+            projectId={project.id}
+            viewerId={session.user.id}
+            canView={can(role, 'viewProjectActivity')}
+          />
         </ProjectPanelDialog>
       )}
 

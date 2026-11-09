@@ -75,6 +75,8 @@ model User {
   // sessions after a password reset" is implemented despite NextAuth's
   // JWT strategy having no server-side session record to delete.
   passwordChangedAt DateTime?
+  // Per-project "last seen" markers for the Project activity panel.
+  activityReads ProjectActivityRead[]
 }
 
 // A Workspace is the new "billing owner." One subscription belongs to
@@ -378,6 +380,8 @@ model Project {
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
 
   @@index([workspaceId])
+  // Who last looked at the activity panel, and when (one row per user).
+  activityReads ProjectActivityRead[]
 }
 
 model File {
@@ -704,6 +708,22 @@ model ProjectActivity {
   // Matches the timeline query exactly: one project, newest first, with a
   // stable tiebreak on id for cursor pagination.
   @@index([projectId, occurredAt(sort: Desc), id(sort: Desc)])
+}
+
+// "What changed since my last visit": one row per (user, project) holding the
+// moment that user last looked at the Project activity panel. It only ever
+// moves forward. Unlike ProjectActivity (history, must survive user deletion)
+// this is personal state, so it IS removed with the user or the project.
+model ProjectActivityRead {
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  lastSeenAt DateTime
+
+  @@id([userId, projectId])
+  // Deleting a project finds its rows by projectId (the primary key leads with userId).
+  @@index([projectId])
 }
 
 model Inquiry {
