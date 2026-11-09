@@ -9,7 +9,7 @@
 // error) into a response. Project access, role checks, validation and the
 // database query all live in lib/project-activity-feed.js.
 //
-// Response:
+// Response (lastSeenAt = when the CURRENT user last opened the panel, or null):
 //   {
 //     "items": [
 //       { "id", "type", "title", "occurredAt", "visibility",
@@ -17,7 +17,8 @@
 //         "entity": { "kind", "id" },
 //         "metadata": { ... } | null }
 //     ],
-//     "nextCursor": "<opaque string>" | null     // pass back as ?cursor= for older events
+//     "nextCursor": "<opaque string>" | null,    // pass back as ?cursor= for older events
+//     "lastSeenAt": "<ISO time>" | null
 //   }
 //
 // There is no client/portal version of this route on purpose.
