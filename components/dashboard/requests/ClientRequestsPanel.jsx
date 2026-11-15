@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils'
 import BlockedSummary from './BlockedSummary'
 import RequestComposer from './RequestComposer'
 import RequestRow from './RequestRow'
-import { ActionButton } from './request-ui'
+import { ActionButton, thinScrollbar } from './request-ui'
 import { plural } from './request-format'
 
 function RestrictedNotice() {
@@ -213,7 +213,7 @@ export default function ClientRequestsPanel({ projectId, milestones = [], hasCli
         )}
       </header>
 
-      <div className="-mx-1 mt-5 min-h-0 flex-1 space-y-5 overflow-y-auto px-1">
+      <div className={cn('-mx-1 mt-5 min-h-0 flex-1 space-y-5 overflow-y-auto px-1', thinScrollbar)}>
         {composing ? (
           <RequestComposer
             projectId={projectId}

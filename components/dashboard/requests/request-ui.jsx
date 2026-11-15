@@ -13,6 +13,16 @@ export const fieldClass = `
   aria-[invalid=true]:border-fp-danger/60
 `
 
+// Slim scrollbar in the app's colours. Same recipe as RecentActivityPanel:
+// Chrome ignores ::-webkit-scrollbar if scrollbar-width is set, so the
+// standard properties apply only where ::-webkit-scrollbar is unsupported.
+export const thinScrollbar =
+  '[&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:my-1 [&::-webkit-scrollbar-track]:bg-transparent ' +
+  '[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-fp-text-tertiary/40 ' +
+  '[&::-webkit-scrollbar-thumb:hover]:bg-fp-text-tertiary/80 ' +
+  'supports-[not_selector(::-webkit-scrollbar)]:[scrollbar-width:thin] ' +
+  'supports-[not_selector(::-webkit-scrollbar)]:[scrollbar-color:var(--color-fp-text-tertiary)_transparent]'
+
 export const labelClass =
   'mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-fp-text-secondary'
 
