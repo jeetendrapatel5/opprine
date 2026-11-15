@@ -29,7 +29,7 @@ export function StatusDot({ active = false, className }) {
     <span
       aria-hidden="true"
       className={cn(
-        'inline-block h-2 w-2 shrink-0 rounded-full',
+        'inline-block h-1.5 w-1.5 shrink-0 rounded-full',
         active ? 'bg-fp-success ring-2 ring-fp-success/25' : 'bg-fp-text-tertiary',
         className,
       )}
