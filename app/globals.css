@@ -70,6 +70,17 @@
   --color-fp-portal-success:      #2D7D52;
   --color-fp-portal-danger:       #B83232;
 
+  /* Accessible companions (additive, existing portal tokens are unchanged).
+     muted   : small text on white or the page bg, 4.8:1 (tertiary is 3.1:1)
+     strong  : amber text and white-on-amber buttons, 5.9:1 (accent is 3.8:1)
+     control : borders of inputs and other form controls, 3.1:1 (WCAG 1.4.11) */
+  --color-fp-portal-text-muted:     #7A7067;
+  --color-fp-portal-accent-strong:  #8A5A1E;
+  --color-fp-portal-border-control: #9C9087;
+
+  --shadow-fp-card: 0 1px 2px 0 rgb(28 23 18 / 0.04), 0 1px 3px 0 rgb(28 23 18 / 0.05);
+  --shadow-fp-pop:  0 12px 28px -6px rgb(28 23 18 / 0.16), 0 2px 6px 0 rgb(28 23 18 / 0.06);
+
   /* ── Typography ───────────────────────────────────────────────────────── */
   /* These reference CSS variables injected by next/font/google at runtime.
      next/font sets --font-fraunces and --font-dm-sans on the html element.

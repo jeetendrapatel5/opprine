@@ -1,128 +1,104 @@
 // components/portal/UpdateFeed.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// Shows the project-level update log to the client.
-// These are the legacy Update model entries (text + status).
-//
-// Design changes from old version:
-// - Removed emoji icons (🔄 👀 ✅) — emojis look unprofessional on a $10k
-//   project portal. A freelancer who charges premium rates doesn't use emojis
-//   as status indicators. We use colored dots + text labels instead.
-// - Removed colorful card backgrounds (bg-blue-50, bg-yellow-50, bg-green-50)
-//   — portal cards are fp-portal-surface (white) with a subtle left border
-//   in the status color. This is the premium editorial approach.
-// - Timestamps use full relative strings, not "X minutes ago" — more readable.
-//
-// Server Component — pure display.
-// ─────────────────────────────────────────────────────────────────────────────
+// Project-level update log: the legacy Update model plus auto-generated deploy
+// notes. Server Component, display only.
 
-function timeAgo(date) {
-  const seconds = Math.floor((new Date() - new Date(date)) / 1000)
-  if (seconds < 60)    return 'just now'
-  if (seconds < 3600)  return `${Math.floor(seconds / 60)} minutes ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`
-  const days = Math.floor(seconds / 86400)
-  return days === 1 ? 'yesterday' : `${days} days ago`
+import { Activity, ExternalLink, Rocket } from 'lucide-react'
+import { timeAgo } from '@/lib/portal-format'
+import { Card, CardBody, CardHeader, EmptyState, focusRing } from './ui'
+
+const STATUS = {
+  IN_PROGRESS: { label: 'In progress', dot: 'bg-fp-portal-accent',  text: 'text-fp-portal-accent-strong' },
+  IN_REVIEW:   { label: 'In review',   dot: 'bg-fp-portal-accent',  text: 'text-fp-portal-accent-strong' },
+  DONE:        { label: 'Completed',   dot: 'bg-fp-portal-success', text: 'text-fp-portal-success' },
 }
 
-// Status config — dot color + label, using portal CSS variable names
-const updateConfig = {
-  IN_PROGRESS: {
-    label:    'In Progress',
-    dotClass: 'bg-fp-portal-accent',
-    textClass: 'text-fp-portal-accent',
-  },
-  IN_REVIEW: {
-    label:    'In Review',
-    dotClass: 'bg-fp-portal-accent',
-    textClass: 'text-fp-portal-accent',
-  },
-  DONE: {
-    label:    'Completed',
-    dotClass: 'bg-fp-portal-success',
-    textClass: 'text-fp-portal-success',
-  },
-}
-
-function EmptyUpdates() {
+function Timestamp({ date }) {
   return (
-    <div className="
-      bg-fp-portal-surface border border-dashed border-fp-portal-border
-      rounded-xl py-10 flex flex-col items-center gap-2
-    ">
-      <p className="text-fp-portal-text-secondary text-sm font-medium">
-        No updates yet
-      </p>
-      <p className="text-fp-portal-text-tertiary text-xs text-center max-w-[220px] leading-relaxed">
-        Your developer will post updates here as work progresses.
-      </p>
-    </div>
+    <time dateTime={new Date(date).toISOString()} className="text-xs text-fp-portal-text-muted">
+      {timeAgo(date, { long: true })}
+    </time>
+  )
+}
+
+// Auto-generated from a deploy (AI-summarised commits).
+function DeployEntry({ update }) {
+  return (
+    <li className="flex gap-3 py-4 first:pt-0 last:pb-0">
+      <span
+        aria-hidden="true"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fp-portal-raised text-fp-portal-text-secondary"
+      >
+        <Rocket className="h-3.5 w-3.5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold text-fp-portal-text-secondary">Deployed</p>
+        <p className="mt-1 text-sm leading-relaxed text-fp-portal-text-primary">{update.text}</p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <Timestamp date={update.createdAt} />
+          {update.commitSha && (
+            <code className="rounded bg-fp-portal-raised px-1.5 py-0.5 font-mono text-xs text-fp-portal-text-secondary">
+              {update.commitSha.slice(0, 7)}
+            </code>
+          )}
+          {update.previewUrl && (
+            <a
+              href={update.previewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`inline-flex items-center gap-1 rounded text-xs font-semibold text-fp-portal-accent-strong hover:underline ${focusRing}`}
+            >
+              Preview <ExternalLink className="h-3 w-3" aria-hidden="true" />
+            </a>
+          )}
+        </div>
+      </div>
+    </li>
+  )
+}
+
+function StatusEntry({ update }) {
+  const status = STATUS[update.status] ?? STATUS.IN_PROGRESS
+
+  return (
+    <li className="flex gap-3 py-4 first:pt-0 last:pb-0">
+      <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center">
+        <span className={`h-2 w-2 rounded-full ${status.dot}`} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className={`text-xs font-semibold ${status.text}`}>{status.label}</p>
+        <p className="mt-1 text-sm leading-relaxed text-fp-portal-text-primary">{update.text}</p>
+        <div className="mt-1.5">
+          <Timestamp date={update.createdAt} />
+        </div>
+      </div>
+    </li>
   )
 }
 
 export default function UpdateFeed({ updates }) {
-  if (!updates || updates.length === 0) return <EmptyUpdates />
+  const hasUpdates = updates && updates.length > 0
 
   return (
-    <div className="space-y-3">
-      {updates.map((update) => {
-        // Auto-generated deploy updates (AI-summarized commits) — separate shape
-        // from the legacy Update model, so it gets its own branch here.
-        if (update.type === 'AUTO_DEPLOY') {
-          return (
-            <div key={update.id} className="rounded-lg border p-3">
-              {update.type === 'AUTO_DEPLOY' ? (
-                <div className="flex items-start gap-2">
-                  <span>🚀</span>
-                  <div>
-                    <p>{update.text}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Commit {update.commitSha}
-                      {update.previewUrl && (
-                        <> · <a href={update.previewUrl} target="_blank" rel="noreferrer" className="underline">Preview</a></>
-                      )}
-                    </p>
-                  </div>
-                </div>
+    <Card as="section" id="updates" aria-labelledby="updates-title" className="scroll-mt-28 md:scroll-mt-20">
+      <CardHeader icon={Activity} titleId="updates-title" title="Recent updates" />
+      <CardBody>
+        {hasUpdates ? (
+          <ul className="divide-y divide-fp-portal-border">
+            {updates.map((update) =>
+              update.type === 'AUTO_DEPLOY' ? (
+                <DeployEntry key={update.id} update={update} />
               ) : (
-                <p>{update.text}</p>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">
-                {new Date(update.createdAt).toLocaleString()}
-              </p>
-            </div>
-          )
-        }
-
-        const config = updateConfig[update.status] ?? updateConfig.IN_PROGRESS
-
-        return (
-          <div
-            key={update.id}
-            className="
-              bg-fp-portal-surface border border-fp-portal-border rounded-xl p-4
-              hover:border-fp-portal-border/60 transition-colors duration-150
-            "
-          >
-            {/* Status label + dot */}
-            <div className="flex items-center gap-2 mb-2">
-              <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${config.dotClass}`} />
-              <span className={`text-[10px] font-bold uppercase tracking-widest ${config.textClass}`}>
-                {config.label}
-              </span>
-            </div>
-
-            {/* Update text */}
-            <p className="text-fp-portal-text-primary text-sm leading-relaxed">
-              {update.text}
-            </p>
-
-            {/* Timestamp */}
-            <p className="text-fp-portal-text-tertiary text-xs mt-2">
-              {timeAgo(update.createdAt)}
-            </p>
-          </div>
-        )
-      })}
-    </div>
+                <StatusEntry key={update.id} update={update} />
+              ),
+            )}
+          </ul>
+        ) : (
+          <EmptyState
+            title="No updates yet"
+            description="Your developer will post updates here as work progresses."
+          />
+        )}
+      </CardBody>
+    </Card>
   )
 }
