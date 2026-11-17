@@ -1,15 +1,16 @@
 // components/portal/FileDeliverables.jsx
-// Every project-level file the developer has uploaded. Selecting a row opens
-// FilePreviewModal on that file, which needs state, hence a Client Component.
+// Every project-level file the developer has uploaded, as a grid of tiles with
+// image thumbnails. Selecting a tile opens FilePreviewModal on that file, which
+// needs state, hence a Client Component.
 'use client'
 
 import { useState } from 'react'
-import { ChevronRight, File, Package } from 'lucide-react'
+import { File } from 'lucide-react'
 import { formatSize } from '@/components/dashboard/requests/request-format'
 import { fileTypeLabel } from '@/lib/portal-format'
-import { cn } from '@/lib/utils'
-import { Card, CardBody, CardHeader, EmptyState, FileTypeIcon, IconTile, focusRing } from './ui'
+import { Card, CardBody, EmptyState, FileTypeIcon, focusRing } from './ui'
 import FilePreviewModal from './FilePreviewModal'
+import { cn } from '@/lib/utils'
 
 // Images and PDFs render in the modal; everything else gets a download card.
 function isPreviewable(fileType) {
@@ -17,56 +18,61 @@ function isPreviewable(fileType) {
   return mime.startsWith('image/') || mime === 'application/pdf'
 }
 
+const isImage = (fileType) => (fileType || '').toLowerCase().startsWith('image/')
+
 export default function FileDeliverables({ files }) {
   // null = modal closed; otherwise the index of the open file.
   const [previewIndex, setPreviewIndex] = useState(null)
-  const hasFiles = files?.length > 0
+
+  if (!files || files.length === 0) {
+    return (
+      <Card as="section" aria-label="Files">
+        <CardBody>
+          <EmptyState icon={File} title="No files delivered yet" description="Deliverables will show up here as they are shared." />
+        </CardBody>
+      </Card>
+    )
+  }
 
   return (
     <>
-      <Card as="section" id="files" aria-labelledby="files-title" className="scroll-mt-28 overflow-hidden md:scroll-mt-20">
-        <CardHeader icon={Package} titleId="files-title" title="Deliverables" count={hasFiles ? files.length : undefined} />
-
-        {hasFiles ? (
-          <ul className="divide-y divide-fp-portal-border">
-            {files.map((file, i) => {
-              const meta = [formatSize(file.size), fileTypeLabel(file.fileType)].filter(Boolean).join(' · ')
-
-              return (
-                <li key={file.id}>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewIndex(i)}
-                    aria-label={`${isPreviewable(file.fileType) ? 'Preview' : 'View'} ${file.name}`}
-                    // Inset outline: the card clips anything drawn outside its edge.
-                    className={cn(
-                      'group flex min-h-16 w-full items-center gap-3 px-5 py-3 text-left transition-colors duration-150 hover:bg-fp-portal-raised sm:px-6',
-                      focusRing,
-                      'focus-visible:outline-offset-[-2px]',
+      <section aria-label="Files">
+        <ul className="grid grid-cols-1 gap-4 min-[480px]:grid-cols-2 xl:grid-cols-3">
+          {files.map((file, i) => {
+            const meta = [formatSize(file.size), fileTypeLabel(file.fileType)].filter(Boolean).join(' · ')
+            return (
+              <li key={file.id}>
+                <button
+                  type="button"
+                  onClick={() => setPreviewIndex(i)}
+                  aria-label={`${isPreviewable(file.fileType) ? 'Preview' : 'View'} ${file.name}`}
+                  className={cn(
+                    'group block w-full overflow-hidden rounded-2xl border border-fp-portal-border bg-fp-portal-surface text-left shadow-fp-card transition-shadow duration-150 hover:shadow-fp-pop',
+                    focusRing,
+                  )}
+                >
+                  <span className="flex h-36 items-center justify-center overflow-hidden bg-fp-portal-raised">
+                    {isImage(file.fileType) && file.url ? (
+                      <img
+                        src={file.url}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover motion-safe:transition-transform motion-safe:duration-300 group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <FileTypeIcon fileType={file.fileType} className="h-10 w-10 text-fp-portal-text-muted" />
                     )}
-                  >
-                    <IconTile tone="neutral">
-                      <FileTypeIcon fileType={file.fileType} className="h-[18px] w-[18px]" />
-                    </IconTile>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-fp-portal-text-primary">{file.name}</span>
-                      {meta && <span className="mt-0.5 block text-xs text-fp-portal-text-muted">{meta}</span>}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-fp-portal-text-secondary transition-colors group-hover:text-fp-portal-accent-strong">
-                      {isPreviewable(file.fileType) ? 'Preview' : 'View'}
-                      <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        ) : (
-          <CardBody>
-            <EmptyState icon={File} title="No files delivered yet" description="Deliverables will show up here as they are shared." />
-          </CardBody>
-        )}
-      </Card>
+                  </span>
+                  <span className="block px-4 py-3">
+                    <span className="block truncate text-sm font-semibold text-fp-portal-text-primary">{file.name}</span>
+                    {meta && <span className="mt-0.5 block text-xs text-fp-portal-text-muted">{meta}</span>}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
 
       {/* Rendered through a portal into document.body */}
       {previewIndex !== null && (

@@ -1,22 +1,57 @@
 // components/portal/ProgressBanner.jsx
-// The project overview at the top of the portal: name, status, overall
-// progress and the three facts a client checks first. Server Component.
+// Overview hero: a progress ring with the project's status and the three facts
+// a client checks first. Server Component.
 
 import { formatDate } from '@/components/dashboard/requests/request-format'
-import { getLastUpdateDate, getNextDueMilestone, timeAgo } from '@/lib/portal-format'
-import { Badge, Card, Eyebrow } from './ui'
+import { PROJECT_STATUS, getLastUpdateDate, getNextDueMilestone, timeAgo } from '@/lib/portal-format'
+import { Badge, Card } from './ui'
 
-const STATUS = {
-  ON_TRACK:        { label: 'On track',             tone: 'success' },
-  AWAITING_REVIEW: { label: 'Awaiting your review', tone: 'accent' },
-  COMPLETED:       { label: 'Project complete',     tone: 'success' },
+const RADIUS = 52
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS
+
+function Ring({ percentage }) {
+  const done = percentage === 100
+  return (
+    <div
+      role="progressbar"
+      aria-label="Overall project progress"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={percentage}
+      className="relative h-36 w-36 shrink-0 sm:h-40 sm:w-40"
+    >
+      <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
+        <circle cx="60" cy="60" r={RADIUS} fill="none" strokeWidth="10" className="stroke-fp-portal-raised" />
+        <circle
+          cx="60"
+          cy="60"
+          r={RADIUS}
+          fill="none"
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={CIRCUMFERENCE}
+          strokeDashoffset={CIRCUMFERENCE * (1 - percentage / 100)}
+          className={`motion-safe:transition-[stroke-dashoffset] motion-safe:duration-700 ${
+            done ? 'stroke-fp-portal-success' : 'stroke-fp-portal-accent'
+          }`}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-display text-4xl font-medium tabular-nums text-fp-portal-text-primary">
+          {percentage}
+          <span className="text-xl text-fp-portal-text-muted">%</span>
+        </span>
+        <span className="text-xs font-medium text-fp-portal-text-muted">complete</span>
+      </div>
+    </div>
+  )
 }
 
 function Stat({ label, value, hint }) {
   return (
-    <div className="min-w-0 sm:px-6 sm:first:pl-0 sm:last:pr-0">
+    <div className="min-w-0 rounded-xl bg-fp-portal-bg px-4 py-3">
       <dt className="text-xs font-medium text-fp-portal-text-muted">{label}</dt>
-      <dd className="mt-1 text-base font-semibold tabular-nums text-fp-portal-text-primary">{value}</dd>
+      <dd className="mt-1 truncate text-base font-semibold tabular-nums text-fp-portal-text-primary">{value}</dd>
       {hint && <p className="mt-0.5 truncate text-xs text-fp-portal-text-secondary">{hint}</p>}
     </div>
   )
@@ -24,72 +59,48 @@ function Stat({ label, value, hint }) {
 
 export default function ProgressBanner({ progress, projectName, clientName, milestones }) {
   const { completed, total, percentage, projectStatus } = progress
-  const status = STATUS[projectStatus] ?? STATUS.ON_TRACK
+  const status = PROJECT_STATUS[projectStatus] ?? PROJECT_STATUS.ON_TRACK
 
   const nextDue = getNextDueMilestone(milestones)
   const lastUpdate = getLastUpdateDate(milestones)
 
   const stats = [
-    { label: 'Milestones complete', value: `${completed} of ${total}` },
+    { label: 'Milestones done', value: `${completed} of ${total}` },
     nextDue && { label: 'Next due', value: formatDate(nextDue.dueDate), hint: nextDue.title },
     lastUpdate && { label: 'Last update', value: timeAgo(lastUpdate) },
   ].filter(Boolean)
 
   return (
-    <Card as="section" id="overview" aria-labelledby="project-title" className="scroll-mt-28 p-5 sm:p-8 md:scroll-mt-20">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-        <div className="min-w-0">
-          <Eyebrow>Prepared for {clientName}</Eyebrow>
-          <h1
+    <Card as="section" aria-labelledby="project-title" className="p-5 sm:p-8">
+      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
+        {total > 0 && <Ring percentage={percentage} />}
+
+        <div className="min-w-0 flex-1 text-center sm:text-left">
+          <Badge tone={status.tone}>
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+            {status.label}
+          </Badge>
+          <h2
             id="project-title"
-            className="mt-2 font-display text-3xl font-medium leading-tight tracking-tight text-fp-portal-text-primary sm:text-4xl"
+            className="mt-3 font-display text-2xl font-medium leading-tight tracking-tight text-fp-portal-text-primary sm:text-3xl"
           >
             {projectName}
-          </h1>
+          </h2>
+          <p className="mt-1 text-sm text-fp-portal-text-secondary">Prepared for {clientName}</p>
+
+          {total === 0 ? (
+            <p className="mt-4 text-sm text-fp-portal-text-secondary">
+              The project plan is being set up. Milestones will appear here soon.
+            </p>
+          ) : (
+            <dl className="mt-5 grid grid-cols-2 gap-3 text-left sm:grid-cols-3">
+              {stats.map((stat) => (
+                <Stat key={stat.label} {...stat} />
+              ))}
+            </dl>
+          )}
         </div>
-        <Badge tone={status.tone} className="mt-1">
-          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
-          {status.label}
-        </Badge>
       </div>
-
-      {total === 0 ? (
-        <p className="mt-6 text-sm text-fp-portal-text-secondary">
-          The project plan is being set up. Milestones will appear here soon.
-        </p>
-      ) : (
-        <>
-          <div className="mt-7">
-            <div className="mb-2.5 flex items-baseline justify-between gap-3">
-              <span className="text-sm font-medium text-fp-portal-text-secondary">Overall progress</span>
-              <span className="font-display text-2xl font-medium tabular-nums text-fp-portal-text-primary">
-                {percentage}%
-              </span>
-            </div>
-            <div
-              role="progressbar"
-              aria-label="Overall project progress"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={percentage}
-              className="h-2.5 w-full overflow-hidden rounded-full bg-fp-portal-raised"
-            >
-              <div
-                className={`h-full rounded-full motion-safe:transition-[width] motion-safe:duration-700 ${
-                  percentage === 100 ? 'bg-fp-portal-success' : 'bg-fp-portal-accent'
-                }`}
-                style={{ width: `${Math.max(percentage, 3)}%` }}
-              />
-            </div>
-          </div>
-
-          <dl className="mt-6 grid gap-5 border-t border-fp-portal-border pt-5 sm:grid-flow-col sm:auto-cols-fr sm:gap-0 sm:divide-x sm:divide-fp-portal-border">
-            {stats.map((stat) => (
-              <Stat key={stat.label} {...stat} />
-            ))}
-          </dl>
-        </>
-      )}
     </Card>
   )
 }

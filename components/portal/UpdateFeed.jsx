@@ -1,10 +1,13 @@
 // components/portal/UpdateFeed.jsx
 // Project-level update log: the legacy Update model plus auto-generated deploy
-// notes. Server Component, display only.
+// notes. Shows the latest few; the rest sit behind "Show earlier updates".
+'use client'
+
+import { useState } from 'react'
 
 import { Activity, ExternalLink, Rocket } from 'lucide-react'
 import { timeAgo } from '@/lib/portal-format'
-import { Card, CardBody, CardHeader, EmptyState, focusRing } from './ui'
+import { Button, Card, CardBody, CardHeader, EmptyState, focusRing } from './ui'
 
 const STATUS = {
   IN_PROGRESS: { label: 'In progress', dot: 'bg-fp-portal-accent',  text: 'text-fp-portal-accent-strong' },
@@ -75,23 +78,35 @@ function StatusEntry({ update }) {
   )
 }
 
+const INITIAL_COUNT = 4
+
 export default function UpdateFeed({ updates }) {
+  const [showAll, setShowAll] = useState(false)
   const hasUpdates = updates && updates.length > 0
+  const visible = hasUpdates && !showAll ? updates.slice(0, INITIAL_COUNT) : updates
+  const hiddenCount = hasUpdates ? updates.length - INITIAL_COUNT : 0
 
   return (
-    <Card as="section" id="updates" aria-labelledby="updates-title" className="scroll-mt-28 md:scroll-mt-20">
+    <Card as="section" aria-labelledby="updates-title">
       <CardHeader icon={Activity} titleId="updates-title" title="Recent updates" />
       <CardBody>
         {hasUpdates ? (
-          <ul className="divide-y divide-fp-portal-border">
-            {updates.map((update) =>
-              update.type === 'AUTO_DEPLOY' ? (
-                <DeployEntry key={update.id} update={update} />
-              ) : (
-                <StatusEntry key={update.id} update={update} />
-              ),
+          <>
+            <ul className="divide-y divide-fp-portal-border">
+              {visible.map((update) =>
+                update.type === 'AUTO_DEPLOY' ? (
+                  <DeployEntry key={update.id} update={update} />
+                ) : (
+                  <StatusEntry key={update.id} update={update} />
+                ),
+              )}
+            </ul>
+            {hiddenCount > 0 && (
+              <Button className="mt-4 w-full" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>
+                {showAll ? 'Show fewer updates' : `Show earlier updates (${hiddenCount})`}
+              </Button>
             )}
-          </ul>
+          </>
         ) : (
           <EmptyState
             title="No updates yet"

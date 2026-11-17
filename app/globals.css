@@ -78,6 +78,13 @@
   --color-fp-portal-accent-strong:  #8A5A1E;
   --color-fp-portal-border-control: #9C9087;
 
+  /* Dark sidebar surface and the text/accent colours that sit on it (all >= 7.5:1 on ink). */
+  --color-fp-portal-ink:         #1E1913;
+  --color-fp-portal-ink-text:    #F4F0EA;
+  --color-fp-portal-ink-muted:   #B5A99C;
+  --color-fp-portal-ink-accent:  #E0A860;
+  --color-fp-portal-ink-success: #6FCF97;
+
   --shadow-fp-card: 0 1px 2px 0 rgb(28 23 18 / 0.04), 0 1px 3px 0 rgb(28 23 18 / 0.05);
   --shadow-fp-pop:  0 12px 28px -6px rgb(28 23 18 / 0.16), 0 2px 6px 0 rgb(28 23 18 / 0.06);
 

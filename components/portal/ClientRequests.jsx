@@ -289,7 +289,7 @@ export default function ClientRequests({ requests, blocked, token }) {
     blocked?.openBlockingCount > 0 && blocked.oldestOpenSince ? daysSince(blocked.oldestOpenSince) : 0
 
   return (
-    <Card as="section" id="requests" aria-labelledby="requests-title" className="scroll-mt-28 md:scroll-mt-20">
+    <Card as="section" aria-labelledby="requests-title">
       <CardHeader
         icon={ClipboardList}
         titleId="requests-title"

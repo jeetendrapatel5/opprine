@@ -513,8 +513,8 @@ export default function ProjectMilestones({ milestones, token }) {
   if (!milestones || milestones.length === 0) return null
 
   return (
-    <Card as="section" id="timeline" aria-labelledby="timeline-title" className="scroll-mt-28 md:scroll-mt-20">
-      <CardHeader icon={ListChecks} titleId="timeline-title" title="Project timeline" count={milestones.length} />
+    <Card as="section" aria-labelledby="timeline-title">
+      <CardHeader icon={ListChecks} titleId="timeline-title" title="Milestones" count={milestones.length} />
 
       <CardBody>
         <ol className="relative space-y-7">

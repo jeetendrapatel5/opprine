@@ -15,7 +15,7 @@ import { useRouter } from 'next/navigation'
 import { CalendarClock, CheckCircle2, ExternalLink, Receipt } from 'lucide-react'
 import { formatDate } from '@/components/dashboard/requests/request-format'
 import { formatCurrency } from '@/lib/portal-format'
-import { Badge, Button, Card, CardHeader } from './ui'
+import { Badge, Button, Card, CardBody, EmptyState } from './ui'
 
 function isOverdue(date) {
   if (!date) return false
@@ -27,7 +27,7 @@ function InvoiceRow({ invoice }) {
   const overdue = !isPaid && isOverdue(invoice.dueDate)
 
   return (
-    <li className="px-5 py-5 sm:px-6">
+    <li className="rounded-2xl border border-fp-portal-border bg-fp-portal-surface p-5 shadow-fp-card">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-mono text-sm font-semibold text-fp-portal-text-primary">{invoice.number}</p>
@@ -108,16 +108,60 @@ export default function InvoicePanel({ invoices = [] }) {
 
   // Clients don't need to see administrative cancellations.
   const visible = invoices.filter((inv) => inv.status !== 'CANCELLED')
-  if (visible.length === 0) return null
+
+  if (visible.length === 0) {
+    return (
+      <Card as="section" aria-label="Invoices">
+        <CardBody>
+          <EmptyState icon={Receipt} title="No invoices yet" description="Invoices will appear here when they are issued." />
+        </CardBody>
+      </Card>
+    )
+  }
+
+  // Totals per currency so mixed-currency projects never add up wrongly.
+  const totals = {}
+  let overdueCount = 0
+  for (const inv of visible) {
+    const cur = inv.currency ?? 'USD'
+    totals[cur] ??= { outstanding: 0, paid: 0 }
+    if (inv.status === 'PAID') totals[cur].paid += inv.amount
+    else {
+      totals[cur].outstanding += inv.amount
+      if (isOverdue(inv.dueDate)) overdueCount += 1
+    }
+  }
+  const sum = (key) =>
+    Object.entries(totals)
+      .filter(([, t]) => t[key] > 0)
+      .map(([cur, t]) => formatCurrency(t[key], cur))
+      .join(' + ') || formatCurrency(0, Object.keys(totals)[0])
+
+  const tiles = [
+    { label: 'Outstanding', value: sum('outstanding'), hint: overdueCount ? `${overdueCount} overdue` : 'Nothing overdue', warn: overdueCount > 0 },
+    { label: 'Paid', value: sum('paid'), hint: 'Payments received' },
+  ]
 
   return (
-    <Card as="section" id="invoices" aria-labelledby="invoices-title" className="scroll-mt-28 overflow-hidden md:scroll-mt-20">
-      <CardHeader icon={Receipt} titleId="invoices-title" title="Invoices" description="Secure payments via Stripe" />
-      <ul className="divide-y divide-fp-portal-border">
+    <section aria-label="Invoices" className="space-y-5">
+      <dl className="grid gap-4 sm:grid-cols-2">
+        {tiles.map((t) => (
+          <div key={t.label} className="rounded-2xl border border-fp-portal-border bg-fp-portal-surface p-5 shadow-fp-card">
+            <dt className="text-xs font-semibold uppercase tracking-widest text-fp-portal-text-muted">{t.label}</dt>
+            <dd className="mt-2 font-display text-3xl font-medium tabular-nums text-fp-portal-text-primary">{t.value}</dd>
+            <p className={`mt-1 text-xs ${t.warn ? 'font-medium text-fp-portal-danger' : 'text-fp-portal-text-secondary'}`}>
+              {t.hint}
+            </p>
+          </div>
+        ))}
+      </dl>
+
+      <ul className="grid gap-4 md:grid-cols-2">
         {visible.map((invoice) => (
           <InvoiceRow key={invoice.id} invoice={invoice} />
         ))}
       </ul>
-    </Card>
+      <p className="text-center text-xs text-fp-portal-text-muted">Secure payments via Stripe</p>
+    </section>
   )
 }

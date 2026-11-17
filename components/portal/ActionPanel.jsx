@@ -107,9 +107,8 @@ export default function ActionPanel({ items, token }) {
   return (
     <Card
       as="section"
-      id="review"
       aria-labelledby="review-title"
-      className="scroll-mt-28 border-fp-portal-accent/30 bg-fp-portal-accent/5 p-4 sm:p-6 md:scroll-mt-20"
+      className="border-fp-portal-accent/30 bg-fp-portal-accent/5 p-4 sm:p-6"
     >
       <div className="mb-4 flex items-center gap-3">
         <IconTile icon={AlertCircle} />
