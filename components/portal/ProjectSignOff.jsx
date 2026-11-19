@@ -1,42 +1,46 @@
 // components/portal/ProjectSignOff.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// The project completion and testimonial form.
-// Shown at the bottom of the right column — only relevant once the project
-// is nearly done. The client fills this in, which:
-//   1. Marks the project as completed in the DB
-//   2. Publishes the client testimonial to the freelancer's showcase
-//   3. Notifies the freelancer
+// Completion form: the client rates the work and leaves a testimonial. On
+// submit the project is marked completed, the testimonial is published to the
+// developer's showcase and the developer is notified.
 //
-// States:
-//   a) alreadySubmitted — client has already signed off. Show the review.
-//   b) successData — client just submitted. Show celebration + showcase link.
-//   c) default — show the form.
-//
-// Design:
-// - Amber stars (fp-portal-accent) — gold stars = quality signal
-// - "Approve & Complete Project" button: fp-portal-accent (amber) — this
-//   is the most positive action in the entire portal. It should feel like
-//   an achievement, not a form submission.
-// - The already-submitted state shows the review content — reinforces to the
-//   client that their feedback was heard and recorded.
-// ─────────────────────────────────────────────────────────────────────────────
+// States
+//   alreadySubmitted  signed off before: show the saved review
+//   successData       just submitted: confirmation and showcase link
+//   default           the form
 'use client'
 
-import { useState } from 'react'
-import { Star, Loader2, CheckCircle2, ExternalLink } from 'lucide-react'
+import { useId, useState } from 'react'
+import { CheckCircle2, ExternalLink, Star } from 'lucide-react'
 import axios from 'axios'
+import { Button, Card, Eyebrow, FieldLabel, controlClass, focusRing } from './ui'
 
-export default function ProjectSignOff({
-  projectId,
-  freelancerName,
-  existingRating,
-  existingTestimonial,
-}) {
-  const [rating,       setRating]       = useState(existingRating ?? 5)
-  const [hoverRating,  setHoverRating]  = useState(existingRating ?? 5)
-  const [testimonial,  setTestimonial]  = useState(existingTestimonial ?? '')
+const STAR_FILL = 'var(--color-fp-portal-accent)'
+const STAR_EMPTY = 'var(--color-fp-portal-border-control)'
+
+function Stars({ value }) {
+  return (
+    <div className="flex justify-center gap-1" role="img" aria-label={`Rated ${value} out of 5`}>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className="h-5 w-5"
+          fill={star <= value ? STAR_FILL : 'transparent'}
+          color={star <= value ? STAR_FILL : STAR_EMPTY}
+        />
+      ))}
+    </div>
+  )
+}
+
+export default function ProjectSignOff({ projectId, freelancerName, existingRating, existingTestimonial }) {
+  const ratingLabelId = useId()
+  const testimonialId = useId()
+
+  const [rating, setRating] = useState(existingRating ?? 5)
+  const [hoverRating, setHoverRating] = useState(existingRating ?? 5)
+  const [testimonial, setTestimonial] = useState(existingTestimonial ?? '')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [successData,  setSuccessData]  = useState(null)
+  const [successData, setSuccessData] = useState(null)
 
   const alreadySubmitted = !successData && (!!existingRating || !!existingTestimonial)
 
@@ -60,149 +64,104 @@ export default function ProjectSignOff({
     }
   }
 
-  // ── Already submitted state ──────────────────────────────────────────────
+  // ── Already signed off ────────────────────────────────────────────────────
   if (alreadySubmitted) {
     return (
-      <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl p-6 text-center">
-        <CheckCircle2 className="w-8 h-8 text-fp-portal-success mx-auto mb-3" />
-        <h3 className="font-display text-lg font-medium text-fp-portal-text-primary mb-1">
-          Project Signed Off
-        </h3>
-        <p className="text-fp-portal-text-secondary text-xs mb-4">
-          Thank you for your feedback!
-        </p>
-        <div className="flex justify-center gap-1 mb-3">
-          {[1, 2, 3, 4, 5].map(star => (
-            <Star
-              key={star}
-              className="w-5 h-5"
-              fill={star <= (existingRating ?? 0) ? 'var(--color-fp-portal-accent)' : 'transparent'}
-              color={star <= (existingRating ?? 0) ? 'var(--color-fp-portal-accent)' : 'var(--color-fp-portal-border)'}
-            />
-          ))}
-        </div>
+      <Card as="section" aria-labelledby="signoff-title" className="p-6 text-center">
+        <CheckCircle2 className="mx-auto mb-3 h-8 w-8 text-fp-portal-success" aria-hidden="true" />
+        <h2 id="signoff-title" className="font-display text-xl font-medium text-fp-portal-text-primary">
+          Project signed off
+        </h2>
+        <p className="mb-4 mt-1 text-sm text-fp-portal-text-secondary">Thank you for your feedback!</p>
+        <Stars value={existingRating ?? 0} />
         {existingTestimonial && (
-          <p className="
-            font-display italic text-sm text-fp-portal-text-secondary leading-relaxed
-            bg-fp-portal-raised border border-fp-portal-border rounded-lg px-4 py-3
-          ">
+          <p className="mt-4 rounded-xl border border-fp-portal-border bg-fp-portal-bg px-4 py-3 font-display text-sm italic leading-relaxed text-fp-portal-text-secondary">
             &quot;{existingTestimonial}&quot;
           </p>
         )}
-      </div>
+      </Card>
     )
   }
 
-  // ── Just submitted success state ─────────────────────────────────────────
+  // ── Just submitted ────────────────────────────────────────────────────────
   if (successData) {
     return (
-      <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl p-6 text-center">
-        <CheckCircle2 className="w-8 h-8 text-fp-portal-success mx-auto mb-3" />
-        <h3 className="font-display text-xl font-medium text-fp-portal-text-primary mb-2">
-          Project Complete!
-        </h3>
-        <p className="text-fp-portal-text-secondary text-sm mb-5">
+      <Card as="section" aria-labelledby="signoff-title" role="status" className="p-6 text-center">
+        <CheckCircle2 className="mx-auto mb-3 h-8 w-8 text-fp-portal-success" aria-hidden="true" />
+        <h2 id="signoff-title" className="font-display text-xl font-medium text-fp-portal-text-primary">
+          Project complete!
+        </h2>
+        <p className="mb-5 mt-2 text-sm text-fp-portal-text-secondary">
           Thank you for your feedback. {freelancerName} has been notified.
         </p>
         {successData.publicSlug && (
-          <a
-            href={`/showcase/${successData.publicSlug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="
-              inline-flex items-center gap-2
-              bg-fp-portal-raised border border-fp-portal-border
-              text-fp-portal-text-primary text-sm font-medium
-              px-5 py-2.5 rounded-xl
-              hover:border-fp-portal-accent/30 hover:text-fp-portal-accent
-              transition-colors duration-150
-            "
-          >
-            View Public Showcase
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
+          <Button href={`/showcase/${successData.publicSlug}`} icon={ExternalLink} target="_blank" rel="noopener noreferrer">
+            View public showcase
+          </Button>
         )}
-      </div>
+      </Card>
     )
   }
 
-  // ── Sign-off form ─────────────────────────────────────────────────────────
+  // ── Form ──────────────────────────────────────────────────────────────────
   return (
-    <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl p-6">
-
-      <h2 className="font-display text-xl font-medium text-fp-portal-text-primary mb-1">
-        Project Sign-Off
+    <Card as="section" aria-labelledby="signoff-title" className="p-5 sm:p-6">
+      <h2 id="signoff-title" className="font-display text-xl font-medium text-fp-portal-text-primary">
+        Project sign-off
       </h2>
-      <p className="text-fp-portal-text-secondary text-sm mb-6 leading-relaxed">
+      <p className="mb-6 mt-1 text-sm leading-relaxed text-fp-portal-text-secondary">
         Approve the final deliverables and leave a quick review for {freelancerName}.
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-
-        {/* Star rating */}
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-xs font-semibold text-fp-portal-text-secondary mb-3">
-            How was your experience?
-          </label>
-          <div className="flex gap-1.5">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                type="button"
-                onMouseEnter={() => setHoverRating(star)}
-                onMouseLeave={() => setHoverRating(rating)}
-                onClick={() => setRating(star)}
-                className="focus:outline-none transition-transform hover:scale-110 duration-100"
-              >
-                <Star
-                  className="w-7 h-7"
-                  fill={star <= (hoverRating || rating) ? 'var(--color-fp-portal-accent)' : 'transparent'}
-                  color={star <= (hoverRating || rating) ? 'var(--color-fp-portal-accent)' : 'var(--color-fp-portal-border)'}
-                />
-              </button>
-            ))}
+          <Eyebrow id={ratingLabelId} className="mb-2">How was your experience?</Eyebrow>
+          <div role="radiogroup" aria-labelledby={ratingLabelId} className="-ml-1 flex gap-0.5">
+            {[1, 2, 3, 4, 5].map((star) => {
+              const filled = star <= (hoverRating || rating)
+              return (
+                <button
+                  key={star}
+                  type="button"
+                  role="radio"
+                  aria-checked={rating === star}
+                  aria-label={`${star} ${star === 1 ? 'star' : 'stars'}`}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(rating)}
+                  onClick={() => {
+                    setRating(star)
+                    setHoverRating(star)
+                  }}
+                  className={`rounded-lg p-1 transition-transform duration-100 hover:scale-110 ${focusRing}`}
+                >
+                  <Star
+                    className="h-8 w-8"
+                    fill={filled ? STAR_FILL : 'transparent'}
+                    color={filled ? STAR_FILL : STAR_EMPTY}
+                  />
+                </button>
+              )
+            })}
           </div>
         </div>
 
-        {/* Testimonial */}
         <div>
-          <label className="block text-xs font-semibold text-fp-portal-text-secondary mb-2">
-            A brief testimonial
-          </label>
+          <FieldLabel htmlFor={testimonialId}>A brief testimonial</FieldLabel>
           <textarea
+            id={testimonialId}
             value={testimonial}
             onChange={(e) => setTestimonial(e.target.value)}
             placeholder={`"Working with ${freelancerName} was great because..."`}
             rows={3}
-            className="
-              w-full bg-fp-portal-raised border border-fp-portal-border
-              text-fp-portal-text-primary text-sm rounded-xl px-4 py-3
-              placeholder:text-fp-portal-text-tertiary resize-none
-              focus:outline-none focus:ring-2 focus:ring-fp-portal-accent/20
-              focus:border-fp-portal-accent/40 transition-colors duration-150
-            "
+            className={controlClass}
             required
           />
         </div>
 
-        {/* Submit — amber primary button for this positive achievement */}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="
-            w-full flex items-center justify-center gap-2
-            bg-fp-portal-accent hover:bg-fp-portal-accent-hover
-            text-white text-sm font-bold py-3 rounded-xl
-            transition-colors duration-150 disabled:opacity-50
-          "
-        >
-          {isSubmitting
-            ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</>
-            : 'Approve & Complete Project'
-          }
-        </button>
-
+        <Button type="submit" variant="primary" className="w-full" loading={isSubmitting}>
+          {isSubmitting ? 'Submitting…' : 'Approve & complete project'}
+        </Button>
       </form>
-    </div>
+    </Card>
   )
 }
