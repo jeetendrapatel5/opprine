@@ -32,7 +32,7 @@ function buildAttention({ milestones, requests, invoices }) {
     items.push({
       id: 'review',
       view: 'timeline',
-      icon: 'review',
+      action: 'Review',
       label: `${plural(inReview.length, 'milestone')} ready for your sign-off`,
       detail: inReview.map((m) => m.title).join(', '),
     })
@@ -43,7 +43,7 @@ function buildAttention({ milestones, requests, invoices }) {
     items.push({
       id: 'requests',
       view: 'requests',
-      icon: 'request',
+      action: 'Answer',
       label: `${plural(open.length, 'request')} need${open.length === 1 ? 's' : ''} your input`,
       detail: open[0].title,
     })
@@ -55,7 +55,7 @@ function buildAttention({ milestones, requests, invoices }) {
     items.push({
       id: 'invoices',
       view: 'invoices',
-      icon: 'invoice',
+      action: 'Pay',
       label: `${plural(unpaid.length, 'unpaid invoice')}`,
       detail: overdue ? 'At least one is overdue' : 'Pay securely with Stripe',
       tone: overdue ? 'danger' : 'accent',
@@ -102,7 +102,7 @@ export default function PortalView({
       label: 'Overview',
       badge: actionItems.length,
       title: 'Overview',
-      description: `Where ${project.name} stands today.`,
+      description: 'Status, next steps and recent activity.',
     },
     {
       id: 'timeline',
@@ -130,19 +130,26 @@ export default function PortalView({
 
   const views = {
     overview: (
-      <div className="space-y-6">
-        <ProgressBanner progress={progress} projectName={project.name} clientName={client.name} milestones={milestones} />
-        {progress.projectStatus === 'ON_TRACK' && progress.currentMilestone && (
-          <CurrentlyWorkingOn milestone={progress.currentMilestone} />
-        )}
+      <div className="space-y-5">
+        <ProgressBanner
+          progress={progress}
+          projectName={project.name}
+          clientName={client.name}
+          milestones={milestones}
+          now={
+            progress.projectStatus === 'ON_TRACK' && progress.currentMilestone ? (
+              <CurrentlyWorkingOn milestone={progress.currentMilestone} bare />
+            ) : null
+          }
+          team={teamMembers?.length ? <ProjectTeam members={teamMembers} bare /> : null}
+        />
         <ActionPanel items={actionItems} token={token} />
-        <div className="grid gap-6 lg:grid-cols-5">
-          <div className="space-y-6 lg:col-span-3">
+        <div className="grid gap-5 lg:grid-cols-12">
+          <div className="min-w-0 space-y-5 lg:col-span-7">
             <AttentionCard items={attention} />
             <UpdateFeed updates={project.updates} />
           </div>
-          <div className="space-y-6 lg:col-span-2">
-            <ProjectTeam members={teamMembers} />
+          <div className="min-w-0 lg:col-span-5">
             <ProjectSignOff
               projectId={project.id}
               freelancerName={freelancerName}

@@ -23,12 +23,12 @@ export function Card({ as: Tag = 'div', className = '', children, ...props }) {
 
 export function CardHeader({ icon: Icon, title, titleId, count, badge, description, aside }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-fp-portal-border px-5 py-4 sm:px-6">
-      <div className="flex min-w-0 items-center gap-3">
-        {Icon && <IconTile icon={Icon} />}
+    <div className="flex items-center justify-between gap-3 border-b border-fp-portal-border px-5 py-3.5 sm:px-6">
+      <div className="flex min-w-0 items-center gap-2.5">
+        {Icon && <Icon className="h-4 w-4 shrink-0 text-fp-portal-text-muted" aria-hidden="true" />}
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <h2 id={titleId} className="text-base font-semibold leading-snug text-fp-portal-text-primary">
+            <h2 id={titleId} className="text-sm font-semibold leading-snug text-fp-portal-text-primary">
               {title}
             </h2>
             {badge ?? (count != null && <Badge tone="neutral">{count}</Badge>)}
@@ -37,6 +37,16 @@ export function CardHeader({ icon: Icon, title, titleId, count, badge, descripti
         </div>
       </div>
       {aside}
+    </div>
+  )
+}
+
+// Small label-over-value pair for fact rows (overview hero).
+export function Fact({ label, className = '', children }) {
+  return (
+    <div className={cn('min-w-0', className)}>
+      <p className="text-[11px] font-medium uppercase tracking-widest text-fp-portal-text-muted">{label}</p>
+      <div className="mt-1.5 text-sm font-semibold text-fp-portal-text-primary">{children}</div>
     </div>
   )
 }

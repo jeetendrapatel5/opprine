@@ -10,7 +10,7 @@ import axios from 'axios'
 import { useRouter } from 'next/navigation'
 import { formatSize } from '@/components/dashboard/requests/request-format'
 import { timeAgo } from '@/lib/portal-format'
-import { Badge, Button, Card, Eyebrow, FieldLabel, IconTile, controlClass, focusRing } from './ui'
+import { Button, Card, CardHeader, Eyebrow, FieldLabel, controlClass, focusRing } from './ui'
 
 // The milestone's work-log entries, so the client can see what was done.
 function WorkContext({ updates }) {
@@ -108,17 +108,12 @@ export default function ActionPanel({ items, token }) {
     <Card
       as="section"
       aria-labelledby="review-title"
-      className="border-fp-portal-accent/30 bg-fp-portal-accent/5 p-4 sm:p-6"
+      // The amber edge marks this as the one thing that needs a decision.
+      className="overflow-hidden border-l-[3px] border-l-fp-portal-accent"
     >
-      <div className="mb-4 flex items-center gap-3">
-        <IconTile icon={AlertCircle} />
-        <h2 id="review-title" className="text-base font-semibold text-fp-portal-text-primary">
-          Awaiting your review
-        </h2>
-        <Badge tone="accent">{items.length}</Badge>
-      </div>
+      <CardHeader icon={AlertCircle} titleId="review-title" title="Awaiting your review" count={items.length} />
 
-      <ul className="space-y-3">
+      <ul className="divide-y divide-fp-portal-border">
         {items.map((item) => {
           const type = getType(item)
           const isRejecting = rejectingId === item.id
@@ -127,8 +122,8 @@ export default function ActionPanel({ items, token }) {
           const reasonId = `reject-reason-${item.id}`
 
           return (
-            <li key={item.id}>
-              <Card className="p-4 sm:p-5">
+            <li key={item.id} className="p-5 sm:px-6">
+              <div>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1">
                     <h3 className="text-base font-semibold leading-snug text-fp-portal-text-primary">
@@ -184,7 +179,7 @@ export default function ActionPanel({ items, token }) {
                     </Button>
                   </div>
                 )}
-              </Card>
+              </div>
             </li>
           )
         })}

@@ -1,106 +1,124 @@
 // components/portal/ProgressBanner.jsx
-// Overview hero: a progress ring with the project's status and the three facts
-// a client checks first. Server Component.
+// Overview hero. The focal point of the portal: how far along the project is,
+// shown as one rail segment per milestone so the client sees *which* parts are
+// done, not just a percentage. Facts sit beneath on hairlines, not in boxes.
+// `now` and `team` are optional slots so the page can reuse existing components.
+// Server Component.
 
 import { formatDate } from '@/components/dashboard/requests/request-format'
 import { PROJECT_STATUS, getLastUpdateDate, getNextDueMilestone, timeAgo } from '@/lib/portal-format'
-import { Badge, Card } from './ui'
+import { cn } from '@/lib/utils'
+import { Badge, Card, Fact } from './ui'
 
-const RADIUS = 52
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS
+// Segment look per milestone status. In progress is half filled, awaiting review
+// is full amber, so the client can tell "being built" from "waiting on me".
+const SEGMENT = {
+  COMPLETED:   { fill: 'bg-fp-portal-text-primary', text: 'text-fp-portal-text-secondary', label: 'Complete' },
+  IN_PROGRESS: {
+    fill: 'bg-[linear-gradient(90deg,var(--color-fp-portal-accent)_50%,var(--color-fp-portal-raised)_50%)]',
+    text: 'font-semibold text-fp-portal-text-primary',
+    label: 'In progress',
+  },
+  IN_REVIEW:   { fill: 'bg-fp-portal-accent', text: 'font-semibold text-fp-portal-text-primary', label: 'Awaiting your review' },
+  PENDING:     { fill: 'bg-fp-portal-raised', text: 'text-fp-portal-text-muted', label: 'Upcoming' },
+}
 
-function Ring({ percentage }) {
-  const done = percentage === 100
+function Rail({ milestones, allDone }) {
   return (
-    <div
-      role="progressbar"
-      aria-label="Overall project progress"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={percentage}
-      className="relative h-36 w-36 shrink-0 sm:h-40 sm:w-40"
-    >
-      <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden="true">
-        <circle cx="60" cy="60" r={RADIUS} fill="none" strokeWidth="10" className="stroke-fp-portal-raised" />
-        <circle
-          cx="60"
-          cy="60"
-          r={RADIUS}
-          fill="none"
-          strokeWidth="10"
-          strokeLinecap="round"
-          strokeDasharray={CIRCUMFERENCE}
-          strokeDashoffset={CIRCUMFERENCE * (1 - percentage / 100)}
-          className={`motion-safe:transition-[stroke-dashoffset] motion-safe:duration-700 ${
-            done ? 'stroke-fp-portal-success' : 'stroke-fp-portal-accent'
-          }`}
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display text-4xl font-medium tabular-nums text-fp-portal-text-primary">
-          {percentage}
-          <span className="text-xl text-fp-portal-text-muted">%</span>
-        </span>
-        <span className="text-xs font-medium text-fp-portal-text-muted">complete</span>
-      </div>
-    </div>
+    <ol aria-label="Milestones" className="mt-5 grid grid-flow-col auto-cols-fr gap-1.5">
+      {milestones.map((m, i) => {
+        const seg = SEGMENT[m.status] ?? SEGMENT.PENDING
+        return (
+          <li key={m.id} className="min-w-0">
+            <div
+              aria-hidden="true"
+              style={{ '--i': i }}
+              className={cn(
+                'fp-rail-seg h-2 rounded-full',
+                allDone ? 'bg-fp-portal-success' : seg.fill,
+                m.status === 'PENDING' && 'shadow-[inset_0_0_0_1px_var(--color-fp-portal-border)]',
+              )}
+            />
+            <p className={cn('mt-2 hidden truncate text-xs sm:block', seg.text)}>{m.title}</p>
+            <span className="sr-only">
+              {m.title}: {seg.label}
+            </span>
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 
-function Stat({ label, value, hint }) {
-  return (
-    <div className="min-w-0 rounded-xl bg-fp-portal-bg px-4 py-3">
-      <dt className="text-xs font-medium text-fp-portal-text-muted">{label}</dt>
-      <dd className="mt-1 truncate text-base font-semibold tabular-nums text-fp-portal-text-primary">{value}</dd>
-      {hint && <p className="mt-0.5 truncate text-xs text-fp-portal-text-secondary">{hint}</p>}
-    </div>
-  )
-}
-
-export default function ProgressBanner({ progress, projectName, clientName, milestones }) {
-  const { completed, total, percentage, projectStatus } = progress
+export default function ProgressBanner({ progress, projectName, clientName, milestones, now, team }) {
+  const { completed, total, percentage, projectStatus, currentMilestone } = progress
   const status = PROJECT_STATUS[projectStatus] ?? PROJECT_STATUS.ON_TRACK
 
   const nextDue = getNextDueMilestone(milestones)
   const lastUpdate = getLastUpdateDate(milestones)
-
-  const stats = [
-    { label: 'Milestones done', value: `${completed} of ${total}` },
-    nextDue && { label: 'Next due', value: formatDate(nextDue.dueDate), hint: nextDue.title },
-    lastUpdate && { label: 'Last update', value: timeAgo(lastUpdate) },
-  ].filter(Boolean)
+  // Skip the milestone name under "Next due" when "Now" already shows it.
+  const showNextHint = nextDue && !(now && currentMilestone && nextDue.id === currentMilestone.id)
+  const hasFacts = now || nextDue || lastUpdate || team
 
   return (
-    <Card as="section" aria-labelledby="project-title" className="p-5 sm:p-8">
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
-        {total > 0 && <Ring percentage={percentage} />}
-
-        <div className="min-w-0 flex-1 text-center sm:text-left">
-          <Badge tone={status.tone}>
-            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
-            {status.label}
-          </Badge>
-          <h2
-            id="project-title"
-            className="mt-3 font-display text-2xl font-medium leading-tight tracking-tight text-fp-portal-text-primary sm:text-3xl"
-          >
-            {projectName}
-          </h2>
-          <p className="mt-1 text-sm text-fp-portal-text-secondary">Prepared for {clientName}</p>
-
-          {total === 0 ? (
-            <p className="mt-4 text-sm text-fp-portal-text-secondary">
-              The project plan is being set up. Milestones will appear here soon.
-            </p>
-          ) : (
-            <dl className="mt-5 grid grid-cols-2 gap-3 text-left sm:grid-cols-3">
-              {stats.map((stat) => (
-                <Stat key={stat.label} {...stat} />
-              ))}
-            </dl>
-          )}
-        </div>
+    <Card as="section" aria-labelledby="project-title" className="p-5 sm:p-6">
+      <div className="flex items-center justify-between gap-3">
+        <Badge tone={status.tone}>
+          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+          {status.label}
+        </Badge>
+        <p className="hidden truncate text-xs text-fp-portal-text-muted sm:block">Prepared for {clientName}</p>
       </div>
+
+      <h2 id="project-title" className="mt-3 text-lg font-semibold leading-snug tracking-tight text-fp-portal-text-primary">
+        {projectName}
+      </h2>
+
+      {total === 0 ? (
+        <p className="mt-4 text-sm text-fp-portal-text-secondary">
+          The project plan is being set up. Milestones will appear here soon.
+        </p>
+      ) : (
+        <>
+          <div className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <div
+              role="progressbar"
+              aria-label="Overall project progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percentage}
+              className="font-display text-6xl font-medium leading-none tracking-tighter tabular-nums text-fp-portal-text-primary"
+            >
+              {percentage}
+              <span className="ml-0.5 text-3xl tracking-normal text-fp-portal-text-muted">%</span>
+            </div>
+            <p className="text-sm text-fp-portal-text-secondary">
+              <span className="font-semibold tabular-nums text-fp-portal-text-primary">{completed}</span> of{' '}
+              <span className="tabular-nums">{total}</span> milestones complete
+            </p>
+          </div>
+
+          <Rail milestones={milestones} allDone={percentage === 100} />
+        </>
+      )}
+
+      {hasFacts && (
+        <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 border-t border-fp-portal-border pt-5 sm:grid-flow-col sm:auto-cols-fr sm:[&>*+*]:border-l sm:[&>*+*]:border-fp-portal-border sm:[&>*+*]:pl-6">
+          {now}
+          {nextDue && (
+            <Fact label="Next due">
+              <span className="tabular-nums">{formatDate(nextDue.dueDate)}</span>
+              {showNextHint && (
+                <span className="mt-0.5 block truncate text-xs font-normal text-fp-portal-text-secondary">
+                  {nextDue.title}
+                </span>
+              )}
+            </Fact>
+          )}
+          {lastUpdate && <Fact label="Last update">{timeAgo(lastUpdate)}</Fact>}
+          {team && <Fact label="Team">{team}</Fact>}
+        </div>
+      )}
     </Card>
   )
 }

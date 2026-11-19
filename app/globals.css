@@ -238,3 +238,15 @@
   --input:                #2A3244; /* fp-border */
   --ring:                 #7B93FF; /* fp-accent */
 }
+/* Milestone rail on the portal overview: segments draw in left to right. */
+@keyframes fp-rail-in {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fp-rail-seg {
+    transform-origin: left center;
+    animation: fp-rail-in 480ms cubic-bezier(0.23, 1, 0.32, 1) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+}

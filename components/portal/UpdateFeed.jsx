@@ -23,21 +23,26 @@ function Timestamp({ date }) {
   )
 }
 
+// Entry rail: a hairline runs down the list and each marker sits on it.
+const ENTRY = 'relative pb-5 pl-7 last:pb-0'
+const MARKER = 'absolute -left-2.5 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-fp-portal-surface'
+
 // Auto-generated from a deploy (AI-summarised commits).
 function DeployEntry({ update }) {
   return (
-    <li className="flex gap-3 py-4 first:pt-0 last:pb-0">
-      <span
-        aria-hidden="true"
-        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-fp-portal-raised text-fp-portal-text-secondary"
-      >
-        <Rocket className="h-3.5 w-3.5" />
+    <li className={ENTRY}>
+      <span aria-hidden="true" className={MARKER}>
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-fp-portal-raised text-fp-portal-text-secondary">
+          <Rocket className="h-3 w-3" />
+        </span>
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="flex flex-wrap items-baseline gap-x-2">
         <p className="text-xs font-semibold text-fp-portal-text-secondary">Deployed</p>
-        <p className="mt-1 text-sm leading-relaxed text-fp-portal-text-primary">{update.text}</p>
+        <Timestamp date={update.createdAt} />
+      </div>
+      <p className="mt-1 text-sm leading-relaxed text-fp-portal-text-primary">{update.text}</p>
+      {(update.commitSha || update.previewUrl) && (
         <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <Timestamp date={update.createdAt} />
           {update.commitSha && (
             <code className="rounded bg-fp-portal-raised px-1.5 py-0.5 font-mono text-xs text-fp-portal-text-secondary">
               {update.commitSha.slice(0, 7)}
@@ -54,7 +59,7 @@ function DeployEntry({ update }) {
             </a>
           )}
         </div>
-      </div>
+      )}
     </li>
   )
 }
@@ -63,17 +68,15 @@ function StatusEntry({ update }) {
   const status = STATUS[update.status] ?? STATUS.IN_PROGRESS
 
   return (
-    <li className="flex gap-3 py-4 first:pt-0 last:pb-0">
-      <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center">
+    <li className={ENTRY}>
+      <span aria-hidden="true" className={MARKER}>
         <span className={`h-2 w-2 rounded-full ${status.dot}`} />
       </span>
-      <div className="min-w-0 flex-1">
+      <div className="flex flex-wrap items-baseline gap-x-2">
         <p className={`text-xs font-semibold ${status.text}`}>{status.label}</p>
-        <p className="mt-1 text-sm leading-relaxed text-fp-portal-text-primary">{update.text}</p>
-        <div className="mt-1.5">
-          <Timestamp date={update.createdAt} />
-        </div>
+        <Timestamp date={update.createdAt} />
       </div>
+      <p className="mt-1 text-sm leading-relaxed text-fp-portal-text-primary">{update.text}</p>
     </li>
   )
 }
@@ -92,7 +95,7 @@ export default function UpdateFeed({ updates }) {
       <CardBody>
         {hasUpdates ? (
           <>
-            <ul className="divide-y divide-fp-portal-border">
+            <ul className="ml-2.5 border-l border-fp-portal-border">
               {visible.map((update) =>
                 update.type === 'AUTO_DEPLOY' ? (
                   <DeployEntry key={update.id} update={update} />

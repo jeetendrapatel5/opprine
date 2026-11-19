@@ -3,10 +3,24 @@
 
 import { CalendarClock } from 'lucide-react'
 import { formatDate } from '@/components/dashboard/requests/request-format'
-import { Badge, Card, Eyebrow } from './ui'
+import { Badge, Card, Eyebrow, Fact } from './ui'
 
-export default function CurrentlyWorkingOn({ milestone }) {
+export default function CurrentlyWorkingOn({ milestone, bare = false }) {
   if (!milestone) return null
+
+  if (bare) {
+    return (
+      <Fact label="Now">
+        <span className="flex items-center gap-2">
+          <span aria-hidden="true" className="relative flex h-2 w-2 shrink-0">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-fp-portal-accent opacity-40 motion-safe:animate-ping" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-fp-portal-accent" />
+          </span>
+          <span className="truncate">{milestone.title}</span>
+        </span>
+      </Fact>
+    )
+  }
 
   return (
     <Card className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4 sm:p-5">

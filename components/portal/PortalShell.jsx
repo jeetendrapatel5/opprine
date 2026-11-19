@@ -235,16 +235,16 @@ export default function PortalShell({ navItems, views, identity, project }) {
             </div>
           </header>
 
-          <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-12 lg:pt-10">
-            <div className="mb-6 lg:mb-8">
+          <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-12 lg:pt-8">
+            <div className="mb-5 lg:mb-6">
               <h1
                 ref={headingRef}
                 tabIndex={-1}
-                className="font-display text-3xl font-medium tracking-tight text-fp-portal-text-primary outline-none sm:text-4xl"
+                className="font-display text-2xl font-medium tracking-tight text-fp-portal-text-primary outline-none sm:text-[28px]"
               >
                 {current.title}
               </h1>
-              <p className="mt-1.5 text-sm text-fp-portal-text-secondary sm:text-base">{current.description}</p>
+              <p className="mt-1 text-sm text-fp-portal-text-secondary">{current.description}</p>
             </div>
 
             {navItems.map((item) => (
