@@ -138,7 +138,7 @@ const BUTTON_BASE =
   'transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-10'
 
 const BUTTON_VARIANTS = {
-  primary:   'bg-fp-portal-accent-strong text-white hover:bg-fp-portal-accent-strong/90',
+  primary:   'bg-fp-portal-accent text-white hover:bg-fp-portal-accent-hover',
   success:   'bg-fp-portal-success text-white hover:bg-fp-portal-success/90',
   danger:    'bg-fp-portal-danger text-white hover:bg-fp-portal-danger/90',
   secondary: 'border border-fp-portal-border bg-fp-portal-surface text-fp-portal-text-primary hover:bg-fp-portal-raised',

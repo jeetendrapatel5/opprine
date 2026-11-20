@@ -103,6 +103,55 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   PORTAL THEME: cool slate and royal blue
+   The portal opts in by rendering an element with .fp-portal-theme. The scope is
+   :root:has(...) rather than a wrapper class so UI that React portals into <body>
+   (file preview, team popovers) inherits it too. Dashboard and showcase keep the
+   warm values above because they never render that element.
+
+   Roles, not colours:
+     bg / surface / raised  : page, cards and inputs, sunken wells and chips
+     border / border-control: hairlines, and form control edges (3:1)
+     text-*                 : primary > secondary > muted (small text, >= 4.5:1)
+     accent                 : brand blue, primary actions, current state, focus
+     accent-hover / -strong : pressed fill, and blue text on tints (>= 5.8:1)
+     ink-*                  : the dark sidebar and what sits on it
+───────────────────────────────────────────────────────────────────────────── */
+:root:has(.fp-portal-theme) {
+  --color-fp-portal-bg:      #F8FAFC;
+  --color-fp-portal-surface: #FFFFFF;
+  --color-fp-portal-raised:  #F1F5F9;
+  --color-fp-portal-border:  #E2E8F0;
+
+  --color-fp-portal-text-primary:   #0F172A;
+  --color-fp-portal-text-secondary: #475569;
+  --color-fp-portal-text-tertiary:  #8190A5;
+  --color-fp-portal-text-muted:     #5B6B82;
+
+  --color-fp-portal-accent:        #2563EB;
+  --color-fp-portal-accent-hover:  #1D4ED8;
+  --color-fp-portal-accent-strong: #1D4ED8;
+  --color-fp-portal-success:       #15803D;
+  --color-fp-portal-danger:        #B91C1C;
+  --color-fp-portal-border-control: #7C8BA1;
+
+  --color-fp-portal-ink:         #0F172A;
+  --color-fp-portal-ink-text:    #F1F5F9;
+  --color-fp-portal-ink-muted:   #94A3B8;
+  --color-fp-portal-ink-accent:  #60A5FA;
+  --color-fp-portal-ink-success: #4ADE80;
+
+  /* Cool, low-opacity shadows: depth without a warm cast. */
+  --shadow-fp-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  --shadow-fp-pop:  0 12px 28px -6px rgb(15 23 42 / 0.18), 0 2px 6px 0 rgb(15 23 42 / 0.06);
+}
+
+/* Overscroll and short pages show the portal background, not the app default. */
+:root:has(.fp-portal-theme) body {
+  background-color: var(--color-fp-portal-bg);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    SHADCN SYSTEM TOKENS (kept intact — shadcn primitives reference these)
    We override some to match the dark theme used in the dashboard.
 ───────────────────────────────────────────────────────────────────────────── */

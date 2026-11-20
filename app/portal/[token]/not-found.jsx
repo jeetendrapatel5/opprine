@@ -8,7 +8,7 @@ import { Card } from '@/components/portal/ui'
 
 export default function PortalNotFound() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-fp-portal-bg p-6 font-body">
+    <main className="fp-portal-theme flex min-h-screen items-center justify-center bg-fp-portal-bg p-6 font-body">
       <Card className="w-full max-w-md p-8 text-center sm:p-10">
         <span
           aria-hidden="true"
