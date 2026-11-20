@@ -87,7 +87,7 @@ export default function ProgressBanner({ progress, projectName, clientName, mile
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={percentage}
-              className="font-display text-6xl font-medium leading-none tracking-tighter tabular-nums text-fp-portal-text-primary"
+              className="font-display text-6xl font-semibold leading-none tracking-tighter tabular-nums text-fp-portal-text-primary"
             >
               {percentage}
               <span className="ml-0.5 text-3xl tracking-normal text-fp-portal-text-muted">%</span>

@@ -38,7 +38,7 @@ function Avatar({ name, className = '' }) {
     <span
       aria-hidden="true"
       className={cn(
-        'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fp-portal-accent-strong font-display text-lg font-semibold text-white',
+        'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fp-portal-accent font-display text-lg font-semibold text-white',
         className,
       )}
     >
@@ -111,7 +111,7 @@ export default function PortalShell({ navItems, views, identity, project }) {
 
   return (
     <PortalViewContext.Provider value={{ view, setView }}>
-      <div className="min-h-dvh bg-fp-portal-bg font-body text-fp-portal-text-primary lg:flex">
+      <div className="fp-portal-theme min-h-dvh bg-fp-portal-bg font-body text-fp-portal-text-primary lg:flex">
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-fp-portal-surface focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:shadow-fp-pop"
@@ -129,7 +129,7 @@ export default function PortalShell({ navItems, views, identity, project }) {
             </div>
           </div>
 
-          <div className="mx-4 mt-7 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10">
+          <div className="mx-4 mt-7 rounded-lg bg-white/3 p-4 ring-1 ring-white/5">
             <p className="text-xs font-semibold uppercase tracking-widest text-fp-portal-ink-muted">Project</p>
             <p className="mt-1.5 font-display text-lg font-medium leading-snug">{project.name}</p>
             <p className="mt-3 flex items-center gap-2 text-xs font-medium text-fp-portal-ink-muted">
@@ -175,7 +175,7 @@ export default function PortalShell({ navItems, views, identity, project }) {
                         'relative flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors duration-150',
                         darkFocus,
                         active
-                          ? 'bg-white/10 text-white'
+                          ? 'bg-fp-portal-accent/20 text-white'
                           : 'text-fp-portal-ink-muted hover:bg-white/5 hover:text-fp-portal-ink-text',
                       )}
                     >
@@ -185,7 +185,10 @@ export default function PortalShell({ navItems, views, identity, project }) {
                           className="absolute inset-y-2.5 left-0 w-1 rounded-r-full bg-fp-portal-ink-accent"
                         />
                       )}
-                      <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+                      <Icon
+                        className={cn('h-[18px] w-[18px] shrink-0', active && 'text-fp-portal-ink-accent')}
+                        aria-hidden="true"
+                      />
                       <span className="flex-1">{item.label}</span>
                       <CountBadge count={item.badge} className="bg-fp-portal-ink-accent text-fp-portal-ink" />
                     </a>
@@ -289,7 +292,7 @@ export default function PortalShell({ navItems, views, identity, project }) {
                       <Icon className="h-5 w-5" aria-hidden="true" />
                       <CountBadge
                         count={item.badge}
-                        className="absolute -right-0.5 -top-1 bg-fp-portal-accent-strong text-white"
+                        className="absolute -right-0.5 -top-1 bg-fp-portal-accent text-white"
                       />
                     </span>
                     {item.label}

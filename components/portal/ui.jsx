@@ -13,7 +13,7 @@ export const focusRing =
 export function Card({ as: Tag = 'div', className = '', children, ...props }) {
   return (
     <Tag
-      className={cn('rounded-lg border border-fp-portal-border/35 bg-fp-portal-surface shadow-fp-card', className)}
+      className={cn('rounded-lg border border-fp-portal-border/50 bg-fp-portal-surface shadow-fp-card', className)}
       {...props}
     >
       {children}
@@ -138,7 +138,7 @@ const BUTTON_BASE =
   'transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-10'
 
 const BUTTON_VARIANTS = {
-  primary:   'bg-fp-portal-accent-strong text-white hover:bg-fp-portal-accent-strong/90',
+  primary:   'bg-fp-portal-accent text-white hover:bg-fp-portal-accent-hover',
   success:   'bg-fp-portal-success text-white hover:bg-fp-portal-success/90',
   danger:    'bg-fp-portal-danger text-white hover:bg-fp-portal-danger/90',
   secondary: 'border border-fp-portal-border bg-fp-portal-surface text-fp-portal-text-primary hover:bg-fp-portal-raised',
