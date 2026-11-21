@@ -126,7 +126,7 @@ function RequestCard({ request, token }) {
   const canSend = text.trim().length > 0 && !submitting
 
   return (
-    <li className="rounded-xl border border-fp-portal-border bg-fp-portal-bg p-4 sm:p-5">
+    <li className="rounded-md border border-fp-portal-border bg-fp-portal-bg p-4 sm:p-5">
       <h3 className="break-words text-base font-semibold leading-snug text-fp-portal-text-primary">{request.title}</h3>
 
       {request.instructions && (
@@ -228,10 +228,10 @@ function RequestCard({ request, token }) {
           {/* APPROVAL: the two choices */}
           {isApproval && !declining && (
             <div className="flex flex-col-reverse gap-2 sm:flex-row">
-              <Button icon={XCircle} disabled={submitting} onClick={() => setDeclining(true)}>
+              <Button className='rounded-lg' icon={XCircle} disabled={submitting} onClick={() => setDeclining(true)}>
                 Request changes
               </Button>
-              <Button variant="success" icon={CheckCircle2} loading={submitting} onClick={() => send({ approved: true })}>
+              <Button className='rounded-lg' variant="success" icon={CheckCircle2} loading={submitting} onClick={() => send({ approved: true })}>
                 Approve
               </Button>
             </div>

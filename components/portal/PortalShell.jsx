@@ -38,7 +38,7 @@ function Avatar({ name, className = '' }) {
     <span
       aria-hidden="true"
       className={cn(
-        'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-fp-portal-accent font-display text-lg font-semibold text-white',
+        'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-fp-portal-accent font-display text-lg font-semibold text-white',
         className,
       )}
     >
