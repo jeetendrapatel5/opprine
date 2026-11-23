@@ -14,7 +14,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { CalendarClock, CheckCircle2, ExternalLink, Receipt } from 'lucide-react'
 import { formatDate } from '@/components/dashboard/requests/request-format'
-import { formatCurrency } from '@/lib/portal-format'
+import { formatCurrency, summarizeInvoices } from '@/lib/portal-format'
 import { Badge, Button, Card, CardBody, EmptyState } from './ui'
 
 function isOverdue(date) {
@@ -119,27 +119,11 @@ export default function InvoicePanel({ invoices = [] }) {
     )
   }
 
-  // Totals per currency so mixed-currency projects never add up wrongly.
-  const totals = {}
-  let overdueCount = 0
-  for (const inv of visible) {
-    const cur = inv.currency ?? 'USD'
-    totals[cur] ??= { outstanding: 0, paid: 0 }
-    if (inv.status === 'PAID') totals[cur].paid += inv.amount
-    else {
-      totals[cur].outstanding += inv.amount
-      if (isOverdue(inv.dueDate)) overdueCount += 1
-    }
-  }
-  const sum = (key) =>
-    Object.entries(totals)
-      .filter(([, t]) => t[key] > 0)
-      .map(([cur, t]) => formatCurrency(t[key], cur))
-      .join(' + ') || formatCurrency(0, Object.keys(totals)[0])
+  const { overdueCount, outstandingText, paidText } = summarizeInvoices(visible)
 
   const tiles = [
-    { label: 'Outstanding', value: sum('outstanding'), hint: overdueCount ? `${overdueCount} overdue` : 'Nothing overdue', warn: overdueCount > 0 },
-    { label: 'Paid', value: sum('paid'), hint: 'Payments received' },
+    { label: 'Outstanding', value: outstandingText, hint: overdueCount ? `${overdueCount} overdue` : 'Nothing overdue', warn: overdueCount > 0 },
+    { label: 'Paid', value: paidText, hint: 'Payments received' },
   ]
 
   return (

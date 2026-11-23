@@ -1,17 +1,18 @@
 // components/portal/ProgressBanner.jsx
-// Overview hero. The focal point of the portal: how far along the project is,
-// shown as one rail segment per milestone so the client sees *which* parts are
-// done, not just a percentage. Facts sit beneath on hairlines, not in boxes.
-// `now` and `team` are optional slots so the page can reuse existing components.
+// Overview hero: how far along the project is. One rail segment per milestone,
+// so the client sees *which* parts are done, and each segment carries its due
+// date: overdue ones turn red, the rest show how far away they are. The key
+// figures (money, deadline, requests) live in MetricStrip, so this card stays
+// about progress. `current` and `team` are optional slots for existing components.
 // Server Component.
 
 import { formatDate } from '@/components/dashboard/requests/request-format'
-import { PROJECT_STATUS, getLastUpdateDate, getNextDueMilestone, timeAgo } from '@/lib/portal-format'
+import { PROJECT_STATUS, dueLabel } from '@/lib/portal-format'
 import { cn } from '@/lib/utils'
-import { Badge, Card, Fact } from './ui'
+import { Badge, Card } from './ui'
 
 // Segment look per milestone status. In progress is half filled, awaiting review
-// is full amber, so the client can tell "being built" from "waiting on me".
+// is full blue, so the client can tell "being built" from "waiting on me".
 const SEGMENT = {
   COMPLETED:   { fill: 'bg-fp-portal-text-primary', text: 'text-fp-portal-text-secondary', label: 'Complete' },
   IN_PROGRESS: {
@@ -23,11 +24,23 @@ const SEGMENT = {
   PENDING:     { fill: 'bg-fp-portal-raised', text: 'text-fp-portal-text-muted', label: 'Upcoming' },
 }
 
+const DUE_TONE = { overdue: 'font-medium text-fp-portal-danger', soon: 'text-fp-portal-accent-strong', later: 'text-fp-portal-text-muted' }
+
+// Second label line: when it was approved, or how far away the due date is.
+function segmentNote(m) {
+  if (m.status === 'COMPLETED') return m.completedAt ? { text: formatDate(m.completedAt), tone: 'text-fp-portal-text-muted' } : null
+  const due = dueLabel(m.dueDate)
+  return due ? { text: due.text, tone: DUE_TONE[due.state], overdue: due.state === 'overdue' } : null
+}
+
 function Rail({ milestones, allDone }) {
   return (
     <ol aria-label="Milestones" className="mt-5 grid grid-flow-col auto-cols-fr gap-1.5">
       {milestones.map((m, i) => {
         const seg = SEGMENT[m.status] ?? SEGMENT.PENDING
+        const note = segmentNote(m)
+        // Overdue work shows red, except awaiting-review: that ball is in the client's court.
+        const overdue = note?.overdue && m.status !== 'IN_REVIEW'
         return (
           <li key={m.id} className="min-w-0">
             <div
@@ -35,13 +48,17 @@ function Rail({ milestones, allDone }) {
               style={{ '--i': i }}
               className={cn(
                 'fp-rail-seg h-2 rounded-full',
-                allDone ? 'bg-fp-portal-success' : seg.fill,
-                m.status === 'PENDING' && 'shadow-[inset_0_0_0_1px_var(--color-fp-portal-border)]',
+                allDone ? 'bg-fp-portal-success' : overdue ? 'bg-fp-portal-danger' : seg.fill,
+                m.status === 'PENDING' && !overdue && 'shadow-[inset_0_0_0_1px_var(--color-fp-portal-border)]',
               )}
             />
             <p className={cn('mt-2 hidden truncate text-xs sm:block', seg.text)}>{m.title}</p>
+            <p className={cn('mt-0.5 hidden min-h-4 truncate text-[11px] tabular-nums sm:block', note?.tone)}>
+              {note?.text}
+            </p>
             <span className="sr-only">
               {m.title}: {seg.label}
+              {note ? `, ${note.text}` : ''}
             </span>
           </li>
         )
@@ -50,18 +67,12 @@ function Rail({ milestones, allDone }) {
   )
 }
 
-export default function ProgressBanner({ progress, projectName, clientName, milestones, now, team }) {
-  const { completed, total, percentage, projectStatus, currentMilestone } = progress
+export default function ProgressBanner({ progress, projectName, clientName, milestones, current, team }) {
+  const { completed, total, percentage, projectStatus } = progress
   const status = PROJECT_STATUS[projectStatus] ?? PROJECT_STATUS.ON_TRACK
 
-  const nextDue = getNextDueMilestone(milestones)
-  const lastUpdate = getLastUpdateDate(milestones)
-  // Skip the milestone name under "Next due" when "Now" already shows it.
-  const showNextHint = nextDue && !(now && currentMilestone && nextDue.id === currentMilestone.id)
-  const hasFacts = now || nextDue || lastUpdate || team
-
   return (
-    <Card as="section" aria-labelledby="project-title" className="p-5 sm:p-6">
+    <Card as="section" aria-labelledby="project-title" className="w-full p-5 sm:p-6">
       <div className="flex items-center justify-between gap-3">
         <Badge tone={status.tone}>
           <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
@@ -87,7 +98,7 @@ export default function ProgressBanner({ progress, projectName, clientName, mile
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={percentage}
-              className="font-display text-6xl font-semibold leading-none tracking-tighter tabular-nums text-fp-portal-text-primary"
+              className="font-display text-6xl font-medium leading-none tracking-tighter tabular-nums text-fp-portal-text-primary"
             >
               {percentage}
               <span className="ml-0.5 text-3xl tracking-normal text-fp-portal-text-muted">%</span>
@@ -102,21 +113,10 @@ export default function ProgressBanner({ progress, projectName, clientName, mile
         </>
       )}
 
-      {hasFacts && (
-        <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-5 border-t border-fp-portal-border pt-5 sm:grid-flow-col sm:auto-cols-fr sm:[&>*+*]:border-l sm:[&>*+*]:border-fp-portal-border sm:[&>*+*]:pl-6">
-          {now}
-          {nextDue && (
-            <Fact label="Next due">
-              <span className="tabular-nums">{formatDate(nextDue.dueDate)}</span>
-              {showNextHint && (
-                <span className="mt-0.5 block truncate text-xs font-normal text-fp-portal-text-secondary">
-                  {nextDue.title}
-                </span>
-              )}
-            </Fact>
-          )}
-          {lastUpdate && <Fact label="Last update">{timeAgo(lastUpdate)}</Fact>}
-          {team && <Fact label="Team">{team}</Fact>}
+      {(current || team) && (
+        <div className="mt-5 grid grid-cols-2 items-start gap-x-6 gap-y-4 border-t border-fp-portal-border pt-4 sm:flex sm:flex-wrap sm:gap-x-10">
+          {current}
+          {team}
         </div>
       )}
     </Card>

@@ -3,7 +3,7 @@
 // notes. Reads like a logbook: entries are grouped by day, the newest one leads,
 // and shipped work (deploys) carries a small "dispatch" strip with its commit
 // reference and preview link. Shows the latest few; the rest sit behind
-// "Show earlier updates".
+// "Show earlier updates", which continues the rail instead of breaking it.
 'use client'
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
@@ -19,7 +19,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatClock, formatDateTime, groupByDay, timeAgo } from '@/lib/portal-format'
-import { Badge, Button, Card, CardBody, CardHeader, EmptyState, Eyebrow, focusRing } from './ui'
+import ActivityBars from './ActivityBars'
+import { Badge, Card, CardBody, CardHeader, EmptyState, Eyebrow, focusRing } from './ui'
 
 // ── Time ──────────────────────────────────────────────────────────────────────
 // `now` is null on the server and during hydration, then becomes the real time
@@ -71,6 +72,9 @@ function safeHttpUrl(value) {
 
 // ── Entry building blocks ─────────────────────────────────────────────────────
 
+// Marker column and rail share one width, so the rail runs straight through
+// every marker, including the dashed "earlier updates" node at the bottom.
+const ROW = 'grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3'
 const MARKER = 'flex h-5 w-5 shrink-0 items-center justify-center rounded-full'
 
 function Marker({ kind }) {
@@ -96,15 +100,13 @@ function Marker({ kind }) {
 }
 
 // One row of the log: marker + rail on the left, content on the right. The rail
-// is a flexible line under the marker, so it needs no negative margins and it
-// stops at the last entry of each day.
+// is a flexible line under the marker, so it needs no negative margins. It
+// stops at the last entry of each day, and runs on into the "earlier" node
+// when more history is waiting (`isLast` is false then).
 function EntryShell({ marker, isLast, enterStep, children }) {
   const entering = enterStep != null
   return (
-    <li
-      className={cn('grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3', entering && 'fp-feed-enter')}
-      style={entering ? { '--i': enterStep } : undefined}
-    >
+    <li className={cn(ROW, entering && 'fp-rise')} style={entering ? { '--i': enterStep } : undefined}>
       <div aria-hidden="true" className="flex flex-col items-center">
         {marker}
         {!isLast && <span className="my-1 w-px flex-1 bg-fp-portal-border" />}
@@ -305,9 +307,50 @@ function FilterBar({ value, counts, onChange, controlsId }) {
   )
 }
 
+// The last row of the log. Collapsed, the rail runs down into this dashed node
+// ("there is more history below"); expanded, it becomes the way back up.
+// A native <button> laid out on the same grid as the entries, so it lines up.
+function HistoryToggle({ expanded, hiddenCount, onToggle, controlsId }) {
+  const Icon = expanded ? ChevronUp : ChevronDown
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={expanded}
+      aria-controls={controlsId}
+      className={cn(
+        ROW,
+        // ::before grows the tap area to 44px without adding visible height.
+        'group relative w-full items-start rounded-lg text-left before:absolute before:inset-x-0 before:-inset-y-3',
+        expanded && 'mt-6',
+        focusRing,
+      )}
+    >
+      <span
+        aria-hidden="true"
+        className={cn(
+          MARKER,
+          'border border-dashed border-fp-portal-border-control text-fp-portal-text-muted',
+          'transition-colors duration-150 group-hover:border-fp-portal-accent-strong group-hover:text-fp-portal-accent-strong',
+        )}
+      >
+        <Icon className="h-3 w-3 transition-transform duration-150 group-hover:translate-y-px" />
+      </span>
+      <span
+        className={cn(
+          'flex min-h-5 items-center text-xs font-semibold text-fp-portal-text-secondary',
+          'transition-colors duration-150 group-hover:text-fp-portal-text-primary',
+        )}
+      >
+        {expanded ? 'Show fewer updates' : `Show earlier updates (${hiddenCount})`}
+      </span>
+    </button>
+  )
+}
+
 // ── Feed ──────────────────────────────────────────────────────────────────────
 
-export default function UpdateFeed({ updates }) {
+export default function UpdateFeed({ updates, activity }) {
   const now = useNow()
   const ready = now !== null
   const listId = useId()
@@ -332,16 +375,25 @@ export default function UpdateFeed({ updates }) {
     : all
   const visible = showAll ? filtered : filtered.slice(0, INITIAL_COUNT)
   const hiddenCount = filtered.length - INITIAL_COUNT
+  const railContinues = hiddenCount > 0 && !showAll
 
   const groups = groupByDay(visible, { now })
   const indexById = new Map(visible.map((update, index) => [update.id, index]))
   const latestId = all[0]?.id
 
+  // "Last update 11 minutes ago" (short form on narrow screens, where the
+  // activity bars share the row). Reserved as a blank line until the time is known.
   const lastDate = hasUpdates ? new Date(all[0].createdAt) : null
-  const lastAgo =
-    ready && lastDate && !Number.isNaN(lastDate.getTime()) ? timeAgo(lastDate, { long: true, now }) : ''
-  // A non-breaking space keeps the header height stable until the time is known.
-  const description = hasUpdates ? (lastAgo ? `Last update ${lastAgo}` : '\u00A0') : undefined
+  const lastKnown = ready && lastDate && !Number.isNaN(lastDate.getTime())
+  const description = !hasUpdates ? undefined : lastKnown ? (
+    <>
+      Last update{' '}
+      <span className="sm:hidden">{timeAgo(lastDate, { now })}</span>
+      <span className="hidden sm:inline">{timeAgo(lastDate, { long: true, now })}</span>
+    </>
+  ) : (
+    '\u00A0'
+  )
 
   function handleFilter(next) {
     if (next === activeFilter) return
@@ -357,7 +409,13 @@ export default function UpdateFeed({ updates }) {
 
   return (
     <Card as="section" aria-labelledby="updates-title">
-      <CardHeader icon={Activity} titleId="updates-title" title="Recent updates" description={description} />
+      <CardHeader
+        icon={Activity}
+        titleId="updates-title"
+        title="Recent updates"
+        description={description}
+        aside={activity?.total > 0 ? <ActivityBars counts={activity.counts} total={activity.total} /> : undefined}
+      />
       <CardBody>
         {hasUpdates ? (
           <>
@@ -367,7 +425,7 @@ export default function UpdateFeed({ updates }) {
 
             {/* key: switching filter remounts the list so every entry animates in. */}
             <div key={activeFilter} id={listId}>
-              {groups.map((group) => (
+              {groups.map((group, groupIndex) => (
                 <div key={group.items[0].id} className="mt-7 first:mt-0">
                   <Eyebrow
                     as="h3"
@@ -382,12 +440,14 @@ export default function UpdateFeed({ updates }) {
                         enterFrom !== null && index >= enterFrom
                           ? Math.min(index - enterFrom, MAX_STAGGER_STEPS)
                           : null
+                      const isEndOfDay = position === group.items.length - 1
                       const entryProps = {
                         update,
                         ready,
                         enterStep,
                         isLatest: update.id === latestId,
-                        isLast: position === group.items.length - 1,
+                        // The very last entry keeps its rail when "earlier updates" follow.
+                        isLast: isEndOfDay && !(railContinues && groupIndex === groups.length - 1),
                       }
                       return isDeploy(update) ? (
                         <DeployEntry key={update.id} {...entryProps} />
@@ -401,16 +461,12 @@ export default function UpdateFeed({ updates }) {
             </div>
 
             {hiddenCount > 0 && (
-              <Button
-                variant="ghost"
-                icon={showAll ? ChevronUp : ChevronDown}
-                className="mt-5 w-full"
-                onClick={handleToggle}
-                aria-expanded={showAll}
-                aria-controls={listId}
-              >
-                {showAll ? 'Show fewer updates' : `Show earlier updates (${hiddenCount})`}
-              </Button>
+              <HistoryToggle
+                expanded={showAll}
+                hiddenCount={hiddenCount}
+                onToggle={handleToggle}
+                controlsId={listId}
+              />
             )}
           </>
         ) : (

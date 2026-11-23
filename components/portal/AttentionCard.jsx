@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { Card, CardBody, CardHeader, focusRing } from './ui'
 import { usePortalView } from './PortalShell'
 
-export default function AttentionCard({ items }) {
+export default function AttentionCard({ items, title = 'Needs you' }) {
   const { setView } = usePortalView()
 
   return (
@@ -17,7 +17,7 @@ export default function AttentionCard({ items }) {
       <CardHeader
         icon={items.length ? BellRing : CheckCircle2}
         titleId="attention-title"
-        title="Needs you"
+        title={title}
         count={items.length || undefined}
       />
 

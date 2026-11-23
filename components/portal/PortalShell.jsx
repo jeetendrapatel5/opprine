@@ -13,7 +13,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { ClipboardList, FolderOpen, LayoutDashboard, ListChecks, Mail, Receipt } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const ICONS = {
+export const ICONS = {
   overview: LayoutDashboard,
   timeline: ListChecks,
   requests: ClipboardList,

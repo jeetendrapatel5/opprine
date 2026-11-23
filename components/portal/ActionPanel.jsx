@@ -107,6 +107,7 @@ export default function ActionPanel({ items, token }) {
   return (
     <Card
       as="section"
+      id="review-panel"
       aria-labelledby="review-title"
       // The amber edge marks this as the one thing that needs a decision.
       className="overflow-hidden border-l-[3px] border-l-fp-portal-accent"

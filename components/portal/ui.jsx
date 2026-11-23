@@ -13,7 +13,7 @@ export const focusRing =
 export function Card({ as: Tag = 'div', className = '', children, ...props }) {
   return (
     <Tag
-      className={cn('rounded-lg border border-fp-portal-border/50 bg-fp-portal-surface shadow-fp-card', className)}
+      className={cn('rounded-2xl border border-fp-portal-border bg-fp-portal-surface shadow-fp-card', className)}
       {...props}
     >
       {children}
@@ -135,7 +135,8 @@ export function EmptyState({ icon: Icon, title, description }) {
 
 const BUTTON_BASE =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold ' +
-  'transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 sm:min-h-10'
+  'transition-[color,background-color,border-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ' +
+  'active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 sm:min-h-10'
 
 const BUTTON_VARIANTS = {
   primary:   'bg-fp-portal-accent text-white hover:bg-fp-portal-accent-hover',
