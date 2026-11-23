@@ -1,60 +1,57 @@
 // components/portal/ProjectTeam.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// Replaces the old single-freelancer "Your Developer" card. Shows every
-// person staffed on the project (via ProjectMember) as a compact stack
-// of avatars — the same trust-signal job FreelancerCard used to do
-// ("a real human is behind this"), just honestly reflecting that it's
-// usually a small team rather than one person.
-//
-// Server Component — receives already-fetched, already portal-safe
-// `members` as props (see listProjectMembersForPortal in lib/project.js,
-// called from page.jsx). All interaction (hover/click/tap → dialog)
-// lives in ProjectTeamMember, a Client Component — this file only
-// decides layout and whether the section renders at all.
-// ─────────────────────────────────────────────────────────────────────────────
+// Everyone staffed on the project, as a compact avatar stack. `members` arrive
+// already portal-safe (see listProjectMembersForPortal in lib/project.js).
+// Server Component; hover/tap behaviour lives in ProjectTeamMember.
 
+import { Users } from 'lucide-react'
 import ProjectTeamMember from './ProjectTeamMember'
+import { Card, CardBody, CardHeader } from './ui'
 
-// Cap how many avatars render before collapsing into a "+N" chip.
-// Six keeps the stack compact even for a bigger studio team; adjust
-// here only, everything else in this file already reads from it.
+// Avatars shown before the rest collapse into a "+N" chip.
 const MAX_VISIBLE = 6
 
-export default function ProjectTeam({ members }) {
-  // No explicit ProjectMember rows yet for this project (e.g. an older
-  // project from before staffing existed, not yet backfilled) — hide
-  // the section rather than show an empty "Team Behind Your Project"
-  // heading with nothing under it.
+export default function ProjectTeam({ members, bare = false }) {
+  // Projects without staffing rows yet (older projects) hide the card entirely.
   if (!members || members.length === 0) return null
 
   const visibleMembers = members.slice(0, MAX_VISIBLE)
   const overflowCount = members.length - visibleMembers.length
 
+  const avatars = (
+    <ul className="flex items-center -space-x-2">
+      {visibleMembers.map((member) => (
+        <li key={member.userId}>
+          <ProjectTeamMember member={member} />
+        </li>
+      ))}
+
+      {overflowCount > 0 && (
+        <li
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-fp-portal-border bg-fp-portal-raised text-xs font-bold text-fp-portal-text-secondary ring-2 ring-fp-portal-surface"
+          title={`+${overflowCount} more`}
+        >
+          +{overflowCount}
+        </li>
+      )}
+    </ul>
+  )
+
+  if (bare) {
+    return (
+      <>
+        {avatars}
+        <span className="sr-only">Select a photo to see who they are.</span>
+      </>
+    )
+  }
+
   return (
-    <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl p-5">
-      <p className="text-[10px] font-bold uppercase tracking-widest text-fp-portal-text-tertiary mb-4">
-        Team Behind Your Project
-      </p>
-
-      <div className="flex items-center -space-x-2">
-        {visibleMembers.map((member) => (
-          <ProjectTeamMember key={member.userId} member={member} />
-        ))}
-
-        {overflowCount > 0 && (
-          <div
-            className="
-              w-10 h-10 rounded-full shrink-0 flex items-center justify-center
-              bg-fp-portal-raised border border-fp-portal-border
-              ring-2 ring-fp-portal-surface
-              text-fp-portal-text-secondary text-xs font-bold
-            "
-            title={`+${overflowCount} more`}
-          >
-            +{overflowCount}
-          </div>
-        )}
-      </div>
-    </div>
+    <Card as="section" aria-labelledby="team-title">
+      <CardHeader icon={Users} titleId="team-title" title="Team behind your project" />
+      <CardBody>
+        {avatars}
+        <p className="mt-3 text-xs text-fp-portal-text-muted">Select a photo to see who they are.</p>
+      </CardBody>
+    </Card>
   )
 }

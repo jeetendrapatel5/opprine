@@ -1,129 +1,124 @@
 // components/portal/ProgressBanner.jsx
-// ─────────────────────────────────────────────────────────────────────────────
-// The first thing the client sees. The most important component in the portal.
-//
-// PSYCHOLOGICAL JOB:
-// Answer the client's primary anxiety — "is my money being spent on real work?"
-// — within 2 seconds. The progress bar does this without the client having
-// to read anything. It is the trust signal that everything else builds on.
-//
-// Design decisions:
-// - Warm white card (fp-portal-surface) — NOT dark. Dark backgrounds signal
-//   opacity and uncertainty to non-technical clients. Light = transparency.
-// - Project name in Fraunces — the display font signals this was "made for you",
-//   not generated from a template. It looks like a premium deliverable header.
-// - Progress bar in fp-portal-accent (amber) — gold signals value and investment.
-//   When it hits 100%, it flips to fp-portal-success (green) — completion.
-// - The amber accent line at the top of the card is 2px — structural, not decorative.
-//   It's the card's "signature", using the portal accent color.
-// - "Last updated X ago" at the bottom right — this is the timestamp trust signal.
-//   A client who hasn't heard from their freelancer in 3 days will feel reassured
-//   to see "Last update 6h ago". Absence of this is also meaningful.
-//
-// Server Component — no state, pure display.
-// ─────────────────────────────────────────────────────────────────────────────
+// Overview hero: how far along the project is. One rail segment per milestone,
+// so the client sees *which* parts are done, and each segment carries its due
+// date: overdue ones turn red, the rest show how far away they are. The key
+// figures (money, deadline, requests) live in MetricStrip, so this card stays
+// about progress. `current` and `team` are optional slots for existing components.
+// Server Component.
 
-function timeAgo(date) {
-  if (!date) return null
-  const seconds = Math.floor((new Date() - new Date(date)) / 1000)
-  if (seconds < 60)    return 'just now'
-  if (seconds < 3600)  return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  const days = Math.floor(seconds / 86400)
-  return days === 1 ? 'yesterday' : `${days} days ago`
+import { formatDate } from '@/components/dashboard/requests/request-format'
+import { PROJECT_STATUS, dueLabel } from '@/lib/portal-format'
+import { cn } from '@/lib/utils'
+import { Badge, Card } from './ui'
+
+// Segment look per milestone status. In progress is half filled, awaiting review
+// is full blue, so the client can tell "being built" from "waiting on me".
+const SEGMENT = {
+  COMPLETED:   { fill: 'bg-fp-portal-text-primary', text: 'text-fp-portal-text-secondary', label: 'Complete' },
+  IN_PROGRESS: {
+    fill: 'bg-[linear-gradient(90deg,var(--color-fp-portal-accent)_50%,var(--color-fp-portal-raised)_50%)]',
+    text: 'font-semibold text-fp-portal-text-primary',
+    label: 'In progress',
+  },
+  IN_REVIEW:   { fill: 'bg-fp-portal-accent', text: 'font-semibold text-fp-portal-text-primary', label: 'Awaiting your review' },
+  PENDING:     { fill: 'bg-fp-portal-raised', text: 'text-fp-portal-text-muted', label: 'Upcoming' },
 }
 
-// Finds the most recent update timestamp across all milestones' work log entries.
-// This reflects "when did the freelancer last post real work", not "when was
-// the milestone record last touched by the system".
-function getLastUpdatedDate(milestones) {
-  const allUpdates = milestones.flatMap(m => m.milestoneUpdates ?? [])
-  if (allUpdates.length === 0) return null
-  allUpdates.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-  return allUpdates[0].createdAt
+const DUE_TONE = { overdue: 'font-medium text-fp-portal-danger', soon: 'text-fp-portal-accent-strong', later: 'text-fp-portal-text-muted' }
+
+// Second label line: when it was approved, or how far away the due date is.
+function segmentNote(m) {
+  if (m.status === 'COMPLETED') return m.completedAt ? { text: formatDate(m.completedAt), tone: 'text-fp-portal-text-muted' } : null
+  const due = dueLabel(m.dueDate)
+  return due ? { text: due.text, tone: DUE_TONE[due.state], overdue: due.state === 'overdue' } : null
 }
 
-// Status badge config — each project status maps to a label and portal token colors
-const statusConfig = {
-  ON_TRACK: {
-    label:     'On Track',
-    className: 'bg-fp-portal-success/10 text-fp-portal-success',
-  },
-  AWAITING_REVIEW: {
-    label:     'Awaiting Your Review',
-    className: 'bg-fp-portal-accent/10 text-fp-portal-accent',
-  },
-  COMPLETED: {
-    label:     'Project Complete',
-    className: 'bg-fp-portal-success/10 text-fp-portal-success',
-  },
+function Rail({ milestones, allDone }) {
+  return (
+    <ol aria-label="Milestones" className="mt-5 grid grid-flow-col auto-cols-fr gap-1.5">
+      {milestones.map((m, i) => {
+        const seg = SEGMENT[m.status] ?? SEGMENT.PENDING
+        const note = segmentNote(m)
+        // Overdue work shows red, except awaiting-review: that ball is in the client's court.
+        const overdue = note?.overdue && m.status !== 'IN_REVIEW'
+        return (
+          <li key={m.id} className="min-w-0">
+            <div
+              aria-hidden="true"
+              style={{ '--i': i }}
+              className={cn(
+                'fp-rail-seg h-2 rounded-full',
+                allDone ? 'bg-fp-portal-success' : overdue ? 'bg-fp-portal-danger' : seg.fill,
+                m.status === 'PENDING' && !overdue && 'shadow-[inset_0_0_0_1px_var(--color-fp-portal-border)]',
+              )}
+            />
+            <p className={cn('mt-2 hidden truncate text-xs sm:block', seg.text)}>{m.title}</p>
+            <p className={cn('mt-0.5 hidden min-h-4 truncate text-[11px] tabular-nums sm:block', note?.tone)}>
+              {note?.text}
+            </p>
+            <span className="sr-only">
+              {m.title}: {seg.label}
+              {note ? `, ${note.text}` : ''}
+            </span>
+          </li>
+        )
+      })}
+    </ol>
+  )
 }
 
-export default function ProgressBanner({ progress, projectName, clientName, milestones }) {
+export default function ProgressBanner({ progress, projectName, clientName, milestones, current, team }) {
   const { completed, total, percentage, projectStatus } = progress
-  const status          = statusConfig[projectStatus] ?? statusConfig.ON_TRACK
-  const lastUpdated     = getLastUpdatedDate(milestones)
-  const lastUpdatedText = timeAgo(lastUpdated)
+  const status = PROJECT_STATUS[projectStatus] ?? PROJECT_STATUS.ON_TRACK
 
   return (
-    <div className="bg-fp-portal-surface border border-fp-portal-border rounded-xl overflow-hidden mb-6">
+    <Card as="section" aria-labelledby="project-title" className="w-full p-5 sm:p-6">
+      <div className="flex items-center justify-between gap-3">
+        <Badge tone={status.tone}>
+          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+          {status.label}
+        </Badge>
+        <p className="hidden truncate text-xs text-fp-portal-text-muted sm:block">Prepared for {clientName}</p>
+      </div>
 
-      <div className="px-6 py-7 sm:px-8 sm:py-8">
+      <h2 id="project-title" className="mt-3 text-lg font-semibold leading-snug tracking-tight text-fp-portal-text-primary">
+        {projectName}
+      </h2>
 
-        {/* ── Top row: project name + status badge ── */}
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div>
-            {/* Addressed to the client — personal, possessive */}
-            <p className="text-fp-portal-text-tertiary text-xs font-semibold uppercase tracking-widest mb-1.5">
-              {clientName}&apos;s Portal
+      {total === 0 ? (
+        <p className="mt-4 text-sm text-fp-portal-text-secondary">
+          The project plan is being set up. Milestones will appear here soon.
+        </p>
+      ) : (
+        <>
+          <div className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <div
+              role="progressbar"
+              aria-label="Overall project progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={percentage}
+              className="font-display text-6xl font-medium leading-none tracking-tighter tabular-nums text-fp-portal-text-primary"
+            >
+              {percentage}
+              <span className="ml-0.5 text-3xl tracking-normal text-fp-portal-text-muted">%</span>
+            </div>
+            <p className="text-sm text-fp-portal-text-secondary">
+              <span className="font-semibold tabular-nums text-fp-portal-text-primary">{completed}</span> of{' '}
+              <span className="tabular-nums">{total}</span> milestones complete
             </p>
-            {/* Project name — Fraunces, the display headline */}
-            <h1 className="font-display text-2xl sm:text-3xl font-medium text-fp-portal-text-primary leading-tight tracking-tight">
-              {projectName}
-            </h1>
           </div>
 
-          <span className={`
-            shrink-0 mt-1 text-xs font-semibold px-3 py-1.5 rounded-full
-            ${status.className}
-          `}>
-            {status.label}
-          </span>
+          <Rail milestones={milestones} allDone={percentage === 100} />
+        </>
+      )}
+
+      {(current || team) && (
+        <div className="mt-5 grid grid-cols-2 items-start gap-x-6 gap-y-4 border-t border-fp-portal-border pt-4 sm:flex sm:flex-wrap sm:gap-x-10">
+          {current}
+          {team}
         </div>
-
-        {/* ── Progress bar ── */}
-        {/* Track — the background rail */}
-        <div className="w-full bg-fp-portal-raised rounded-full h-2 mb-3">
-          {/* Fill — width must be an inline style because Tailwind purges
-              dynamic percentage values at build time.
-              The color transitions from amber (in progress) to green (100%). */}
-          <div
-            className="h-2 rounded-full transition-all duration-700"
-            style={{
-              width:      `${Math.max(percentage, 4)}%`,
-              background: percentage === 100
-                ? 'var(--color-fp-portal-success)'
-                : 'var(--color-fp-portal-accent)',
-            }}
-          />
-        </div>
-
-        {/* ── Bottom row: milestone count + last updated ── */}
-        <div className="flex items-center justify-between text-xs text-fp-portal-text-tertiary">
-          <span>
-            <span className="text-fp-portal-text-primary font-semibold">{completed}</span>
-            {' of '}
-            <span className="text-fp-portal-text-primary font-semibold">{total}</span>
-            {' milestones complete'}
-          </span>
-
-          {/* Timestamp trust signal — only shown when updates exist */}
-          {lastUpdatedText && (
-            <span>Last update {lastUpdatedText}</span>
-          )}
-        </div>
-
-      </div>
-    </div>
+      )}
+    </Card>
   )
 }
