@@ -864,11 +864,21 @@ enum SubscriptionStatus {
 // database transaction, so two near-simultaneous copies of the same
 // event can't both slip through and double-process.
 model WebhookEvent {
-  id              String   @id @default(cuid())
-  razorpayEventId String   @unique
+  id              String             @id @default(cuid())
+  razorpayEventId String             @unique
+  bodyHash        String?            @unique // SHA-256 of the signed body; the event-id header is not signed
   eventType       String // e.g. "subscription.charged", stored for debugging
+  status          WebhookEventStatus @default(PROCESSED)
   payload         Json? // raw event body, kept for troubleshooting
-  processedAt     DateTime @default(now())
+  processedAt     DateTime           @default(now())
+
+  @@index([status])
+}
+
+enum WebhookEventStatus {
+  PROCESSED // applied to a known subscription
+  UNMATCHED // references a subscription with no local row; needs follow-up
+  IGNORED // carries no subscription entity
 }
 
 // ── Password reset ──────────────────────────────────────────────────────

@@ -61,9 +61,12 @@ export async function POST(request) {
     const isPending = subscription.status === 'PENDING'
     const cancelAtCycleEnd = isPending ? false : !wantsImmediate
 
-    await razorpay.subscriptions.cancel(subscription.razorpaySubscriptionId, {
-      cancel_at_cycle_end: cancelAtCycleEnd,
-    })
+    // The SDK takes a boolean; an options object is always truthy and
+    // would force cancel_at_cycle_end on every call.
+    await razorpay.subscriptions.cancel(
+      subscription.razorpaySubscriptionId,
+      cancelAtCycleEnd
+    )
 
     if (cancelAtCycleEnd) {
       // Access continues until currentPeriodEnd. Status stays ACTIVE —
