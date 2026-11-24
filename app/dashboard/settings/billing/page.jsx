@@ -44,7 +44,7 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { requireWorkspaceMembership } from '@/lib/workspace'
 import { getEntitlements } from '@/lib/billing/entitlements'
-import { PLAN_CONFIG } from '@/lib/billing/plans'
+import { PLAN_CONFIG, isSelfServeAvailable } from '@/lib/billing/plans'
 import BillingPlans from '@/components/billing/BillingPlans'
 import ManageSubscription from '@/components/billing/ManageSubscription'
 
@@ -83,6 +83,12 @@ export default async function BillingSettingsPage() {
         ? {
             monthly: config.pricing.monthly.amount,
             yearly: config.pricing.yearly.amount,
+          }
+        : null,
+      selfServe: config.pricing
+        ? {
+            monthly: isSelfServeAvailable(key, 'MONTHLY'),
+            yearly: isSelfServeAvailable(key, 'YEARLY'),
           }
         : null,
     }

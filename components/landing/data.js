@@ -174,41 +174,49 @@ export const FEATURES = [
 export const PRICING_REFRAME =
   'One avoided scope dispute or one delay you didn\'t get blamed for covers Opprine for months. Most studios earn it back inside the first project.'
 
+// Prices and limits mirror lib/billing/plans.js; lib/billing/landing-pricing.test.js
+// fails if they drift. This file is bundled for the browser, so it cannot
+// import plans.js (which reads server environment variables).
 export const PRICING_TIERS = [
   {
-    name: 'Studio',
-    tagline: 'For studios running real client projects, not side gigs.',
-    price: '$89',
+    name: 'Free',
+    tagline: 'For trying Opprine on a couple of client projects.',
+    price: '₹0',
+    per: 'forever',
+    highlight: false,
+    ctaLabel: 'Start free',
+    ctaHref: '/signup',
+    features: ['Up to 2 projects', 'Up to 2 clients', '1 workspace member'],
+    note: 'No credit card required.',
+  },
+  {
+    name: 'Pro',
+    tagline: 'For freelancers running real client projects.',
+    price: '₹999',
     per: '/ month',
     badge: 'Most popular',
     highlight: true,
-    ctaLabel: 'Start free trial',
-    ctaHref: '/signup?plan=studio',
-    features: [
-      'Up to 10 active client projects',
-      'AI commit-to-client updates',
-      'Milestone approvals and delay attribution',
-      'In-portal invoicing and Stripe payments',
-      'Custom portal branding',
-    ],
-    note: 'No contracts. Cancel anytime.',
+    ctaLabel: 'Get started',
+    ctaHref: '/signup',
+    features: ['Up to 15 projects', 'Unlimited clients', 'GitHub commit summaries', '1 workspace member'],
+    note: 'Upgrade from your dashboard after signing up. Cancel anytime.',
   },
   {
-    name: 'Agency',
-    tagline: 'For agencies managing a full roster of client work.',
-    price: '$219',
+    name: 'Team',
+    tagline: 'For studios managing a full roster of client work.',
+    price: '₹2,999',
     per: '/ month',
     highlight: false,
-    ctaLabel: 'Start free trial',
-    ctaHref: '/signup?plan=agency',
+    ctaLabel: 'Get started',
+    ctaHref: '/signup',
     features: [
-      'Unlimited active client projects',
-      'Up to 10 team seats',
-      'Everything in Studio',
-      'Custom domain',
-      'Priority support',
+      'Unlimited projects',
+      'Unlimited clients',
+      'Up to 5 workspace members',
+      'GitHub commit summaries',
+      'Custom portal branding',
     ],
-    note: 'Built for teams managing more than one client at a time.',
+    note: 'Upgrade from your dashboard after signing up. Cancel anytime.',
   },
 ]
 
@@ -288,9 +296,9 @@ export const FINAL_HEADLINE = 'Your client forms an opinion of your process with
 export const FINAL_BODY =
   'Connect your GitHub repo, share one private link, and give your client a record of progress they don\'t have to take your word for.'
 
-export const FINAL_CTA = 'Start your free trial'
+export const FINAL_CTA = 'Get started free'
 
-export const FINAL_NOTE = '14-day free trial. No credit card required to start.'
+export const FINAL_NOTE = 'The Free plan needs no credit card.'
 
 // ─── FOOTER ───────────────────────────────────────────────────────────────────
 

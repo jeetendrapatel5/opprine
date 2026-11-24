@@ -13,7 +13,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { razorpay } from '@/lib/billing/razorpay'
-import { getPricing } from '@/lib/billing/plans'
+import { getPricing, isSelfServeAvailable } from '@/lib/billing/plans'
 import { assertRazorpayPlanMatches } from '@/lib/billing/plan-verification'
 import { createCheckout } from '@/lib/billing/checkout'
 import { requireWorkspaceMembership, requireRole } from '@/lib/workspace'
@@ -63,6 +63,13 @@ export async function POST(request) {
     }
     if (!['MONTHLY', 'YEARLY'].includes(billingCycle)) {
       return Response.json({ error: 'Invalid billing cycle.' }, { status: 400 })
+    }
+
+    if (!isSelfServeAvailable(plan, billingCycle)) {
+      return Response.json(
+        { error: `${billingCycle === 'YEARLY' ? 'Yearly' : 'This'} billing is not available for the ${plan} plan. Choose monthly billing.` },
+        { status: 400 }
+      )
     }
 
     const membership = await requireWorkspaceMembership(session.user.id)

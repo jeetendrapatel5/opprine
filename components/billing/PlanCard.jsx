@@ -108,6 +108,10 @@ export default function PlanCard({ plan, currentPlan, billingCycle, isOwner, pre
           <p className="text-xs text-slate-400">
             To switch to this plan, cancel your current subscription below, then subscribe here once it ends.
           </p>
+        ) : canSelfServe && !plan.selfServe?.[billingCycle.toLowerCase()] ? (
+          <p className="text-xs text-slate-400">
+            {billingCycle === 'YEARLY' ? 'Yearly' : 'This'} billing is not available for this plan. Choose monthly billing.
+          </p>
         ) : canSelfServe ? (
           <UpgradeButton plan={plan.key} billingCycle={billingCycle} prefill={prefill} />
         ) : null}
