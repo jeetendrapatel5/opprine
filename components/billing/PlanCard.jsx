@@ -104,7 +104,7 @@ export default function PlanCard({ plan, currentPlan, billingCycle, isOwner, pre
           >
             Contact us
           </a>
-        ) : isBelowCurrent ? (
+        ) : isBelowCurrent || currentPlan !== 'FREE' ? (
           <p className="text-xs text-slate-400">
             To switch to this plan, cancel your current subscription below, then subscribe here once it ends.
           </p>

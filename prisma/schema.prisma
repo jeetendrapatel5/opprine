@@ -93,6 +93,7 @@ model Workspace {
   members      WorkspaceMember[]
   projects     Project[]
   subscription Subscription?
+  checkoutAttempts CheckoutAttempt[]
   invites      WorkspaceInvite[]
 
   notifications Notification[]
@@ -840,6 +841,36 @@ model Subscription {
   updatedAt DateTime @updatedAt
 
   @@index([status])
+}
+
+// One row per Razorpay subscription created by checkout. The workspace's
+// Subscription row is only replaced once the attempt is confirmed paid, so
+// a failed or abandoned checkout never changes existing access.
+model CheckoutAttempt {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  plan                   Plan
+  billingCycle           BillingCycle
+  razorpayPlanId         String
+  razorpaySubscriptionId String                @unique
+  // Subscription id this attempt displaced when it was confirmed paid.
+  replacedSubscriptionId String?
+  status                 CheckoutAttemptStatus @default(CREATED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId, status])
+  @@index([replacedSubscriptionId])
+}
+
+enum CheckoutAttemptStatus {
+  CREATED // Razorpay subscription created, payment not confirmed
+  COMPLETED // paid and promoted to the workspace's Subscription
+  ABANDONED // cancelled or expired before payment
+  CONFLICT // paid while the workspace already had a live subscription
 }
 
 enum BillingCycle {
