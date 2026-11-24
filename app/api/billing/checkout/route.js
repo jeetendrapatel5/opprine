@@ -18,6 +18,7 @@ import { assertRazorpayPlanMatches } from '@/lib/billing/plan-verification'
 import { createCheckout } from '@/lib/billing/checkout'
 import { requireWorkspaceMembership, requireRole } from '@/lib/workspace'
 import { handleApiError } from '@/lib/http-errors'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 // Razorpay SDK errors look like { statusCode, error: { code, description } }
 // and are not Error instances. 4xx descriptions are safe to show; 401/403
@@ -43,6 +44,13 @@ export async function POST(request) {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return Response.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
+    // Best-effort per-instance limit; duplicate checkouts are also
+    // collapsed in the database by createCheckout.
+    const limit = checkRateLimit(`billing-checkout:${session.user.id}`, { limit: 10, windowMs: 10 * 60 * 1000 })
+    if (!limit.allowed) {
+      return Response.json({ error: 'Too many checkout attempts. Please wait a few minutes.' }, { status: 429 })
     }
 
     const { plan, billingCycle } = await request.json()
