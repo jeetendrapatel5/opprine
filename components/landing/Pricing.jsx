@@ -52,7 +52,7 @@ export default function Pricing() {
           {PRICING_REFRAME}
         </SectionHeader>
 
-        <div className="stagger mx-auto mt-12 grid max-w-5xl gap-4 lg:grid-cols-2">
+        <div className="stagger mx-auto mt-12 grid max-w-6xl gap-4 lg:grid-cols-3">
           {PRICING_TIERS.map((tier) => (
             <article
               key={tier.name}
@@ -110,8 +110,8 @@ export default function Pricing() {
         <div className="reveal mx-auto mt-8 flex max-w-3xl flex-col items-center justify-center gap-3 rounded-2xl border border-[#E7E0D3] bg-white px-5 py-4 text-center sm:flex-row sm:text-left">
           <ShieldCheck aria-hidden="true" className="h-5 w-5 shrink-0 text-[#1E6F45]" />
           <p className={`text-[13px] leading-6 ${MUTED_TEXT}`}>
-            Both plans include private client links, project progress, file delivery, and approval records. Agency
-            adds scale, branding, and priority support.
+            All plans include private client links, project progress, file delivery, and approval records. Team adds
+            workspace members and custom branding.
           </p>
         </div>
       </div>

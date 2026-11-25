@@ -23,6 +23,7 @@ import { razorpay } from '@/lib/billing/razorpay'
 import { requireWorkspaceMembership, requireRole } from '@/lib/workspace'
 import { NotFoundError } from '@/lib/errors'
 import { handleApiError } from '@/lib/http-errors'
+import { cancelSubscription } from '@/lib/billing/cancel'
 
 export async function POST(request) {
   try {
@@ -55,42 +56,13 @@ export async function POST(request) {
       )
     }
 
-    // PENDING = never had a confirmed first payment. Razorpay has no
-    // "current cycle" to defer to in this state, so cancel_at_cycle_end
-    // isn't valid here — force immediate regardless of what was asked.
-    const isPending = subscription.status === 'PENDING'
-    const cancelAtCycleEnd = isPending ? false : !wantsImmediate
-
-    await razorpay.subscriptions.cancel(subscription.razorpaySubscriptionId, {
-      cancel_at_cycle_end: cancelAtCycleEnd,
+    const result = await cancelSubscription({
+      prisma,
+      razorpay,
+      subscription,
+      immediately: wantsImmediate,
     })
-
-    if (cancelAtCycleEnd) {
-      // Access continues until currentPeriodEnd. Status stays ACTIVE —
-      // the webhook's `subscription.cancelled` event (already handled
-      // in webhook/route.js) is what actually flips status to
-      // CANCELLED, once the period genuinely ends. We only record the
-      // intent here.
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: { cancelAtPeriodEnd: true },
-      })
-    } else {
-      // Immediate cancellation — we made the API call ourselves with
-      // authenticated server credentials, so (unlike checkout, where a
-      // client could lie about payment) this response is trustworthy
-      // enough to reflect right away, without waiting on the webhook.
-      await prisma.subscription.update({
-        where: { id: subscription.id },
-        data: { status: 'CANCELLED', cancelAtPeriodEnd: false },
-      })
-    }
-
-    return Response.json({
-      status: 'ok',
-      cancelledImmediately: !cancelAtCycleEnd,
-      accessUntil: cancelAtCycleEnd ? subscription.currentPeriodEnd : null,
-    })
+    return Response.json(result.body, { status: result.status })
   } catch (error) {
     return handleApiError(error)
   }
