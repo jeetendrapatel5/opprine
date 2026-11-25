@@ -10,7 +10,7 @@
 // for why that matters).
 
 import UpgradeButton from './UpgradeButton'
-import { formatINR, formatLimit } from '@/lib/billing/format'
+import { formatMoney, formatLimit } from '@/lib/billing/format'
 
 // Display order only — NOT a source of truth for limits or pricing.
 // Those live in exactly one place: lib/billing/plans.js. This array
@@ -26,7 +26,7 @@ const FEATURE_ROWS = [
   { key: 'customBranding', label: 'Custom branding' },
 ]
 
-export default function PlanCard({ plan, currentPlan, billingCycle, isOwner, prefill }) {
+export default function PlanCard({ plan, currentPlan, billingCycle, currency, isOwner, prefill }) {
   const rank = PLAN_ORDER.indexOf(plan.key)
   const currentRank = PLAN_ORDER.indexOf(currentPlan)
   const isCurrent = plan.key === currentPlan
@@ -34,7 +34,8 @@ export default function PlanCard({ plan, currentPlan, billingCycle, isOwner, pre
   const isEnterprise = plan.key === 'ENTERPRISE'
   const canSelfServe = plan.key === 'PRO' || plan.key === 'TEAM'
 
-  const price = plan.pricing ? plan.pricing[billingCycle.toLowerCase()] : null
+  const offer = plan.offers?.[currency]?.[billingCycle] ?? null
+  const price = offer ? offer.amount : null
 
   return (
     <div
@@ -56,7 +57,7 @@ export default function PlanCard({ plan, currentPlan, billingCycle, isOwner, pre
           <span className="text-xl font-medium text-[var(--color-fp-text-primary)]">Custom pricing</span>
         ) : price ? (
           <p className="text-3xl font-semibold text-[var(--color-fp-text-primary)]">
-            {formatINR(price)}
+            {formatMoney(price, currency)}
             <span className="text-base font-normal text-[var(--color-fp-text-secondary)]">
               /{billingCycle === 'MONTHLY' ? 'mo' : 'yr'}
             </span>
@@ -108,12 +109,12 @@ export default function PlanCard({ plan, currentPlan, billingCycle, isOwner, pre
           <p className="text-xs text-slate-400">
             To switch to this plan, cancel your current subscription below, then subscribe here once it ends.
           </p>
-        ) : canSelfServe && !plan.selfServe?.[billingCycle.toLowerCase()] ? (
+        ) : canSelfServe && !offer?.available ? (
           <p className="text-xs text-slate-400">
             {billingCycle === 'YEARLY' ? 'Yearly' : 'This'} billing is not available for this plan. Choose monthly billing.
           </p>
         ) : canSelfServe ? (
-          <UpgradeButton plan={plan.key} billingCycle={billingCycle} prefill={prefill} />
+          <UpgradeButton plan={plan.key} billingCycle={billingCycle} currency={currency} prefill={prefill} />
         ) : null}
       </div>
     </div>

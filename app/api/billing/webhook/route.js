@@ -7,6 +7,8 @@
 import prisma from '@/lib/prisma'
 import { razorpay } from '@/lib/billing/razorpay'
 import { handleRazorpayWebhook } from '@/lib/billing/webhook-handler'
+import { notifyBillingAlerts } from '@/lib/billing/alerts'
+import { sendEmail } from '@/lib/email'
 
 export async function POST(request) {
   // The signature covers the exact bytes Razorpay sent, so read raw text.
@@ -19,6 +21,7 @@ export async function POST(request) {
     secret: process.env.RAZORPAY_WEBHOOK_SECRET,
     prisma,
     razorpay,
+    notify: (alerts) => notifyBillingAlerts(alerts, { sendEmail }),
   })
 
   return Response.json(body, { status })
