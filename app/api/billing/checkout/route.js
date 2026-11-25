@@ -1,6 +1,6 @@
 // app/api/billing/checkout/route.js
 //
-// POST { plan: 'PRO' | 'TEAM', billingCycle: 'MONTHLY' | 'YEARLY' }
+// POST { plan: 'PRO' | 'TEAM', billingCycle: 'MONTHLY' | 'YEARLY', currency?: 'INR' | 'USD' | 'EUR' }
 //
 // Creates a Razorpay subscription for the owner's workspace and returns
 // what the Checkout widget needs. The workspace's Subscription row is not
@@ -13,7 +13,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { razorpay } from '@/lib/billing/razorpay'
-import { getPricing, isSelfServeAvailable } from '@/lib/billing/plans'
+import { getPricing, isSelfServeAvailable, BASE_CURRENCY } from '@/lib/billing/plans'
 import { assertRazorpayPlanMatches } from '@/lib/billing/plan-verification'
 import { createCheckout } from '@/lib/billing/checkout'
 import { requireWorkspaceMembership, requireRole } from '@/lib/workspace'
@@ -53,7 +53,7 @@ export async function POST(request) {
       return Response.json({ error: 'Too many checkout attempts. Please wait a few minutes.' }, { status: 429 })
     }
 
-    const { plan, billingCycle } = await request.json()
+    const { plan, billingCycle, currency = BASE_CURRENCY } = await request.json()
 
     if (!['PRO', 'TEAM'].includes(plan)) {
       return Response.json(
@@ -65,9 +65,14 @@ export async function POST(request) {
       return Response.json({ error: 'Invalid billing cycle.' }, { status: 400 })
     }
 
-    if (!isSelfServeAvailable(plan, billingCycle)) {
+    if (!isSelfServeAvailable(plan, billingCycle, currency)) {
       return Response.json(
-        { error: `${billingCycle === 'YEARLY' ? 'Yearly' : 'This'} billing is not available for the ${plan} plan. Choose monthly billing.` },
+        {
+          error:
+            currency === BASE_CURRENCY
+              ? `${billingCycle === 'YEARLY' ? 'Yearly' : 'This'} billing is not available for the ${plan} plan. Choose monthly billing.`
+              : `Billing in ${String(currency).slice(0, 3)} is not available.`,
+        },
         { status: 400 }
       )
     }
@@ -75,9 +80,9 @@ export async function POST(request) {
     const membership = await requireWorkspaceMembership(session.user.id)
     requireRole(membership.role, ['OWNER'])
 
-    const pricing = getPricing(plan, billingCycle)
+    const pricing = getPricing(plan, billingCycle, currency)
     if (!pricing || !pricing.razorpayPlanId) {
-      console.error('Razorpay plan id is not configured:', { plan, billingCycle })
+      console.error('Razorpay plan id is not configured:', { plan, billingCycle, currency })
       return Response.json(
         { error: `Pricing is not configured for ${plan} / ${billingCycle}.` },
         { status: 500 }

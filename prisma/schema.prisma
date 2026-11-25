@@ -833,6 +833,8 @@ model Subscription {
   razorpayCustomerId     String?
   razorpaySubscriptionId String? @unique
   razorpayPlanId         String? // Razorpay's own "Plan" id for this plan+cycle combo
+  // Currency the subscription is billed in. Amounts live on Payment rows.
+  currency               String  @default("INR")
 
   currentPeriodStart DateTime?
   currentPeriodEnd   DateTime?
@@ -855,6 +857,7 @@ model CheckoutAttempt {
   plan                   Plan
   billingCycle           BillingCycle
   razorpayPlanId         String
+  currency               String                @default("INR")
   razorpaySubscriptionId String                @unique
   // Subscription id this attempt displaced when it was confirmed paid.
   replacedSubscriptionId String?

@@ -11,9 +11,10 @@
 //
 // Data flow, step by step:
 //   1. Click -> load Razorpay's Checkout.js script (once).
-//   2. POST /api/billing/checkout with { plan, billingCycle } -> your
-//      existing route creates a Razorpay subscription and saves a local
-//      Subscription row as PENDING. Returns { subscriptionId, razorpayKeyId }.
+//   2. POST /api/billing/checkout with { plan, billingCycle, currency } ->
+//      the route creates a Razorpay subscription and records a checkout
+//      attempt; the workspace's Subscription row is not touched until the
+//      payment is confirmed. Returns { subscriptionId, razorpayKeyId }.
 //   3. Open Razorpay's Checkout popup against that subscription.
 //   4. Razorpay's own `handler` callback fires once the popup thinks the
 //      payment succeeded. We do NOT treat the workspace as upgraded at
@@ -93,6 +94,7 @@ async function pollForPlanActivation(expectedPlan) {
 export default function UpgradeButton({
   plan, // 'PRO' | 'TEAM'
   billingCycle, // 'MONTHLY' | 'YEARLY'
+  currency = 'INR', // 'INR' | 'USD' | 'EUR'
   prefill, // { name, email } — optional
   onActivated, // optional callback, fires once the upgrade is confirmed
   className = '',
@@ -135,7 +137,7 @@ export default function UpgradeButton({
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, billingCycle }),
+        body: JSON.stringify({ plan, billingCycle, currency }),
       })
       const data = await res.json()
 
@@ -182,7 +184,7 @@ export default function UpgradeButton({
       setStatus('error')
       setErrorMessage(err.message || 'Something went wrong starting checkout.')
     }
-  }, [plan, billingCycle, prefill, waitForActivation])
+  }, [plan, billingCycle, currency, prefill, waitForActivation])
 
   if (status === 'confirming') {
     return (
