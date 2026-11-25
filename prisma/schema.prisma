@@ -93,6 +93,8 @@ model Workspace {
   members      WorkspaceMember[]
   projects     Project[]
   subscription Subscription?
+  checkoutAttempts CheckoutAttempt[]
+  payments         Payment[]
   invites      WorkspaceInvite[]
 
   notifications Notification[]
@@ -831,6 +833,8 @@ model Subscription {
   razorpayCustomerId     String?
   razorpaySubscriptionId String? @unique
   razorpayPlanId         String? // Razorpay's own "Plan" id for this plan+cycle combo
+  // Currency the subscription is billed in. Amounts live on Payment rows.
+  currency               String  @default("INR")
 
   currentPeriodStart DateTime?
   currentPeriodEnd   DateTime?
@@ -840,6 +844,37 @@ model Subscription {
   updatedAt DateTime @updatedAt
 
   @@index([status])
+}
+
+// One row per Razorpay subscription created by checkout. The workspace's
+// Subscription row is only replaced once the attempt is confirmed paid, so
+// a failed or abandoned checkout never changes existing access.
+model CheckoutAttempt {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  plan                   Plan
+  billingCycle           BillingCycle
+  razorpayPlanId         String
+  currency               String                @default("INR")
+  razorpaySubscriptionId String                @unique
+  // Subscription id this attempt displaced when it was confirmed paid.
+  replacedSubscriptionId String?
+  status                 CheckoutAttemptStatus @default(CREATED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId, status])
+  @@index([replacedSubscriptionId])
+}
+
+enum CheckoutAttemptStatus {
+  CREATED // Razorpay subscription created, payment not confirmed
+  COMPLETED // paid and promoted to the workspace's Subscription
+  ABANDONED // cancelled or expired before payment
+  CONFLICT // paid while the workspace already had a live subscription
 }
 
 enum BillingCycle {
@@ -864,11 +899,64 @@ enum SubscriptionStatus {
 // database transaction, so two near-simultaneous copies of the same
 // event can't both slip through and double-process.
 model WebhookEvent {
-  id              String   @id @default(cuid())
-  razorpayEventId String   @unique
+  id              String             @id @default(cuid())
+  razorpayEventId String             @unique
+  bodyHash        String?            @unique // SHA-256 of the signed body; the event-id header is not signed
   eventType       String // e.g. "subscription.charged", stored for debugging
+  status          WebhookEventStatus @default(PROCESSED)
   payload         Json? // raw event body, kept for troubleshooting
-  processedAt     DateTime @default(now())
+  processedAt     DateTime           @default(now())
+
+  @@index([status])
+}
+
+enum WebhookEventStatus {
+  PROCESSED // applied to a known subscription
+  UNMATCHED // references a subscription with no local row; needs follow-up
+  IGNORED // carries no subscription entity
+}
+
+// One row per Razorpay payment on a subscription charge, kept in step with
+// Razorpay by the webhook handler and the daily reconciliation. Amounts are
+// in the smallest currency unit. Money state lives here, not on Subscription.
+model Payment {
+  id                String  @id @default(cuid())
+  razorpayPaymentId String  @unique
+  workspaceId       String?
+  workspace         Workspace? @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+
+  razorpaySubscriptionId String?
+  razorpayInvoiceId      String?
+
+  amount         Int
+  currency       String
+  status         PaymentStatus
+  amountRefunded Int           @default(0)
+  method         String?
+  failureCode    String?
+  failureReason  String?
+
+  // Latest Razorpay dispute on this payment, ordered by event time.
+  disputeId      String?
+  disputeStatus  String?
+  disputeEventAt DateTime?
+
+  paidAt    DateTime // Razorpay's created_at for the payment
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId, paidAt])
+  @@index([razorpaySubscriptionId])
+  @@index([status])
+}
+
+enum PaymentStatus {
+  CREATED
+  AUTHORIZED
+  CAPTURED
+  PARTIALLY_REFUNDED
+  REFUNDED
+  FAILED
 }
 
 // ── Password reset ──────────────────────────────────────────────────────

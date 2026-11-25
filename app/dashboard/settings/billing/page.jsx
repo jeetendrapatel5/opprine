@@ -45,6 +45,8 @@ import prisma from '@/lib/prisma'
 import { requireWorkspaceMembership } from '@/lib/workspace'
 import { getEntitlements } from '@/lib/billing/entitlements'
 import { PLAN_CONFIG } from '@/lib/billing/plans'
+import { getDisplayOffers } from '@/lib/billing/display-prices'
+import { razorpay } from '@/lib/billing/razorpay'
 import BillingPlans from '@/components/billing/BillingPlans'
 import ManageSubscription from '@/components/billing/ManageSubscription'
 
@@ -73,18 +75,15 @@ export default async function BillingSettingsPage() {
     }),
   ])
 
+  const { currencies, offers } = await getDisplayOffers(razorpay)
+
   const plans = PLAN_KEYS.map((key) => {
     const config = PLAN_CONFIG[key]
     return {
       key,
       displayName: config.displayName,
       limits: toClientLimits(config.limits),
-      pricing: config.pricing
-        ? {
-            monthly: config.pricing.monthly.amount,
-            yearly: config.pricing.yearly.amount,
-          }
-        : null,
+      offers: offers[key] ?? null,
     }
   })
 
@@ -109,6 +108,7 @@ export default async function BillingSettingsPage() {
 
       <BillingPlans
         plans={plans}
+        currencies={currencies}
         currentPlan={entitlements.plan}
         isOwner={isOwner}
         prefill={{ name: user?.name, email: user?.email }}
