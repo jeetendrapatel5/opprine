@@ -2,9 +2,15 @@
 
 import LegalPage from '@/components/legal/LegalPage'
 import { getBusinessDetails } from '@/lib/legal/business'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Privacy Policy | Opprine' }
+export const metadata = buildPageMetadata({
+  title: 'Privacy Policy',
+  description:
+    'How Opprine collects, uses and protects personal data, including account, workspace and billing information, and how to exercise your data rights.',
+  path: '/privacy',
+})
 
 export default function PrivacyPage() {
   const business = getBusinessDetails()

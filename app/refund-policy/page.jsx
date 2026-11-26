@@ -2,9 +2,15 @@
 
 import LegalPage from '@/components/legal/LegalPage'
 import { getBusinessDetails } from '@/lib/legal/business'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Cancellation and Refund Policy | Opprine' }
+export const metadata = buildPageMetadata({
+  title: 'Cancellation and Refund Policy',
+  description:
+    'How cancellation, refunds and failed renewals work for Opprine paid plans, and how and when approved refunds are paid.',
+  path: '/refund-policy',
+})
 
 export default function RefundPolicyPage() {
   const business = getBusinessDetails()

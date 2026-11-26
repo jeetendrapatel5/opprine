@@ -2,9 +2,15 @@
 
 import LegalPage from '@/components/legal/LegalPage'
 import { getBusinessDetails } from '@/lib/legal/business'
+import { buildPageMetadata } from '@/lib/seo/metadata'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Terms of Service | Opprine' }
+export const metadata = buildPageMetadata({
+  title: 'Terms of Service',
+  description:
+    'The terms that govern your use of Opprine, including accounts, plans and billing, acceptable use, your content, and liability.',
+  path: '/terms',
+})
 
 export default function TermsPage() {
   const business = getBusinessDetails()
