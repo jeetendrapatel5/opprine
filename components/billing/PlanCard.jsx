@@ -16,7 +16,7 @@ import { formatMoney, formatLimit } from '@/lib/billing/format'
 // Those live in exactly one place: lib/billing/plans.js. This array
 // only decides left-to-right ordering and "is this plan above or below
 // the current one," which is a display/UX concern, not an entitlement.
-const PLAN_ORDER = ['FREE', 'PRO', 'TEAM', 'ENTERPRISE']
+const PLAN_ORDER = ['PRO', 'TEAM', 'ENTERPRISE']
 
 const FEATURE_ROWS = [
   { key: 'maxProjects', label: 'Projects' },
@@ -63,7 +63,7 @@ export default function PlanCard({ plan, currentPlan, billingCycle, currency, is
             </span>
           </p>
         ) : (
-          <span className="text-xl font-medium text-[var(--color-fp-text-primary)]">Free</span>
+          <span className="text-xl font-medium text-[var(--color-fp-text-primary)]">Unavailable</span>
         )}
       </div>
 
@@ -105,13 +105,13 @@ export default function PlanCard({ plan, currentPlan, billingCycle, currency, is
           >
             Contact us
           </a>
-        ) : isBelowCurrent || currentPlan !== 'FREE' ? (
+        ) : isBelowCurrent || PLAN_ORDER.includes(currentPlan) ? (
           <p className="text-xs text-slate-400">
             To switch to this plan, cancel your current subscription below, then subscribe here once it ends.
           </p>
         ) : canSelfServe && !offer?.available ? (
           <p className="text-xs text-slate-400">
-            {billingCycle === 'YEARLY' ? 'Yearly' : 'This'} billing is not available for this plan. Choose monthly billing.
+            Billing is not available for this plan right now.
           </p>
         ) : canSelfServe ? (
           <UpgradeButton plan={plan.key} billingCycle={billingCycle} currency={currency} prefill={prefill} />

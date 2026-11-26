@@ -44,13 +44,12 @@ import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { requireWorkspaceMembership } from '@/lib/workspace'
 import { getEntitlements } from '@/lib/billing/entitlements'
-import { PLAN_CONFIG } from '@/lib/billing/plans'
+import { PLAN_CONFIG, getCycles, DEFAULT_CURRENCY } from '@/lib/billing/plans'
 import { getDisplayOffers } from '@/lib/billing/display-prices'
-import { razorpay } from '@/lib/billing/razorpay'
 import BillingPlans from '@/components/billing/BillingPlans'
 import ManageSubscription from '@/components/billing/ManageSubscription'
 
-const PLAN_KEYS = ['FREE', 'PRO', 'TEAM', 'ENTERPRISE']
+const PLAN_KEYS = ['PRO', 'TEAM', 'ENTERPRISE']
 
 function toClientLimits(limits) {
   return Object.fromEntries(
@@ -75,7 +74,7 @@ export default async function BillingSettingsPage() {
     }),
   ])
 
-  const { currencies, offers } = await getDisplayOffers(razorpay)
+  const { currencies, offers } = getDisplayOffers()
 
   const plans = PLAN_KEYS.map((key) => {
     const config = PLAN_CONFIG[key]
@@ -95,20 +94,16 @@ export default async function BillingSettingsPage() {
         <p className="text-sm font-medium text-slate-500">Billing</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--color-fp-text-primary)]">Plans &amp; billing</h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-          You&apos;re on the {entitlements.displayName} plan
-          {Number.isFinite(entitlements.usage.projects.limit) && (
-            <>
-              {' '}
-              - {entitlements.usage.projects.used} of {entitlements.usage.projects.limit} projects used
-            </>
-          )}
-          .
+          {entitlements.plan === 'FREE'
+            ? 'A paid subscription is required to use Opprine. Choose a plan to continue.'
+            : `You're on the ${entitlements.displayName} plan.`}
         </p>
       </header>
 
       <BillingPlans
         plans={plans}
         currencies={currencies}
+        cycles={getCycles(currencies[0] ?? DEFAULT_CURRENCY)}
         currentPlan={entitlements.plan}
         isOwner={isOwner}
         prefill={{ name: user?.name, email: user?.email }}

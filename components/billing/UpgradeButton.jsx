@@ -94,7 +94,7 @@ async function pollForPlanActivation(expectedPlan) {
 export default function UpgradeButton({
   plan, // 'PRO' | 'TEAM'
   billingCycle, // 'MONTHLY' | 'YEARLY'
-  currency = 'INR', // 'INR' | 'USD' | 'EUR'
+  currency = 'USD',
   prefill, // { name, email } — optional
   onActivated, // optional callback, fires once the upgrade is confirmed
   className = '',
@@ -191,7 +191,7 @@ export default function UpgradeButton({
       <div
         className={`rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-center text-sm text-slate-600 ${className}`}
       >
-        Payment received — confirming your upgrade…
+        Payment received — confirming your subscription…
       </div>
     )
   }
@@ -200,7 +200,7 @@ export default function UpgradeButton({
     return (
       <div className={`space-y-2 ${className}`}>
         <p className="text-sm text-amber-700">
-          We saw your payment, but haven&apos;t confirmed the upgrade yet. This is usually just a short delay.
+          We saw your payment, but haven&apos;t confirmed the subscription yet. This is usually just a short delay.
         </p>
         <button
           type="button"
@@ -221,7 +221,7 @@ export default function UpgradeButton({
         disabled={status === 'opening'}
         className="w-full rounded-lg bg-slate-900 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
       >
-        {status === 'opening' ? 'Opening secure checkout…' : `Upgrade to ${titleCasePlan(plan)}`}
+        {status === 'opening' ? 'Opening secure checkout…' : `Subscribe to ${titleCasePlan(plan)}`}
       </button>
       {status === 'error' && <p className="mt-2 text-xs text-red-600">{errorMessage}</p>}
     </div>

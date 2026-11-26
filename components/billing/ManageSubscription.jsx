@@ -28,7 +28,7 @@ const STATUS_COPY = {
 
 function formatDate(value) {
   if (!value) return null
-  return new Date(value).toLocaleDateString('en-IN', {
+  return new Date(value).toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -91,7 +91,7 @@ export default function ManageSubscription({ subscription, isOwner }) {
 
       {subscription.status === 'PAST_DUE' && (
         <p className="mt-2 text-sm text-amber-700">
-          Your last payment failed. You&apos;re currently limited to Free plan usage until this is resolved.
+          Your last payment failed. Access is suspended if it is not resolved within 7 days of the renewal date.
         </p>
       )}
 

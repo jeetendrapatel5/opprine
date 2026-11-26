@@ -14,7 +14,7 @@ export const HERO_HEADLINE = 'Your code already proves you\'re working. Now your
 export const HERO_SUB =
   'Opprine reads every commit and turns it into a client-ready update, automatically then ties it to milestone approvals, invoicing, and a record that protects you when a delay isn\'t your fault.'
 
-export const HERO_CTA = 'Start Free Trial'
+export const HERO_CTA = 'Get started'
 
 export const HERO_SECONDARY_CTA = 'See how it works'
 
@@ -179,32 +179,21 @@ export const PRICING_REFRAME =
 // import plans.js (which reads server environment variables).
 export const PRICING_TIERS = [
   {
-    name: 'Free',
-    tagline: 'For trying Opprine on a couple of client projects.',
-    price: '₹0',
-    per: 'forever',
-    highlight: false,
-    ctaLabel: 'Start free',
-    ctaHref: '/signup',
-    features: ['Up to 2 projects', 'Up to 2 clients', '1 workspace member'],
-    note: 'No credit card required.',
-  },
-  {
     name: 'Pro',
     tagline: 'For freelancers running real client projects.',
-    price: '₹999',
+    price: '$29',
     per: '/ month',
     badge: 'Most popular',
     highlight: true,
     ctaLabel: 'Get started',
     ctaHref: '/signup',
     features: ['Up to 15 projects', 'Unlimited clients', 'GitHub commit summaries', '1 workspace member'],
-    note: 'Upgrade from your dashboard after signing up. Cancel anytime.',
+    note: 'Billed monthly in USD. Cancel anytime.',
   },
   {
     name: 'Team',
     tagline: 'For studios managing a full roster of client work.',
-    price: '₹2,999',
+    price: '$79',
     per: '/ month',
     highlight: false,
     ctaLabel: 'Get started',
@@ -216,7 +205,7 @@ export const PRICING_TIERS = [
       'GitHub commit summaries',
       'Custom portal branding',
     ],
-    note: 'Upgrade from your dashboard after signing up. Cancel anytime.',
+    note: 'Billed monthly in USD. Cancel anytime.',
   },
 ]
 
@@ -296,9 +285,9 @@ export const FINAL_HEADLINE = 'Your client forms an opinion of your process with
 export const FINAL_BODY =
   'Connect your GitHub repo, share one private link, and give your client a record of progress they don\'t have to take your word for.'
 
-export const FINAL_CTA = 'Get started free'
+export const FINAL_CTA = 'Get started'
 
-export const FINAL_NOTE = 'The Free plan needs no credit card.'
+export const FINAL_NOTE = 'Plans start at $29 per month. Cancel anytime.'
 
 // ─── FOOTER ───────────────────────────────────────────────────────────────────
 

@@ -10,14 +10,15 @@
 import { useState } from 'react'
 import PlanCard from './PlanCard'
 
-export default function BillingPlans({ plans, currencies, currentPlan, isOwner, prefill }) {
-  const [billingCycle, setBillingCycle] = useState('MONTHLY')
+export default function BillingPlans({ plans, currencies, cycles, currentPlan, isOwner, prefill }) {
+  const [billingCycle, setBillingCycle] = useState(cycles[0])
   const [currency, setCurrency] = useState(currencies[0])
 
   return (
     <section>
+      {cycles.length > 1 && (
       <div className="mx-auto mb-8 flex w-fit items-center gap-1 rounded-full bg-slate-400 p-1">
-        {['MONTHLY', 'YEARLY'].map((cycle) => (
+        {cycles.map((cycle) => (
           <button
             key={cycle}
             type="button"
@@ -30,6 +31,7 @@ export default function BillingPlans({ plans, currencies, currentPlan, isOwner, 
           </button>
         ))}
       </div>
+      )}
 
       {currencies.length > 1 && (
         <div className="mx-auto mb-8 flex w-fit items-center gap-2 text-sm text-slate-500">
@@ -49,7 +51,7 @@ export default function BillingPlans({ plans, currencies, currentPlan, isOwner, 
         </div>
       )}
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-3">
         {plans.map((plan) => (
           <PlanCard
             key={plan.key}

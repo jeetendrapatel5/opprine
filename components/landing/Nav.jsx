@@ -54,7 +54,7 @@ export default function Nav({ onCTA }) {
             Sign in
           </Link>
           <PrimaryButton onClick={onCTA} icon={false} className="min-h-9 rounded-full px-4 py-2 text-[13px]">
-            Start free
+            Get started
           </PrimaryButton>
         </div>
       </nav>

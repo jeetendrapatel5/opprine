@@ -14,8 +14,9 @@ export default function RefundPolicyPage() {
       <section>
         <h2>Billing</h2>
         <p>
-          Paid plans are billed in advance, monthly or yearly, through Razorpay. A subscription renews automatically
-          at the end of each period until you cancel it. The Free plan is not charged.
+          Opprine requires a paid subscription; there is no free plan or free trial. Plans are billed in advance in US
+          dollars, monthly, through Razorpay. A subscription renews automatically at the end of each period until you
+          cancel it.
         </p>
       </section>
       <section>
@@ -24,7 +25,7 @@ export default function RefundPolicyPage() {
           The workspace owner can cancel at any time from Billing in the dashboard. By default a cancellation takes
           effect at the end of the period you have already paid for, and you keep your plan until then. You can
           instead choose to cancel immediately, in which case paid access ends right away. After a subscription ends
-          the workspace returns to the Free plan and its limits.
+          the workspace cannot be used until a new subscription is started. Your data is kept.
         </p>
       </section>
       <section>
@@ -40,16 +41,15 @@ export default function RefundPolicyPage() {
         <h2>How refunds are paid</h2>
         <p>
           Approved refunds are returned to the original payment method through Razorpay. The time for the money to
-          reach you depends on your bank or card issuer, and is commonly 5 to 7 business days. For payments in a
-          currency other than INR, the amount you receive may differ slightly because of your issuer&apos;s exchange
-          rate.
+          reach you depends on your bank or card issuer, and is commonly 5 to 7 business days. Because plans are billed in US dollars, the amount you receive may differ slightly because of your
+          issuer&apos;s exchange rate.
         </p>
       </section>
       <section>
         <h2>Failed renewals</h2>
         <p>
           If a renewal payment fails, Razorpay retries it. Your plan continues for up to 7 days after the unpaid period
-          ends. If the payment still has not succeeded, the workspace returns to the Free plan.
+          ends. If the payment still has not succeeded, access to the workspace is suspended until a payment succeeds.
         </p>
       </section>
       <section>

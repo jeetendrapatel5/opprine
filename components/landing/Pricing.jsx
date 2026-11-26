@@ -52,7 +52,7 @@ export default function Pricing() {
           {PRICING_REFRAME}
         </SectionHeader>
 
-        <div className="stagger mx-auto mt-12 grid max-w-6xl gap-4 lg:grid-cols-3">
+        <div className="stagger mx-auto mt-12 grid max-w-3xl gap-4 md:grid-cols-2">
           {PRICING_TIERS.map((tier) => (
             <article
               key={tier.name}
