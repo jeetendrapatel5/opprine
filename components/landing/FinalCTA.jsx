@@ -3,6 +3,7 @@
 // components/landing/FinalCTA.jsx
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import {
   FINAL_BODY,
@@ -15,7 +16,7 @@ import {
 } from './data'
 import { PAGE_MAX } from './ui'
 
-export function FinalCTA({ onCTA }) {
+export function FinalCTA() {
   return (
     <section className="border-y border-[#E7E0D3] bg-[#17130F] py-20 text-white sm:py-28">
       <div className={`${PAGE_MAX} text-center`}>
@@ -26,14 +27,13 @@ export function FinalCTA({ onCTA }) {
           <p className="mx-auto mt-6 max-w-2xl text-[15px] leading-8 text-white/55">{FINAL_BODY}</p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <button
-              type="button"
-              onClick={onCTA}
+            <Link
+              href="/signup"
               className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#1E6F45] px-5 py-3 text-[14px] font-semibold text-white transition duration-200 hover:bg-[#2C8557] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#17130F]"
             >
               {FINAL_CTA}
               <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-            </button>
+            </Link>
             <a
               href="#pricing"
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/15 px-5 py-3 text-[14px] font-semibold text-white transition duration-200 hover:border-white/35"
