@@ -8,9 +8,11 @@
 // array; this component doesn't fetch or transform pricing itself.
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import PlanCard from './PlanCard'
 
 export default function BillingPlans({ plans, currencies, cycles, currentPlan, isOwner, prefill }) {
+  const router = useRouter()
   const [billingCycle, setBillingCycle] = useState(cycles[0])
   const [currency, setCurrency] = useState(currencies[0])
 
@@ -61,6 +63,7 @@ export default function BillingPlans({ plans, currencies, cycles, currentPlan, i
             currency={currency}
             isOwner={isOwner}
             prefill={prefill}
+            onActivated={currentPlan === 'FREE' ? () => router.push('/dashboard') : undefined}
           />
         ))}
       </div>

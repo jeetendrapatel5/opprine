@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from "@/lib/auth"
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import {
   SidebarProvider,
   SidebarInset,
@@ -10,6 +11,8 @@ import DashboardSidebar from '@/components/DashboardSidebar'
 import NotificationBell from '@/components/notifications/NotificationBell'
 import QueryProvider from '@/components/QueryProvider'
 import { getWorkspaceForUser } from '@/lib/workspace'
+import { getEffectivePlan } from '@/lib/billing/entitlements'
+import { BILLING_PATH, isBillingPath } from '@/lib/billing/paywall-rules'
 
 export default async function DashboardLayout({ children }) {
 
@@ -24,6 +27,14 @@ export default async function DashboardLayout({ children }) {
   // so we do not throw here; 'none' is just a placeholder scope.
   const membership = await getWorkspaceForUser(session.user.id)
   const workspaceId = membership?.workspaceId ?? 'none'
+
+  // Paid-only access: a workspace without a granted plan can only reach the
+  // billing page. The path comes from proxy.js; when it is missing the page
+  // is withheld instead of rendered.
+  const isPaid = membership ? (await getEffectivePlan(membership.workspaceId)) !== 'FREE' : false
+  const pathname = (await headers()).get('x-pathname')
+  const locked = !isPaid && !(pathname && isBillingPath(pathname))
+  if (locked && pathname) redirect(BILLING_PATH)
 
   return (
     <SidebarProvider
@@ -70,9 +81,15 @@ export default async function DashboardLayout({ children }) {
             its state and does not flicker. If the sidebar or the bell ever
             need the shared cache, move the provider up to wrap them too. */}
         <main className="w-full px-4 sm:px-6 py-8">
-          <QueryProvider userId={session.user.id} workspaceId={workspaceId}>
-            {children}
-          </QueryProvider>
+          {locked ? (
+            <p className="text-sm text-fp-text-secondary">
+              An active subscription is required. <a href={BILLING_PATH} className="underline">Open billing</a>
+            </p>
+          ) : (
+            <QueryProvider userId={session.user.id} workspaceId={workspaceId}>
+              {children}
+            </QueryProvider>
+          )}
         </main>
 
       </SidebarInset>

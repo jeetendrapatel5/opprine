@@ -26,7 +26,7 @@ const FEATURE_ROWS = [
   { key: 'customBranding', label: 'Custom branding' },
 ]
 
-export default function PlanCard({ plan, currentPlan, billingCycle, currency, isOwner, prefill }) {
+export default function PlanCard({ plan, currentPlan, billingCycle, currency, isOwner, prefill, onActivated }) {
   const rank = PLAN_ORDER.indexOf(plan.key)
   const currentRank = PLAN_ORDER.indexOf(currentPlan)
   const isCurrent = plan.key === currentPlan
@@ -114,7 +114,7 @@ export default function PlanCard({ plan, currentPlan, billingCycle, currency, is
             Billing is not available for this plan right now.
           </p>
         ) : canSelfServe ? (
-          <UpgradeButton plan={plan.key} billingCycle={billingCycle} currency={currency} prefill={prefill} />
+          <UpgradeButton plan={plan.key} billingCycle={billingCycle} currency={currency} prefill={prefill} onActivated={onActivated} />
         ) : null}
       </div>
     </div>
