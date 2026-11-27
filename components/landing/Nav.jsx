@@ -1,63 +1,74 @@
 'use client'
 
-// components/landing/Nav.jsx
-
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
-import { PrimaryButton } from './ui'
-import { useScrolled } from './hooks'
-import { NAV_LINKS } from './data'
+import { Brand, StartLink } from './ui'
+import styles from './landing.module.css'
 
-export default function Nav({ onCTA }) {
-  const scrolled = useScrolled(24)
+const NAV_LINKS = [
+  { label: 'Product', href: '#product' },
+  { label: 'Workflow', href: '#workflow' },
+  { label: 'Pricing', href: '#pricing' },
+  { label: 'FAQ', href: '#faq' },
+]
+
+function SectionLinks({ active, onActivate }) {
+  return NAV_LINKS.map(({ href, label }) => (
+    <a key={href} href={href} aria-current={active === href ? 'location' : undefined} onClick={onActivate}>{label}</a>
+  ))
+}
+
+export default function Nav() {
+  const [active, setActive] = useState('#product')
+  const [open, setOpen] = useState(false)
+  const toggle = useRef(null)
+
+  useEffect(() => {
+    const sync = () => setActive(window.location.hash || '#product')
+    sync()
+    window.addEventListener('hashchange', sync)
+    return () => window.removeEventListener('hashchange', sync)
+  }, [])
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 800px)')
+    const closeOnDesktop = () => { if (desktop.matches) setOpen(false) }
+    desktop.addEventListener('change', closeOnDesktop)
+    return () => desktop.removeEventListener('change', closeOnDesktop)
+  }, [])
+
+  function followSection(event) {
+    const section = document.getElementById(event.currentTarget.hash.slice(1))
+    setOpen(false)
+    requestAnimationFrame(() => {
+      section?.setAttribute('tabindex', '-1')
+      section?.focus({ preventScroll: true })
+    })
+  }
 
   return (
-    <div className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-5 sm:pt-4">
-      <nav
-        aria-label="Primary navigation"
-        className={`mx-auto flex max-w-[1080px] items-center justify-between rounded-full border border-[#E7E0D3] bg-[#FFFAFA] px-3 py-2 pl-4 transition-shadow duration-300 sm:px-4 ${
-          scrolled ? 'shadow-[0_8px_24px_rgba(23,19,15,0.08)]' : ''
-        }`}
-      >
-        <Link
-          href="/"
-          aria-label="Opprine home"
-          className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#17130F] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFFAFA]"
-        >
-          <Image
-            src="/logo/opprine-main-logo.png"
-            alt=""
-            width={70}
-            height={28}
-            priority
-            className="h-10 w-auto"
-          />
-        </Link>
-
-        <div className="hidden items-center gap-6 md:flex">
-          {NAV_LINKS.map(({ label, href }) => (
-            <a
-              key={label}
-              href={href}
-              className="text-[13px] font-semibold text-[#6F675C] transition-colors duration-150 hover:text-[#17130F]"
-            >
-              {label}
-            </a>
-          ))}
+    <header className={styles.header} onKeyDown={(event) => {
+      if (event.key === 'Escape' && open) {
+        setOpen(false)
+        toggle.current?.focus()
+      }
+    }}>
+      <nav className={styles.nav} aria-label="Main navigation">
+        <Brand />
+        <div className={styles.desktopLinks}><SectionLinks active={active} /></div>
+        <div className={styles.desktopLinks}>
+          <Link href="/signin">Sign in</Link>
+          <StartLink compact>Get started free</StartLink>
         </div>
-
-        <div className="flex items-center gap-1">
-          <Link
-            href="/signin"
-            className="hidden rounded-full px-4 py-2 text-[13px] font-semibold text-[#6F675C] transition-colors duration-150 hover:text-[#17130F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#17130F] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFFAFA] md:block"
-          >
-            Sign in
-          </Link>
-          <PrimaryButton onClick={onCTA} icon={false} className="min-h-9 rounded-full px-4 py-2 text-[13px]">
-            Start free
-          </PrimaryButton>
+        <button ref={toggle} type="button" className={styles.menuToggle} aria-label={open ? 'Close menu' : 'Open menu'} aria-expanded={open} aria-controls="opprine-menu" onClick={() => setOpen(!open)}>
+          <span aria-hidden="true" /><span aria-hidden="true" />
+        </button>
+        <div className={styles.mobileMenu} id="opprine-menu" hidden={!open}>
+          <SectionLinks active={active} onActivate={followSection} />
+          <Link href="/signin" onClick={() => setOpen(false)}>Sign in</Link>
+          <StartLink>Get started free</StartLink>
         </div>
       </nav>
-    </div>
+    </header>
   )
 }
