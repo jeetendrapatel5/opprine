@@ -37,6 +37,11 @@
 // but I didn't want this page's correctness depending on that edge
 // case — formatLimit() in lib/billing/format.js treats null the same
 // as Infinity ("Unlimited").
+//
+// WHAT CHANGED IN THIS VERSION: only the markup returned at the bottom.
+// Steps 1-4 above (all the data loading) are untouched. The header is now
+// left-aligned, with a small "projects used" meter on the right built from
+// the same entitlements.usage.projects numbers the old sentence used.
 
 import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
@@ -89,21 +94,50 @@ export default async function BillingSettingsPage() {
 
   const isOwner = membership.role === 'OWNER'
 
+  // Display-only numbers for the header meter. Same condition as before:
+  // only show usage when the plan has a real (finite) project limit. The
+  // extra `> 0` guard just avoids dividing by zero.
+  const projectUsage = entitlements.usage.projects
+  const showProjectMeter = Number.isFinite(projectUsage.limit) && projectUsage.limit > 0
+  const projectRatio = showProjectMeter ? Math.min(projectUsage.used / projectUsage.limit, 1) : 0
+  const atProjectLimit = showProjectMeter && projectUsage.used >= projectUsage.limit
+
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12">
-      <header className="mb-10 text-center">
-        <p className="text-sm font-medium text-slate-500">Billing</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[var(--color-fp-text-primary)]">Plans &amp; billing</h1>
-        <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-          You&apos;re on the {entitlements.displayName} plan
-          {Number.isFinite(entitlements.usage.projects.limit) && (
-            <>
-              {' '}
-              - {entitlements.usage.projects.used} of {entitlements.usage.projects.limit} projects used
-            </>
-          )}
-          .
-        </p>
+    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+      <header className="mb-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm text-fp-text-secondary">Billing</p>
+          <h1 className="mt-1 text-2xl font-medium tracking-tight text-fp-text-primary text-balance">
+            Plans &amp; billing
+          </h1>
+          <p className="mt-2 text-sm text-fp-text-secondary">
+            You&apos;re on the <span className="text-fp-text-primary">{entitlements.displayName}</span> plan
+          </p>
+        </div>
+
+        {showProjectMeter && (
+          <div className="w-full sm:w-64">
+            <div className="flex items-baseline justify-between gap-4 text-sm">
+              <span className="text-fp-text-secondary">Projects</span>
+              <span className="tabular-nums text-fp-text-primary">
+                {projectUsage.used} of {projectUsage.limit} used
+              </span>
+            </div>
+            <div
+              role="progressbar"
+              aria-label="Projects used"
+              aria-valuemin={0}
+              aria-valuemax={projectUsage.limit}
+              aria-valuenow={Math.min(projectUsage.used, projectUsage.limit)}
+              className="mt-2 h-1 overflow-hidden rounded-full bg-fp-text-primary/10"
+            >
+              <div
+                className={`h-full rounded-full ${atProjectLimit ? 'bg-fp-warning' : 'bg-fp-accent'}`}
+                style={{ width: `${projectRatio * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
       </header>
 
       <BillingPlans

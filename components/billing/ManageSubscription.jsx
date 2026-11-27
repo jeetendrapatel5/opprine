@@ -13,17 +13,28 @@
 // Only rendered by the page at all when a Subscription row with a real
 // razorpaySubscriptionId exists — i.e. never for a workspace that's
 // simply on FREE with no billing history.
+//
+// WHAT CHANGED IN THIS VERSION: only presentation.
+//   - The one-line sentence ("Pro · Monthly billing · renews ...") became a
+//     small set of labelled facts (Plan / Billing / Renews or Access ends).
+//   - Status is a coloured dot + plain text instead of coloured text.
+//   - The section has id="manage-subscription" so the plan cards can link
+//     here ("cancel your current subscription").
+//   - cancel(), the confirm dialogs, the fetch call and the canCancel rule
+//     are exactly as before.
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { titleCasePlan } from '@/lib/billing/format'
+import { buttonStyles, StatusDot } from './ui'
 
+// `tone` picks the dot colour (see DOT_TONES in ui.jsx).
 const STATUS_COPY = {
-  ACTIVE: { label: 'Active', tone: 'text-emerald-700' },
-  PAST_DUE: { label: 'Payment failed', tone: 'text-amber-700' },
-  PENDING: { label: 'Awaiting first payment', tone: 'text-slate-600' },
-  CANCELLED: { label: 'Cancelled', tone: 'text-slate-600' },
-  EXPIRED: { label: 'Expired', tone: 'text-red-700' },
+  ACTIVE: { label: 'Active', tone: 'success' },
+  PAST_DUE: { label: 'Payment failed', tone: 'warning' },
+  PENDING: { label: 'Awaiting first payment', tone: 'neutral' },
+  CANCELLED: { label: 'Cancelled', tone: 'neutral' },
+  EXPIRED: { label: 'Expired', tone: 'danger' },
 }
 
 function formatDate(value) {
@@ -33,6 +44,16 @@ function formatDate(value) {
     month: 'long',
     day: 'numeric',
   })
+}
+
+// One label + value pair in the summary grid.
+function Detail({ label, value }) {
+  return (
+    <div>
+      <dt className="text-xs text-fp-text-secondary">{label}</dt>
+      <dd className="mt-1 text-sm font-medium tabular-nums text-fp-text-primary">{value}</dd>
+    </div>
+  )
 }
 
 export default function ManageSubscription({ subscription, isOwner }) {
@@ -74,58 +95,90 @@ export default function ManageSubscription({ subscription, isOwner }) {
 
   const canCancel = isOwner && !['CANCELLED', 'EXPIRED'].includes(subscription.status) && !alreadyEnding
 
+  // The third fact in the grid. Same rules as the old sentence:
+  //   ending at period end  -> "Access ends <date>"
+  //   active and renewing   -> "Renews <date>"
+  //   otherwise             -> nothing
+  let dateDetail = null
+  if (periodEnd) {
+    if (alreadyEnding) {
+      dateDetail = { label: 'Access ends', value: periodEnd }
+    } else if (subscription.status === 'ACTIVE') {
+      dateDetail = { label: 'Renews', value: periodEnd }
+    }
+  }
+
+  const showFooter = canCancel || alreadyEnding || !isOwner
+
   return (
-    <section className="mt-12 rounded-2xl border border-slate-500 p-6">
+    <section
+      id="manage-subscription"
+      aria-labelledby="manage-subscription-title"
+      className="mt-12 scroll-mt-8 rounded-xl border border-fp-text-primary/10 bg-fp-surface p-6"
+    >
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-base font-semibold text-[var(--color-fp-text-secondary)]">Your subscription</h2>
-        <span className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${status.tone}`}>
+        <h2 id="manage-subscription-title" className="text-base font-medium text-fp-text-primary">
+          Your subscription
+        </h2>
+        <span className="inline-flex items-center gap-2 whitespace-nowrap text-sm text-fp-text-secondary">
+          <StatusDot tone={status.tone} />
           {status.label}
         </span>
       </div>
 
-      <p className="mt-2 text-sm text-slate-600">
-        {titleCasePlan(subscription.plan)} · {subscription.billingCycle === 'YEARLY' ? 'Yearly' : 'Monthly'} billing
-        {subscription.status === 'ACTIVE' && !alreadyEnding && periodEnd && <> · renews {periodEnd}</>}
-        {alreadyEnding && periodEnd && <> · access ends {periodEnd}</>}
-      </p>
+      <dl className="mt-6 grid gap-4 sm:grid-cols-3">
+        <Detail label="Plan" value={titleCasePlan(subscription.plan)} />
+        <Detail label="Billing" value={subscription.billingCycle === 'YEARLY' ? 'Yearly' : 'Monthly'} />
+        {dateDetail && <Detail label={dateDetail.label} value={dateDetail.value} />}
+      </dl>
 
       {subscription.status === 'PAST_DUE' && (
-        <p className="mt-2 text-sm text-amber-700">
-          Your last payment failed. You&apos;re currently limited to Free plan usage until this is resolved.
+        <p className="mt-6 flex gap-2 text-sm leading-5 text-fp-text-secondary">
+          <StatusDot tone="warning" className="mt-1.5" />
+          <span>
+            Your last payment failed. You&apos;re currently limited to Free plan usage until this is resolved.
+          </span>
         </p>
       )}
 
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-4 flex gap-2 text-sm leading-5 text-fp-text-secondary">
+          <StatusDot tone="danger" className="mt-1.5" />
+          <span>{error}</span>
+        </p>
+      )}
 
-      {canCancel && (
-        <div className="mt-4 flex flex-wrap items-center gap-4">
-          <button
-            type="button"
-            onClick={() => cancel(false)}
-            disabled={loading}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-          >
-            Cancel at period end
-          </button>
-          <button
-            type="button"
-            onClick={() => cancel(true)}
-            disabled={loading}
-            className="text-sm font-medium text-red-600 hover:underline disabled:opacity-50"
-          >
-            Cancel immediately instead
-          </button>
+      {showFooter && (
+        <div className="mt-6 space-y-3 border-t border-fp-text-primary/10 pt-4">
+          {canCancel && (
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              <button
+                type="button"
+                onClick={() => cancel(false)}
+                disabled={loading}
+                className={buttonStyles.secondary}
+              >
+                Cancel at period end
+              </button>
+              <button
+                type="button"
+                onClick={() => cancel(true)}
+                disabled={loading}
+                className="inline-flex h-10 items-center rounded-lg text-sm font-medium text-fp-danger underline-offset-4 transition-colors duration-150 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fp-accent disabled:pointer-events-none disabled:opacity-50"
+              >
+                Cancel immediately instead
+              </button>
+            </div>
+          )}
+
+          {alreadyEnding && (
+            <p className="text-sm text-fp-text-secondary">
+              This subscription is already set to end{periodEnd ? ` on ${periodEnd}` : ''}
+            </p>
+          )}
+
+          {!isOwner && <p className="text-sm text-fp-text-secondary">Only the workspace owner can manage billing</p>}
         </div>
-      )}
-
-      {alreadyEnding && (
-        <p className="mt-4 text-sm text-slate-500">
-          This subscription is already set to end{periodEnd ? ` on ${periodEnd}` : ''}.
-        </p>
-      )}
-
-      {!isOwner && (
-        <p className="mt-4 text-xs text-slate-400">Only the workspace owner can manage billing.</p>
       )}
     </section>
   )

@@ -29,16 +29,27 @@
 //      router.refresh() so the rest of the page (which reads plan
 //      server-side) picks up the change too.
 //
+// WHAT CHANGED IN THIS VERSION: only presentation.
+//   - New optional `variant` prop: 'primary' (accent fill) or 'secondary'
+//     (outline). PlanCard uses primary for the recommended plan only.
+//   - Buttons and messages use the shared styles in ./ui.jsx.
+//   - Loading states show a small spinner; messages use a status dot so the
+//     text stays readable.
+//   - Everything above step 1-5 (script loading, checkout call, polling,
+//     handlers) is unchanged.
+//
 // FLAGGED ASSUMPTIONS (things I couldn't know without your actual file):
 //   - `name: 'Opprine'` below — Razorpay's checkout popup shows this as
 //     the merchant name. Hardcoded; change it if your account is set up
 //     under a different display name.
-//   - `theme.color` — set to match the slate-900 buttons used elsewhere
-//     in these new components. Swap for your real brand color.
+//   - `theme.color` — Razorpay's popup can't read CSS variables, so this
+//     has to be a literal hex. It is now the value of --color-fp-base
+//     (#0D1117) instead of the old slate-900.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { titleCasePlan } from '@/lib/billing/format'
+import { buttonStyles, Spinner, StatusDot } from './ui'
 
 const RAZORPAY_SCRIPT_SRC = 'https://checkout.razorpay.com/v1/checkout.js'
 const POLL_INTERVAL_MS = 2000
@@ -97,6 +108,7 @@ export default function UpgradeButton({
   currency = 'INR', // 'INR' | 'USD' | 'EUR'
   prefill, // { name, email } — optional
   onActivated, // optional callback, fires once the upgrade is confirmed
+  variant = 'primary', // 'primary' | 'secondary' — look only, no logic
   className = '',
 }) {
   const router = useRouter()
@@ -156,7 +168,7 @@ export default function UpgradeButton({
           name: prefill?.name || '',
           email: prefill?.email || '',
         },
-        theme: { color: '#0f172a' },
+        theme: { color: '#0D1117' },
         handler: () => {
           // Razorpay believes the payment succeeded. We still wait for
           // our own webhook before believing the workspace is upgraded.
@@ -186,27 +198,30 @@ export default function UpgradeButton({
     }
   }, [plan, billingCycle, currency, prefill, waitForActivation])
 
+  // ── Presentation only from here down ──────────────────────────────────
+
   if (status === 'confirming') {
     return (
       <div
-        className={`rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-center text-sm text-slate-600 ${className}`}
+        role="status"
+        className={`flex min-h-10 items-center justify-center gap-2 rounded-lg border border-fp-text-primary/10 bg-fp-text-primary/5 px-4 py-2 text-sm leading-5 text-fp-text-secondary ${className}`}
       >
-        Payment received — confirming your upgrade…
+        <Spinner />
+        <span>Payment received — confirming your upgrade…</span>
       </div>
     )
   }
 
   if (status === 'timed_out') {
     return (
-      <div className={`space-y-2 ${className}`}>
-        <p className="text-sm text-amber-700">
-          We saw your payment, but haven&apos;t confirmed the upgrade yet. This is usually just a short delay.
+      <div className={`space-y-3 ${className}`}>
+        <p role="status" className="flex gap-2 text-sm leading-5 text-fp-text-secondary">
+          <StatusDot tone="warning" className="mt-1.5" />
+          <span>
+            We saw your payment, but haven&apos;t confirmed the upgrade yet. This is usually just a short delay.
+          </span>
         </p>
-        <button
-          type="button"
-          onClick={waitForActivation}
-          className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
+        <button type="button" onClick={waitForActivation} className={`${buttonStyles.secondary} w-full`}>
           Check again
         </button>
       </div>
@@ -219,11 +234,24 @@ export default function UpgradeButton({
         type="button"
         onClick={handleClick}
         disabled={status === 'opening'}
-        className="w-full rounded-lg bg-slate-900 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+        aria-busy={status === 'opening'}
+        className={`${variant === 'secondary' ? buttonStyles.secondary : buttonStyles.primary} w-full`}
       >
-        {status === 'opening' ? 'Opening secure checkout…' : `Upgrade to ${titleCasePlan(plan)}`}
+        {status === 'opening' ? (
+          <>
+            <Spinner />
+            Opening secure checkout…
+          </>
+        ) : (
+          `Upgrade to ${titleCasePlan(plan)}`
+        )}
       </button>
-      {status === 'error' && <p className="mt-2 text-xs text-red-600">{errorMessage}</p>}
+      {status === 'error' && (
+        <p role="alert" className="mt-3 flex gap-2 text-xs leading-5 text-fp-text-secondary">
+          <StatusDot tone="danger" className="mt-1.5" />
+          <span>{errorMessage}</span>
+        </p>
+      )}
     </div>
   )
 }
